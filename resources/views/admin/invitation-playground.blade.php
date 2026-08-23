@@ -36,6 +36,72 @@
     $rsvpDeadlineLabel = $period->rsvp_deadline?->locale('id')->translatedFormat('d F Y H:i');
     $rsvpRespondedAt = $participant?->rsvp_responded_at ?? $recipient?->responded_at;
     $playgroundReturnUrl = request()->getRequestUri().'#letterRsvp';
+    $studentBarcodePayload = $participant
+        ? 'YFT|'.$period->id.'|'.$participant->id.'|'.$participant->invitation_token
+        : null;
+    $studentBarcodeFileName = $participant
+        ? 'barcode-buku-tamu-'.$participant->nim.'.svg'
+        : null;
+    $code128Patterns = [
+        '212222', '222122', '222221', '121223', '121322', '131222', '122213', '122312', '132212', '221213',
+        '221312', '231212', '112232', '122132', '122231', '113222', '123122', '123221', '223211', '221132',
+        '221231', '213212', '223112', '312131', '311222', '321122', '321221', '312212', '322112', '322211',
+        '212123', '212321', '232121', '111323', '131123', '131321', '112313', '132113', '132311', '211313',
+        '231113', '231311', '112133', '112331', '132131', '113123', '113321', '133121', '313121', '211331',
+        '231131', '213113', '213311', '213131', '311123', '311321', '331121', '312113', '312311', '332111',
+        '314111', '221411', '431111', '111224', '111422', '121124', '121421', '141122', '141221', '112214',
+        '112412', '122114', '122411', '142112', '142211', '241211', '221114', '413111', '241112', '134111',
+        '111242', '121142', '121241', '114212', '124112', '124211', '411212', '421112', '421211', '212141',
+        '214121', '412121', '111143', '111341', '131141', '114113', '114311', '411113', '411311', '113141',
+        '114131', '311141', '411131', '211412', '211214', '211232', '2331112',
+    ];
+    $makeCode128Svg = function (?string $value) use ($code128Patterns): string {
+        if (! $value) {
+            return '';
+        }
+
+        $codes = [104];
+        $checksum = 104;
+        $weight = 1;
+        foreach (str_split($value) as $char) {
+            $ord = ord($char);
+            if ($ord < 32 || $ord > 126) {
+                continue;
+            }
+
+            $code = $ord - 32;
+            $codes[] = $code;
+            $checksum += $code * $weight;
+            $weight++;
+        }
+
+        $codes[] = $checksum % 103;
+        $codes[] = 106;
+
+        $quiet = 10;
+        $height = 86;
+        $x = $quiet;
+        $rects = '';
+
+        foreach ($codes as $code) {
+            $pattern = $code128Patterns[$code] ?? '';
+            $bar = true;
+
+            foreach (str_split($pattern) as $width) {
+                $width = (int) $width;
+                if ($bar) {
+                    $rects .= '<rect x="'.$x.'" y="0" width="'.$width.'" height="'.$height.'" />';
+                }
+                $x += $width;
+                $bar = ! $bar;
+            }
+        }
+
+        $width = $x + $quiet;
+
+        return '<svg class="student-barcode-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '.$width.' '.$height.'" role="img" aria-label="Barcode buku tamu mahasiswa" data-barcode-svg><rect width="'.$width.'" height="'.$height.'" fill="#fff" />'.$rects.'</svg>';
+    };
+    $studentBarcodeSvg = $makeCode128Svg($studentBarcodePayload);
 @endphp
 
 @extends(($standalone ?? false) ? 'layouts.playground' : 'layouts.dashboard')
@@ -769,6 +835,137 @@
             color: #667085;
         }
 
+        .student-barcode-card {
+            position: relative;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+            gap: 22px;
+            align-items: center;
+            padding: 22px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: #fff;
+        }
+
+        .student-barcode-card::after {
+            content: "";
+            position: absolute;
+            right: -34px;
+            bottom: -38px;
+            width: 210px;
+            height: 210px;
+            background: url("{{ asset('Unmul.png') }}") center / contain no-repeat;
+            opacity: 0.055;
+            transform: rotate(-16deg);
+            pointer-events: none;
+        }
+
+        .student-barcode-copy,
+        .student-barcode-panel {
+            position: relative;
+            z-index: 1;
+        }
+
+        .student-barcode-eyebrow {
+            display: block;
+            margin-bottom: 8px;
+            color: #e85d04;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .student-barcode-copy h4 {
+            margin: 0 0 8px;
+            color: #111827;
+            font-size: 22px;
+            line-height: 1.25;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+
+        .student-barcode-copy p {
+            margin: 0;
+            color: #667085;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .student-barcode-person {
+            display: grid;
+            gap: 2px;
+            margin-top: 14px;
+            color: #344054;
+            font-size: 13px;
+        }
+
+        .student-barcode-person strong {
+            color: #111827;
+            font-size: 15px;
+            font-weight: 850;
+        }
+
+        .student-barcode-panel {
+            display: grid;
+            gap: 12px;
+            justify-items: stretch;
+        }
+
+        .student-barcode-frame {
+            display: grid;
+            place-items: center;
+            min-height: 124px;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .student-barcode-svg {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 92px;
+            fill: #111827;
+            shape-rendering: crispEdges;
+        }
+
+        .student-barcode-code {
+            color: #667085;
+            font-size: 12px;
+            line-height: 1.4;
+            text-align: center;
+            word-break: break-all;
+        }
+
+        .student-barcode-download {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 40px;
+            padding: 9px 14px;
+            border: 1px solid #e85d04;
+            border-radius: 8px;
+            background: #fff;
+            color: #9a3412;
+            font-size: 13px;
+            font-weight: 850;
+            cursor: pointer;
+        }
+
+        .student-barcode-download svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 2;
+        }
+
         @keyframes statusIconIn {
             0% {
                 opacity: 0;
@@ -1089,6 +1286,16 @@
 
             .letter-section {
                 padding: 24px 0;
+            }
+
+            .student-barcode-card {
+                grid-template-columns: 1fr;
+                gap: 16px;
+                padding: 18px;
+            }
+
+            .student-barcode-copy h4 {
+                font-size: 20px;
             }
 
             .formal-tutorial-card {
@@ -1820,6 +2027,40 @@
                 </section>
             @endif
 
+            @if ($participant && $studentBarcodePayload && $studentBarcodeSvg)
+                <section class="letter-section letter-reveal" id="letterStudentBarcode">
+                    <div class="student-barcode-card">
+                        <div class="student-barcode-copy">
+                            <span class="student-barcode-eyebrow">Barcode Buku Tamu</span>
+                            <h4>Kartu Registrasi Mahasiswa</h4>
+                            <p>Tunjukkan barcode ini di meja registrasi saat tiba di lokasi.</p>
+                            <div class="student-barcode-person">
+                                <strong>{{ $participant->name }}</strong>
+                                <span>{{ $participant->nim }} · {{ $participant->studyProgram?->name ?: ($participant->study_program ?: 'Program studi belum diisi') }}</span>
+                            </div>
+                        </div>
+                        <div class="student-barcode-panel">
+                            <div class="student-barcode-frame">
+                                {!! $studentBarcodeSvg !!}
+                            </div>
+                            <span class="student-barcode-code">Kode: {{ strtoupper(substr($participant->invitation_token, -8)) }}</span>
+                            <button
+                                class="student-barcode-download"
+                                type="button"
+                                data-download-barcode
+                                data-file-name="{{ $studentBarcodeFileName }}">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <path d="M7 10l5 5 5-5"></path>
+                                    <path d="M12 15V3"></path>
+                                </svg>
+                                <span>Unduh Barcode</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            @endif
+
             <footer class="signature-block letter-reveal">
                 <div class="signature-inner">
                     <p class="signature-date">{{ $signatureDate }}</p>
@@ -2135,6 +2376,29 @@
                     });
                 }
             }, { passive: true });
+
+            document.querySelectorAll('[data-download-barcode]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var card = button.closest('.student-barcode-card');
+                    var svg = card ? card.querySelector('[data-barcode-svg]') : null;
+                    if (!svg) return;
+
+                    var clone = svg.cloneNode(true);
+                    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                    var source = new XMLSerializer().serializeToString(clone);
+                    var blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+                    var url = URL.createObjectURL(blob);
+                    var link = document.createElement('a');
+                    link.href = url;
+                    link.download = button.dataset.fileName || 'barcode-buku-tamu.svg';
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.setTimeout(function () {
+                        URL.revokeObjectURL(url);
+                    }, 500);
+                });
+            });
 
             document.querySelectorAll('.playground-rsvp-form').forEach(function (form) {
                 var noteField = form.querySelector('[data-playground-note-field]');
