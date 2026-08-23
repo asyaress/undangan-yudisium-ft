@@ -45,7 +45,7 @@ class InvitationRoutingTest extends TestCase
             ->assertOk()
             ->assertSee('formalPreviewStage')
             ->assertSee('Dengan hormat')
-            ->assertDontSee('QR Buku Tamu');
+            ->assertDontSee('Unduh PNG');
     }
 
     public function test_student_category_uses_generic_link_and_nim_gate(): void
@@ -117,8 +117,9 @@ class InvitationRoutingTest extends TestCase
             ->assertOk()
             ->assertSee('formalPreviewStage')
             ->assertSee($participant->name)
-            ->assertSee('QR Buku Tamu')
-            ->assertSee('Unduh PNG');
+            ->assertSee('Unduh PNG')
+            ->assertDontSee('QR Buku Tamu')
+            ->assertDontSee('Kartu Registrasi Mahasiswa');
     }
 
     private function period(): YudisiumPeriod

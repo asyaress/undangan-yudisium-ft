@@ -807,16 +807,6 @@
             z-index: 1;
         }
 
-        .student-qr-eyebrow {
-            display: block;
-            margin-bottom: 8px;
-            color: #e85d04;
-            font-size: 11px;
-            font-weight: 900;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-        }
-
         .student-qr-copy h4 {
             margin: 0 0 8px;
             color: #111827;
@@ -1978,12 +1968,11 @@
                         data-event-date="{{ $eventDateLabel }}"
                         data-unmul-logo="{{ asset('Unmul.png') }}">
                         <div class="student-qr-copy">
-                            <span class="student-qr-eyebrow">QR Buku Tamu</span>
-                            <h4>Kartu Registrasi Mahasiswa</h4>
-                            <p>Tunjukkan QR ini di meja registrasi saat tiba di lokasi.</p>
+                            <h4>{{ $participant->name }}</h4>
+                            <p>{{ $period->archive_title }}</p>
                             <div class="student-qr-person">
-                                <strong>{{ $participant->name }}</strong>
                                 <span>{{ $participant->nim }} - {{ $participant->studyProgram?->name ?: ($participant->study_program ?: 'Program studi belum diisi') }}</span>
+                                <span>{{ $eventDateLabel }}</span>
                             </div>
                         </div>
                         <div class="student-qr-panel">
@@ -2416,42 +2405,31 @@
 
                 if (logo) {
                     context.save();
-                    context.globalAlpha = 0.06;
-                    context.translate(650, 1060);
+                    context.globalAlpha = 0.045;
+                    context.translate(688, 1080);
                     context.rotate(-18 * Math.PI / 180);
-                    context.drawImage(logo, -230, -230, 460, 460);
+                    context.drawImage(logo, -250, -250, 500, 500);
                     context.restore();
                 }
 
-                context.fillStyle = '#e85d04';
-                context.fillRect(54, 54, 12, 1172);
-
-                context.fillStyle = '#e85d04';
-                context.font = '700 24px Manrope, Arial, sans-serif';
-                context.fillText('QR BUKU TAMU', 106, 134);
-
-                context.fillStyle = '#111827';
-                context.font = '800 52px Manrope, Arial, sans-serif';
-                fitText(context, 'Kartu Registrasi Mahasiswa', 106, 208, 680, 62, 2);
-
                 context.fillStyle = '#475467';
-                context.font = '500 26px Manrope, Arial, sans-serif';
-                fitText(context, card.dataset.eventTitle || '', 106, 342, 680, 38, 2);
+                context.font = '600 30px Manrope, Arial, sans-serif';
+                fitText(context, card.dataset.eventTitle || '', 96, 142, 700, 42, 2);
 
                 context.fillStyle = '#111827';
-                context.font = '800 36px Manrope, Arial, sans-serif';
-                fitText(context, card.dataset.studentName || '', 106, 458, 680, 46, 2);
+                context.font = '800 46px Manrope, Arial, sans-serif';
+                fitText(context, card.dataset.studentName || '', 96, 290, 700, 54, 2);
 
                 context.fillStyle = '#667085';
-                context.font = '600 25px Manrope, Arial, sans-serif';
-                fitText(context, (card.dataset.studentNim || '-') + ' - ' + (card.dataset.studentProgram || '-'), 106, 548, 680, 34, 2);
+                context.font = '600 28px Manrope, Arial, sans-serif';
+                fitText(context, (card.dataset.studentNim || '-') + ' - ' + (card.dataset.studentProgram || '-'), 96, 400, 700, 38, 2);
 
                 context.fillStyle = '#9a3412';
-                context.font = '700 23px Manrope, Arial, sans-serif';
-                fitText(context, card.dataset.eventDate || '', 106, 644, 680, 30, 1);
+                context.font = '700 25px Manrope, Arial, sans-serif';
+                fitText(context, card.dataset.eventDate || '', 96, 484, 700, 32, 1);
 
                 context.save();
-                roundedRect(context, 128, 704, 644, 450, 28);
+                roundedRect(context, 106, 554, 688, 688, 30);
                 context.fillStyle = '#ffffff';
                 context.fill();
                 context.strokeStyle = '#e5e7eb';
@@ -2460,14 +2438,8 @@
                 context.restore();
 
                 if (qrImage) {
-                    context.drawImage(qrImage, 170, 746, 560, 560);
+                    context.drawImage(qrImage, 146, 594, 608, 608);
                 }
-
-                context.fillStyle = '#667085';
-                context.font = '700 24px Manrope, Arial, sans-serif';
-                context.textAlign = 'center';
-                context.fillText('Scan di meja registrasi', 450, 1196);
-                context.textAlign = 'left';
 
                 downloadCanvas(canvas, fileName);
             }
