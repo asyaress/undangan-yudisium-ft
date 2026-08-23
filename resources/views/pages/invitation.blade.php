@@ -55,10 +55,7 @@
     if ($showRsvpGuide) {
         if ($isStudentCategory) {
             $rsvpTutorialSteps = [
-                'Undangan Yudisium Fakultas Teknik Universitas Mulawarman telah dibuka untuk Saudara/i.',
-                'Silakan membaca detail undangan pada bagian ini, meliputi hari, tanggal, waktu, tempat, serta susunan acara.',
-                'Setelah memahami informasi acara, Saudara/i dimohon melanjutkan ke tahap konfirmasi kehadiran pada bagian bawah halaman.',
-                'Masukkan Nomor Induk Mahasiswa (NIM) yang terdaftar, lalu pilih status kehadiran Hadir atau Berhalangan.',
+                'Masukkan NIM yang terdaftar. Setelah cocok, undangan pribadi dan formulir konfirmasi akan terbuka.',
             ];
         } else {
             $rsvpTutorialSteps = [
@@ -69,7 +66,10 @@
             ];
         }
         if ($rsvpDeadlineLabel) {
-            $rsvpTutorialSteps[3] .= ' Batas waktu konfirmasi kehadiran: '.$rsvpDeadlineLabel.' WITA.';
+            $lastTutorialStep = array_key_last($rsvpTutorialSteps);
+            if ($lastTutorialStep !== null) {
+                $rsvpTutorialSteps[$lastTutorialStep] .= ' Batas waktu konfirmasi kehadiran: '.$rsvpDeadlineLabel.' WITA.';
+            }
         }
     }
     $autoOpenInvitation = $isInvitationMode && (

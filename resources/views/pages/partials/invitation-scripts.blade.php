@@ -18,10 +18,8 @@
     const revealItems = content ? Array.from(content.children) : [];
     const previewMode = new URLSearchParams(window.location.search).get("preview");
     const shouldAutoOpen = @json($autoOpenInvitation ?? false);
-    const RSVP_RETURN_KEY = "undangan:return-to-rsvp";
     const shouldReturnToRsvp = shouldAutoOpen
-      || window.location.hash === "#rsvpSection"
-      || window.sessionStorage.getItem(RSVP_RETURN_KEY) === "1";
+      || window.location.hash === "#rsvpSection";
     const logoCandidates = [
       "{{ asset('Unmul.png') }}",
       "{{ asset('unmul.png') }}",
@@ -185,7 +183,6 @@
     const scrollToRsvp = () => {
       if (!rsvpSection) return;
       scrollToTarget(rsvpSection, isMobileView ? "center" : "start");
-      window.sessionStorage.removeItem(RSVP_RETURN_KEY);
       window.setTimeout(() => {
         const preferredInput = rsvpSection.querySelector("[aria-invalid='true'], .is-invalid, #nim, input:not([type='hidden']), textarea");
         preferredInput?.focus?.({ preventScroll: true });
@@ -194,8 +191,6 @@
 
     document.querySelectorAll("#rsvpSection form").forEach((form) => {
       form.addEventListener("submit", (event) => {
-        window.sessionStorage.setItem(RSVP_RETURN_KEY, "1");
-
         const submitter = event.submitter;
         if (submitter?.name && !form.querySelector(`input[type="hidden"][name="${submitter.name}"][data-submit-mirror="1"]`)) {
           const mirrorInput = document.createElement("input");

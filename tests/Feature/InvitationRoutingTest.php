@@ -70,9 +70,11 @@ class InvitationRoutingTest extends TestCase
             'category_slug' => $category->slug,
             'nim' => $participant->nim,
         ])
-            ->assertRedirect(route('home', ['event' => $period->slug, 'to' => $category->slug]))
-            ->assertSessionHas("verified_participants.{$period->id}.{$category->slug}", $participant->invitation_token)
-            ->assertSessionHas("confirmed_participants.{$period->id}.{$category->slug}", $participant->invitation_token);
+            ->assertRedirect(route('home', [
+                'event' => $period->slug,
+                'to' => $category->slug,
+                'ref' => $participant->invitation_token,
+            ]));
     }
 
     public function test_invalid_nim_returns_to_generic_student_link(): void
@@ -89,14 +91,16 @@ class InvitationRoutingTest extends TestCase
             ->assertSessionHas('error', 'NIM tidak ditemukan pada data mahasiswa event ini.');
     }
 
-    public function test_student_private_ref_link_is_not_valid_anymore(): void
+    public function test_student_token_link_opens_invitation_after_nim_verification(): void
     {
         $period = $this->period();
         $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
         $participant = $this->participant($period);
 
         $this->get('/?event='.$period->slug.'&to=yudisiawan&ref='.$participant->invitation_token)
-            ->assertNotFound();
+            ->assertOk()
+            ->assertSee('formalPreviewStage')
+            ->assertSee($participant->name);
     }
 
     private function period(): YudisiumPeriod

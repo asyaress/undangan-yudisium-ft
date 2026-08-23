@@ -41,32 +41,15 @@ class InvitationResponseController extends Controller
             return back()->with('error', 'Konfirmasi kehadiran ditutup. Batas konfirmasi sudah berakhir.');
         }
 
-        $confirmedToken = $request->session()->get("confirmed_participants.{$participant->period_id}.{$category->slug}");
-        if ($confirmedToken !== $participant->invitation_token) {
-            return redirect()
-                ->to(route('home', [
-                    'event' => $participant->period?->slug,
-                    'to' => $category->slug,
-                ]).'#rsvpSection')
-                ->with('error', 'Periksa dan konfirmasi data mahasiswa terlebih dahulu.');
-        }
-
         $participant->submitRsvp(
             $data['attendance'],
             $this->rsvpNote($data)
-        );
-        $request->session()->put(
-            "verified_participants.{$participant->period_id}.{$category->slug}",
-            $participant->invitation_token
-        );
-        $request->session()->put(
-            "confirmed_participants.{$participant->period_id}.{$category->slug}",
-            $participant->invitation_token
         );
 
         $defaultReturnTo = route('home', [
                 'event' => $participant->period?->slug,
                 'to' => $category->slug,
+                'ref' => $participant->invitation_token,
             ]).'#rsvpSection';
 
         return redirect()

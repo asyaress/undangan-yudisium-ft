@@ -60,10 +60,6 @@ class AdminInvitationPlaygroundController extends Controller
                 ->orderBy('name')
                 ->first();
 
-            if ($participant) {
-                $request->session()->put("verified_participants.{$period->id}.{$category->slug}", $participant->invitation_token);
-                $request->session()->put("confirmed_participants.{$period->id}.{$category->slug}", $participant->invitation_token);
-            }
         }
 
         $recipientOptions = $category->usesPrivateAccess()
@@ -87,7 +83,7 @@ class AdminInvitationPlaygroundController extends Controller
         $originalUrl = route('home', array_filter([
             'event' => $period->slug,
             'to' => $category->slug,
-            'ref' => $recipient?->token,
+            'ref' => $recipient?->token ?: $participant?->invitation_token,
         ]));
 
         return view('admin.invitation-playground', compact(

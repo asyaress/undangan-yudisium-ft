@@ -52,7 +52,11 @@ class InvitationPlaygroundController extends Controller
         }
 
         if ($category->usesNimAccess() && $ref !== '') {
-            abort(404);
+            $participant = YudisiumParticipant::query()
+                ->with('studyProgram')
+                ->where('period_id', $period->id)
+                ->where('invitation_token', $ref)
+                ->firstOrFail();
         }
 
         $periods = collect([$period]);
@@ -61,7 +65,7 @@ class InvitationPlaygroundController extends Controller
         $originalUrl = route('home', array_filter([
             'event' => $period->slug,
             'to' => $category->slug,
-            'ref' => $recipient?->token,
+            'ref' => $recipient?->token ?: $participant?->invitation_token,
         ]));
         $standalone = true;
         $pageTitle = $period->archive_title.' - Playground Undangan';

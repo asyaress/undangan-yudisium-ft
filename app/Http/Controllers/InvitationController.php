@@ -77,8 +77,7 @@ class InvitationController extends Controller
 
         $studentIdentityConfirmed = false;
         if ($participant && $selectedCategory?->usesNimAccess()) {
-            $studentIdentityConfirmed = $participant->rsvp_status !== 'pending'
-                || $request->session()->get($this->confirmedParticipantKey($event, $selectedCategory)) === $participant->invitation_token;
+            $studentIdentityConfirmed = true;
         }
 
         $shouldUseFormalInvitation = ! $selectedCategory->usesNimAccess()
@@ -145,17 +144,12 @@ class InvitationController extends Controller
                 ->with('error', 'NIM tidak ditemukan pada data mahasiswa event ini.');
         }
 
-        $request->session()->put(
-            $this->verifiedParticipantKey($event, $category),
-            $participant->invitation_token
-        );
-        $request->session()->put(
-            $this->confirmedParticipantKey($event, $category),
-            $participant->invitation_token
-        );
-
         return redirect()
-            ->to(route('home', ['event' => $event->slug, 'to' => $category->slug]))
+            ->to(route('home', [
+                'event' => $event->slug,
+                'to' => $category->slug,
+                'ref' => $participant->invitation_token,
+            ]))
             ->with('success', 'NIM berhasil diverifikasi. Silakan lanjut membaca undangan dan isi konfirmasi kehadiran.');
     }
 
@@ -182,24 +176,18 @@ class InvitationController extends Controller
             ->where('invitation_token', $data['participant_token'])
             ->first();
 
-        $verifiedToken = $request->session()->get($this->verifiedParticipantKey($event, $category));
-        if (! $participant || ($verifiedToken && $verifiedToken !== $participant->invitation_token)) {
+        if (! $participant) {
             return redirect()
                 ->to($this->invitationUrl($event, $category))
                 ->with('error', 'Sesi verifikasi tidak valid. Silakan verifikasi NIM kembali.');
         }
 
-        $request->session()->put(
-            $this->verifiedParticipantKey($event, $category),
-            $participant->invitation_token
-        );
-        $request->session()->put(
-            $this->confirmedParticipantKey($event, $category),
-            $participant->invitation_token
-        );
-
         return redirect()
-            ->to($this->invitationUrl($event, $category))
+            ->to(route('home', [
+                'event' => $event->slug,
+                'to' => $category->slug,
+                'ref' => $participant->invitation_token,
+            ]))
             ->with('success', 'Data mahasiswa sudah dikonfirmasi. Silakan isi status kehadiran.');
     }
 
@@ -216,11 +204,6 @@ class InvitationController extends Controller
             ->where('slug', $data['category_slug'])
             ->where('access_mode', InvitationCategory::ACCESS_NIM)
             ->firstOrFail();
-
-        $request->session()->forget([
-            $this->verifiedParticipantKey($event, $category),
-            $this->confirmedParticipantKey($event, $category),
-        ]);
 
         return redirect()
             ->to($this->invitationUrl($event, $category))
@@ -252,7 +235,7 @@ class InvitationController extends Controller
 
     private function resolveParticipant(Request $request, YudisiumPeriod $event, InvitationCategory $category): array
     {
-        $token = (string) $request->session()->get($this->verifiedParticipantKey($event, $category), '');
+        $token = $request->string('ref')->toString();
 
         if ($token === '') {
             return [null, null];
@@ -304,16 +287,6 @@ class InvitationController extends Controller
             ->orderBy('id');
     }
 
-    private function verifiedParticipantKey(YudisiumPeriod $event, InvitationCategory $category): string
-    {
-        return "verified_participants.{$event->id}.{$category->slug}";
-    }
-
-    private function confirmedParticipantKey(YudisiumPeriod $event, InvitationCategory $category): string
-    {
-        return "confirmed_participants.{$event->id}.{$category->slug}";
-    }
-
     private function invitationUrl(YudisiumPeriod $event, InvitationCategory $category): string
     {
         return route('home', ['event' => $event->slug, 'to' => $category->slug]).'#rsvpSection';
@@ -333,7 +306,7 @@ class InvitationController extends Controller
         $originalUrl = route('home', array_filter([
             'event' => $period->slug,
             'to' => $category->slug,
-            'ref' => $recipient?->token,
+            'ref' => $recipient?->token ?: $participant?->invitation_token,
         ]));
         $standalone = true;
         $pageTitle = $period->archive_title.' - Undangan Yudisium FT UNMUL';

@@ -368,13 +368,39 @@
       position: relative;
       z-index: 10001;
       pointer-events: auto;
-      width: min(440px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 128px;
+      align-items: center;
+      gap: 16px;
+      width: min(620px, 100%);
       margin: 0 auto;
-      padding: 18px 18px 16px;
+      padding: 20px 20px 18px;
       border-radius: 16px;
       background: #fff;
       box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
       border: 2px solid rgba(245, 83, 13, 0.28);
+    }
+
+    .rsvp-tutorial-copy {
+      min-width: 0;
+    }
+
+    .rsvp-tutorial-visual {
+      align-self: stretch;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      min-height: 158px;
+      overflow: hidden;
+      border-radius: 14px;
+    }
+
+    .rsvp-tutorial-visual img {
+      display: block;
+      width: min(142px, 100%);
+      max-height: 178px;
+      object-fit: contain;
+      object-position: bottom center;
     }
 
     .rsvp-tutorial-kicker {
@@ -497,17 +523,43 @@
       }
 
       .rsvp-tutorial-card {
+        grid-template-columns: 92px minmax(0, 1fr);
+        gap: 12px;
         padding: 14px 14px 12px;
         margin-top: auto;
       }
 
+      .rsvp-tutorial-copy {
+        grid-column: 2;
+      }
+
+      .rsvp-tutorial-visual {
+        grid-column: 1;
+        grid-row: 1;
+        min-height: 132px;
+      }
+
+      .rsvp-tutorial-visual img {
+        width: 118px;
+        max-width: none;
+        max-height: 148px;
+      }
+
       .rsvp-tutorial-typing {
-        min-height: 64px;
+        min-height: 58px;
       }
 
       .rsvp-tutorial-typing p {
         font-size: 0.84rem;
         line-height: 1.6;
+      }
+
+      .rsvp-tutorial-footer {
+        align-items: center;
+      }
+
+      .rsvp-tutorial-actions {
+        margin-left: 0;
       }
 
       .rsvp-card.is-tutorial-target,
