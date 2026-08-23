@@ -7,7 +7,7 @@
 @php
     $isStudent = $type === 'mahasiswa';
     $statusOptions = $isStudent
-        ? ['all' => 'Semua', 'attending' => 'Hadir', 'declined' => 'Berhalangan', 'represented' => 'Diwakilkan', 'pending' => 'Belum Konfirmasi', 'checked_in' => 'Sudah check-in']
+        ? ['all' => 'Semua', 'attending' => 'Hadir', 'declined' => 'Berhalangan', 'pending' => 'Belum Konfirmasi', 'checked_in' => 'Sudah check-in']
         : ['all' => 'Semua', 'attending' => 'Bersedia Hadir', 'declined' => 'Berhalangan', 'represented' => 'Diwakilkan', 'pending' => 'Belum Konfirmasi'];
     $query = request()->query();
 @endphp
@@ -119,7 +119,7 @@
 
     .monitor-stat-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
         gap: 12px;
     }
 
@@ -244,13 +244,17 @@
     }
 
     .sound-btn {
+        width: 38px;
+        height: 38px;
         border: 1px solid #dfe3ea;
         border-radius: 999px;
         background: #fff;
         color: #4b5563;
-        padding: 8px 12px;
+        padding: 0;
         font-weight: 800;
         cursor: pointer;
+        display: inline-grid;
+        place-items: center;
     }
 
     .sound-btn.is-on {
@@ -261,10 +265,62 @@
 
     .monitor-list {
         display: grid;
-        gap: 8px;
-        padding: 12px;
+        gap: 14px;
+        padding: 14px;
         max-height: 68vh;
         overflow: auto;
+    }
+
+    .program-section {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        background: #fff;
+        overflow: hidden;
+    }
+
+    .program-section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 14px 16px;
+        background: #fafafa;
+        border-bottom: 1px solid #eef0f4;
+    }
+
+    .program-section-head h3 {
+        margin: 0;
+        color: #111827;
+        font-size: 1rem;
+        font-weight: 800;
+    }
+
+    .program-section-head span {
+        color: #6b7280;
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .program-section-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        color: #6b7280;
+        font-size: 0.84rem;
+        font-weight: 700;
+    }
+
+    .program-section-meta strong {
+        color: #111827;
+    }
+
+    .program-section-body {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
     }
 
     .monitor-row {
@@ -273,7 +329,7 @@
         gap: 10px;
         align-items: center;
         border: 1px solid #edf0f4;
-        border-radius: 12px;
+        border-radius: 10px;
         background: #fff;
         padding: 12px;
     }
@@ -332,10 +388,6 @@
     }
 
     @media (max-width: 992px) {
-        .monitor-stat-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
         .monitor-row {
             grid-template-columns: 1fr 1fr;
         }
@@ -348,9 +400,14 @@
         }
 
         .monitor-panel-head,
-        .monitor-toolbar {
+        .monitor-toolbar,
+        .program-section-head {
             align-items: flex-start;
             flex-direction: column;
+        }
+
+        .program-section-meta {
+            gap: 8px;
         }
     }
 </style>
@@ -367,14 +424,16 @@
         <div class="monitor-stat"><span>Total Data</span><strong data-stat="total">{{ number_format($summary['total']) }}</strong><small>{{ $isStudent ? 'Mahasiswa yudisium' : 'Penerima private' }}</small></div>
         <div class="monitor-stat"><span>Konfirmasi Hadir</span><strong data-stat="attending">{{ number_format($summary['attending']) }}</strong><small data-rate="responded">{{ $summary['responded_rate'] }}% sudah merespons</small></div>
         <div class="monitor-stat"><span>Berhalangan</span><strong data-stat="declined">{{ number_format($summary['declined']) }}</strong><small>Konfirmasi tidak hadir</small></div>
-        <div class="monitor-stat"><span>Diwakilkan</span><strong data-stat="represented">{{ number_format($summary['represented']) }}</strong><small>Hadir melalui perwakilan</small></div>
+        @unless ($isStudent)
+            <div class="monitor-stat"><span>Diwakilkan</span><strong data-stat="represented">{{ number_format($summary['represented']) }}</strong><small>Hadir melalui perwakilan</small></div>
+        @endunless
         <div class="monitor-stat"><span>{{ $isStudent ? 'Sudah Check-in' : 'Belum Konfirmasi' }}</span><strong data-stat="{{ $isStudent ? 'checked_in' : 'pending' }}">{{ number_format($isStudent ? $summary['checked_in'] : $summary['pending']) }}</strong><small>{{ $isStudent ? $summary['checkin_rate'].'% sudah check-in' : 'Menunggu respons' }}</small></div>
     </div>
 
     <div class="monitor-panel">
         <div class="monitor-panel-head">
             <h2>Filter {{ $title }}</h2>
-            <span class="live-indicator"><span class="live-dot"></span> Live tanpa refresh</span>
+            <span class="live-indicator" title="Status live" aria-label="Status live"><span class="live-dot"></span></span>
         </div>
         <form class="monitor-filter" method="get" action="{{ $isStudent ? route('monitoring.mahasiswa') : route('monitoring.private') }}">
             <div class="row">
@@ -387,9 +446,9 @@
                     </select>
                 </div>
                 <div class="col-md-3 form-group">
-                    <label>Kategori</label>
+                    <label>{{ $isStudent ? 'Program Studi' : 'Kategori' }}</label>
                     <select class="form-control" name="category">
-                        <option value="">Semua kategori</option>
+                        <option value="">{{ $isStudent ? 'Semua program studi' : 'Semua kategori' }}</option>
                         @foreach ($categories as $category)
                             <option value="{{ $category->slug }}" @selected($filters['category'] === $category->slug)>{{ $category->title }}</option>
                         @endforeach
@@ -427,7 +486,7 @@
                 <strong id="visibleCount">{{ number_format($resultRows->count()) }}</strong>
                 <span class="text-muted">baris tampil</span>
             </div>
-            <button class="sound-btn" type="button" id="soundToggle"><i class="fa fa-volume-up"></i> Aktifkan bunyi</button>
+            <button class="sound-btn" type="button" id="soundToggle" title="Suara notifikasi" aria-label="Suara notifikasi"><i class="fa fa-volume-off"></i></button>
         </div>
         <div class="monitor-list" id="monitorRows"></div>
     </div>
@@ -534,6 +593,49 @@
         if (respondedRate) respondedRate.textContent = `${summary.responded_rate}% sudah merespons`;
       };
 
+      const groupStudentRows = (items) => {
+        const groups = new Map();
+        items.forEach((row) => {
+          const key = row.study_program_key || "tanpa-prodi";
+          if (!groups.has(key)) {
+            groups.set(key, {
+              title: row.study_program_name || row.context || "Tanpa Program Studi",
+              code: row.study_program_code || "",
+              rows: [],
+            });
+          }
+          groups.get(key).rows.push(row);
+        });
+        return Array.from(groups.values());
+      };
+
+      const rowHtml = (row, changed) => {
+        const checkin = monitorType === "mahasiswa"
+          ? `<div><span class="badge-soft ${row.checked_in ? "good" : ""}">${row.checked_in ? "Sudah check-in" : "Belum check-in"}</span><div class="row-muted">${escapeHtml(row.checked_in_at_label)}</div></div>`
+          : `<div><span class="badge-soft">${escapeHtml(row.category)}</span><div class="row-muted">${escapeHtml(row.context)}</div></div>`;
+        const meta = monitorType === "mahasiswa"
+          ? `${row.sequence_number || "-"} / ${escapeHtml(row.nim || "-")}`
+          : escapeHtml(row.context || "-");
+
+        return `
+          <div class="monitor-row ${changed.has(row.id) ? "is-new" : ""}">
+            <div class="row-name">
+              <strong>${escapeHtml(row.name)}</strong>
+              <small class="d-block">${meta}</small>
+            </div>
+            <div>
+              <span class="badge-soft">${escapeHtml(row.context)}</span>
+              ${row.note ? `<div class="row-muted">${escapeHtml(row.note)}</div>` : ""}
+            </div>
+            <div>
+              <span class="badge-soft ${statusClass(row.rsvp_status)}">${escapeHtml(row.rsvp_label)}</span>
+              <div class="row-muted">${escapeHtml(row.responded_at_label)}</div>
+            </div>
+            ${checkin}
+          </div>
+        `;
+      };
+
       const renderRows = (changed = new Set()) => {
         visibleCount.textContent = numberFormat.format(rows.length);
         if (!rows.length) {
@@ -541,30 +643,32 @@
           return;
         }
 
-        rowContainer.innerHTML = rows.map((row) => {
-          const checkin = monitorType === "mahasiswa"
-            ? `<div><span class="badge-soft ${row.checked_in ? "good" : ""}">${row.checked_in ? "Sudah check-in" : "Belum check-in"}</span><div class="row-muted">${escapeHtml(row.checked_in_at_label)}</div></div>`
-            : `<div><span class="badge-soft">${escapeHtml(row.category)}</span><div class="row-muted">${escapeHtml(row.context)}</div></div>`;
-          const meta = monitorType === "mahasiswa"
-            ? `${row.sequence_number || "-"} / ${escapeHtml(row.nim || "-")}`
-            : escapeHtml(row.context || "-");
+        if (monitorType !== "mahasiswa") {
+          rowContainer.innerHTML = rows.map((row) => rowHtml(row, changed)).join("");
+          return;
+        }
 
+        rowContainer.innerHTML = groupStudentRows(rows).map((group) => {
+          const total = group.rows.length;
+          const checkedIn = group.rows.filter((row) => row.checked_in).length;
+          const confirmed = group.rows.filter((row) => row.rsvp_status !== "pending").length;
           return `
-            <div class="monitor-row ${changed.has(row.id) ? "is-new" : ""}">
-              <div class="row-name">
-                <strong>${escapeHtml(row.name)}</strong>
-                <small class="d-block">${meta}</small>
+            <section class="program-section">
+              <div class="program-section-head">
+                <div>
+                  <span>Program Studi</span>
+                  <h3>${escapeHtml(group.title)}</h3>
+                </div>
+                <div class="program-section-meta">
+                  <strong>${numberFormat.format(total)}</strong> mahasiswa
+                  <span>${numberFormat.format(confirmed)} konfirmasi</span>
+                  <span>${numberFormat.format(checkedIn)} check-in</span>
+                </div>
               </div>
-              <div>
-                <span class="badge-soft">${escapeHtml(row.context)}</span>
-                ${row.note ? `<div class="row-muted">${escapeHtml(row.note)}</div>` : ""}
+              <div class="program-section-body">
+                ${group.rows.map((row) => rowHtml(row, changed)).join("")}
               </div>
-              <div>
-                <span class="badge-soft ${statusClass(row.rsvp_status)}">${escapeHtml(row.rsvp_label)}</span>
-                <div class="row-muted">${escapeHtml(row.responded_at_label)}</div>
-              </div>
-              ${checkin}
-            </div>
+            </section>
           `;
         }).join("");
       };
@@ -588,8 +692,10 @@
         soundEnabled = !soundEnabled;
         soundToggle.classList.toggle("is-on", soundEnabled);
         soundToggle.innerHTML = soundEnabled
-          ? '<i class="fa fa-volume-up"></i> Bunyi aktif'
-          : '<i class="fa fa-volume-up"></i> Aktifkan bunyi';
+          ? '<i class="fa fa-volume-up"></i>'
+          : '<i class="fa fa-volume-off"></i>';
+        soundToggle.setAttribute("aria-label", soundEnabled ? "Suara notifikasi aktif" : "Suara notifikasi");
+        soundToggle.setAttribute("title", soundEnabled ? "Suara notifikasi aktif" : "Suara notifikasi");
         if (soundEnabled) {
           audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
           await audioContext.resume();

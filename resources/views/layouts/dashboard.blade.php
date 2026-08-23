@@ -1,6 +1,7 @@
 @php
     $dashboardEvent = $activePeriod ?? null;
     $isAuthenticated = auth()->check();
+    $isMonitoringPage = request()->routeIs('monitoring.*');
 @endphp
 <!doctype html>
 <html lang="id">
@@ -456,33 +457,35 @@
                 </a>
             </div>
 
-            <div class="navbar-right">
-                <div class="navbar-status">
-                    <i class="fa fa-calendar-check-o" aria-hidden="true"></i>
-                    <span>{{ $dashboardEvent?->archive_title ?: 'Belum ada event aktif' }}</span>
-                </div>
-                <div class="top-actions">
-                    <a href="{{ route('home') }}" class="top-action">
-                        <i class="fa fa-envelope-open-o"></i>
-                        <span>Undangan</span>
-                    </a>
-                    <a href="{{ $isAuthenticated ? route('admin.checkin.manual.index') : route('checkin.form') }}" class="top-action">
-                        <i class="fa fa-check-square-o"></i>
-                        <span>Check-in</span>
-                    </a>
-                    @if ($isAuthenticated)
-                        <a href="{{ route('monitoring.index') }}" class="top-action">
-                            <i class="fa fa-line-chart"></i>
-                            <span>Monitoring</span>
+            @unless ($isMonitoringPage)
+                <div class="navbar-right">
+                    <div class="navbar-status">
+                        <i class="fa fa-calendar-check-o" aria-hidden="true"></i>
+                        <span>{{ $dashboardEvent?->archive_title ?: 'Belum ada event aktif' }}</span>
+                    </div>
+                    <div class="top-actions">
+                        <a href="{{ route('home') }}" class="top-action">
+                            <i class="fa fa-envelope-open-o"></i>
+                            <span>Undangan</span>
                         </a>
-                    @else
-                        <a href="{{ route('login') }}" class="top-action">
-                            <i class="fa fa-lock"></i>
-                            <span>Login</span>
+                        <a href="{{ $isAuthenticated ? route('admin.checkin.manual.index') : route('checkin.form') }}" class="top-action">
+                            <i class="fa fa-check-square-o"></i>
+                            <span>Check-in</span>
                         </a>
-                    @endif
+                        @if ($isAuthenticated)
+                            <a href="{{ route('monitoring.index') }}" class="top-action">
+                                <i class="fa fa-line-chart"></i>
+                                <span>Monitoring</span>
+                            </a>
+                        @else
+                            <a href="{{ route('login') }}" class="top-action">
+                                <i class="fa fa-lock"></i>
+                                <span>Login</span>
+                            </a>
+                        @endif
+                    </div>
                 </div>
-            </div>
+            @endunless
         </div>
     </nav>
 

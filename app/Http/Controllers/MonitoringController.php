@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InvitationCategory;
 use App\Models\InvitationRecipient;
+use App\Models\StudyProgram;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
 use Illuminate\Http\JsonResponse;
@@ -98,12 +99,7 @@ class MonitoringController extends Controller
                 ->orderByDesc('event_date')
                 ->orderByDesc('id')
                 ->get(),
-            'categories' => InvitationCategory::query()
-                ->when($filters['period_id'], fn ($query) => $query->where('period_id', $filters['period_id']))
-                ->when($type === 'private', fn ($query) => $query->where('access_mode', InvitationCategory::ACCESS_PRIVATE))
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get(),
+            'categories' => $this->categoryOptions($filters, $type),
             'summary' => $this->summary($rows, $type),
             'resultRows' => $rows->take(500),
         ]);
@@ -133,21 +129,37 @@ class MonitoringController extends Controller
     private function studentRows(array $filters): Collection
     {
         return YudisiumParticipant::query()
+            ->select('yudisium_participants.*')
             ->with(['period', 'studyProgram'])
+            ->leftJoin('study_programs', 'study_programs.id', '=', 'yudisium_participants.study_program_id')
             ->when($filters['period_id'], fn ($query) => $query->where('period_id', $filters['period_id']))
-            ->orderBy('sequence_number')
-            ->orderBy('name')
+            ->orderByRaw('study_programs.sort_order is null')
+            ->orderBy('study_programs.sort_order')
+            ->orderBy('study_programs.code')
+            ->orderBy('yudisium_participants.study_program')
+            ->orderByRaw('yudisium_participants.sequence_number is null')
+            ->orderBy('yudisium_participants.sequence_number')
+            ->orderBy('yudisium_participants.name')
             ->get()
             ->map(fn (YudisiumParticipant $participant) => [
                 'id' => 'student-'.$participant->id,
                 'event' => $participant->period?->name ?: '-',
                 'category' => 'Mahasiswa Yudisium',
-                'category_key' => 'mahasiswa',
+                'category_key' => $participant->study_program_id
+                    ? 'program-'.$participant->study_program_id
+                    : 'manual-'.str($participant->study_program ?: 'tanpa-prodi')->slug()->toString(),
                 'type' => 'Mahasiswa',
                 'sequence_number' => $participant->sequence_number,
                 'nim' => $participant->nim,
                 'name' => $participant->name,
                 'context' => $participant->studyProgram?->name ?: ($participant->study_program ?: '-'),
+                'study_program_id' => $participant->study_program_id,
+                'study_program_code' => $participant->studyProgram?->code ?: '',
+                'study_program_name' => $participant->studyProgram?->name ?: ($participant->study_program ?: 'Tanpa Program Studi'),
+                'study_program_key' => $participant->study_program_id
+                    ? 'program-'.$participant->study_program_id
+                    : 'manual-'.str($participant->study_program ?: 'tanpa-prodi')->slug()->toString(),
+                'study_program_sort' => $participant->studyProgram?->sort_order ?? 999999,
                 'note' => $participant->rsvp_note ?: '',
                 'rsvp_status' => $participant->rsvp_status ?: 'pending',
                 'rsvp_label' => $this->rsvpLabel($participant->rsvp_status ?: 'pending'),
@@ -163,6 +175,28 @@ class MonitoringController extends Controller
                     $participant->updated_at?->timestamp ?? 0,
                 ),
             ]);
+    }
+
+    private function categoryOptions(array $filters, string $type): Collection
+    {
+        if ($type === 'mahasiswa') {
+            return StudyProgram::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('code')
+                ->get()
+                ->map(fn (StudyProgram $program) => (object) [
+                    'slug' => 'program-'.$program->id,
+                    'title' => $program->name,
+                ]);
+        }
+
+        return InvitationCategory::query()
+            ->when($filters['period_id'], fn ($query) => $query->where('period_id', $filters['period_id']))
+            ->where('access_mode', InvitationCategory::ACCESS_PRIVATE)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
     }
 
     private function privateRows(array $filters): Collection
@@ -217,12 +251,19 @@ class MonitoringController extends Controller
                     return str_contains(mb_strtolower($row['nim'].' '.$row['name'].' '.$row['context'].' '.$row['category'].' '.$row['note']), $needle);
                 });
             })
-            ->sortBy([
-                ['rsvp_status', 'asc'],
-                ['checked_in', 'desc'],
-                ['sequence_number', 'asc'],
-                ['name', 'asc'],
-            ])
+            ->sortBy($filters['type'] === 'mahasiswa'
+                ? [
+                    ['study_program_sort', 'asc'],
+                    ['study_program_code', 'asc'],
+                    ['sequence_number', 'asc'],
+                    ['name', 'asc'],
+                ]
+                : [
+                    ['rsvp_status', 'asc'],
+                    ['checked_in', 'desc'],
+                    ['sequence_number', 'asc'],
+                    ['name', 'asc'],
+                ])
             ->values();
     }
 
