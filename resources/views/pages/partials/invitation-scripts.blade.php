@@ -213,6 +213,42 @@
       });
     });
 
+    document.querySelectorAll("[data-nim-only]").forEach((input) => {
+      const warning = document.getElementById(input.dataset.warningTarget || "");
+      let warningTimer = null;
+
+      const showNumericWarning = () => {
+        if (!warning) return;
+        warning.textContent = "NIM hanya boleh angka. Huruf, spasi, atau tanda baca otomatis dihapus.";
+        warning.hidden = false;
+        window.clearTimeout(warningTimer);
+        warningTimer = window.setTimeout(() => {
+          warning.hidden = true;
+          warning.textContent = "";
+        }, 2200);
+      };
+
+      const cleanInput = () => {
+        const currentValue = input.value || "";
+        const numericValue = currentValue.replace(/\D/g, "");
+
+        if (currentValue !== numericValue) {
+          input.value = numericValue;
+          showNumericWarning();
+        }
+      };
+
+      input.addEventListener("beforeinput", (event) => {
+        if (event.inputType === "insertText" && event.data && /\D/.test(event.data)) {
+          event.preventDefault();
+          showNumericWarning();
+        }
+      });
+      input.addEventListener("input", cleanInput);
+      input.addEventListener("paste", () => window.setTimeout(cleanInput, 0));
+      cleanInput();
+    });
+
     const setupDeclineNote = ({ formId, fieldId, noteId, labelId, delegateFieldId }) => {
       const form = document.getElementById(formId);
       const noteField = document.getElementById(fieldId);

@@ -85,10 +85,25 @@ class InvitationRoutingTest extends TestCase
         $this->post(route('undangan.verify-nim'), [
             'event_id' => $period->id,
             'category_slug' => $category->slug,
-            'nim' => 'tidak-ada',
+            'nim' => '9999999999',
         ])
             ->assertRedirect(route('home', ['event' => $period->slug, 'to' => $category->slug]).'#rsvpSection')
-            ->assertSessionHas('error', 'NIM tidak ditemukan pada data mahasiswa event ini.');
+            ->assertSessionHas('error', 'NIM tidak ditemukan. Periksa kembali angka NIM sesuai KTM/KRS. Jika masih gagal, hubungi panitia.');
+    }
+
+    public function test_nim_with_letters_is_rejected(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+
+        $this->post(route('undangan.verify-nim'), [
+            'event_id' => $period->id,
+            'category_slug' => $category->slug,
+            'nim' => 'ABC123',
+        ])
+            ->assertSessionHasErrors([
+                'nim' => 'NIM hanya boleh berisi angka. Hapus huruf, spasi, atau tanda baca.',
+            ]);
     }
 
     public function test_student_token_link_opens_invitation_after_nim_verification(): void

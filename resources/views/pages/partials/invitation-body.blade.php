@@ -167,7 +167,25 @@
               <input type="hidden" name="category_slug" value="{{ $selectedCategory?->slug }}">
               <div class="field">
                 <label for="nim">NIM Mahasiswa</label>
-                <input id="nim" name="nim" type="text" value="{{ old('nim') }}" placeholder="Contoh: 2200000001" inputmode="numeric" autocomplete="off">
+                <input
+                  id="nim"
+                  name="nim"
+                  type="text"
+                  value="{{ old('nim') }}"
+                  placeholder="Contoh: 2200000001"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="20"
+                  autocomplete="off"
+                  data-nim-only
+                  data-warning-target="nimFilterNotice"
+                  aria-describedby="nimHelp nimFilterNotice{{ $errors->has('nim') ? ' nimError' : '' }}"
+                  @error('nim') aria-invalid="true" class="is-invalid" @enderror>
+                <p class="form-hint" id="nimHelp">Gunakan angka NIM saja, tanpa huruf, spasi, atau tanda baca. Jika NIM diawali 0, tetap tuliskan 0.</p>
+                <p class="field-warning" id="nimFilterNotice" hidden></p>
+                @error('nim')
+                  <p class="field-error" id="nimError">{{ $message }}</p>
+                @enderror
               </div>
               <div class="action-row">
                 <button class="btn" type="submit">Buka Undangan</button>

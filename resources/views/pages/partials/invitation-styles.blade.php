@@ -1765,6 +1765,35 @@
       box-shadow: 0 0 0 4px rgba(245, 83, 13, 0.1);
     }
 
+    .field input.is-invalid,
+    .field input[aria-invalid="true"] {
+      border-color: rgba(185, 28, 28, 0.48);
+      box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.08);
+    }
+
+    .form-hint,
+    .field-warning,
+    .field-error {
+      margin: 0;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      text-align: left;
+    }
+
+    .form-hint {
+      color: var(--muted);
+    }
+
+    .field-warning {
+      color: var(--warn);
+      font-weight: 700;
+    }
+
+    .field-error {
+      color: var(--bad);
+      font-weight: 700;
+    }
+
     @media (max-width: 640px) {
       .form-grid {
         grid-template-columns: 1fr;

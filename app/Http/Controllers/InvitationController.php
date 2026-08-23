@@ -116,10 +116,18 @@ class InvitationController extends Controller
 
     public function verifyNim(Request $request): RedirectResponse
     {
+        $request->merge([
+            'nim' => trim((string) $request->input('nim', '')),
+        ]);
+
         $data = $request->validate([
             'event_id' => ['required', 'integer', 'exists:yudisium_periods,id'],
             'category_slug' => ['required', 'string'],
-            'nim' => ['required', 'string', 'max:20'],
+            'nim' => ['bail', 'required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+        ], [
+            'nim.required' => 'NIM wajib diisi terlebih dahulu.',
+            'nim.max' => 'NIM terlalu panjang. Maksimal 20 digit angka.',
+            'nim.regex' => 'NIM hanya boleh berisi angka. Hapus huruf, spasi, atau tanda baca.',
         ]);
 
         $event = YudisiumPeriod::query()
@@ -141,7 +149,7 @@ class InvitationController extends Controller
             return redirect()
                 ->to($this->invitationUrl($event, $category))
                 ->withInput($request->only('nim'))
-                ->with('error', 'NIM tidak ditemukan pada data mahasiswa event ini.');
+                ->with('error', 'NIM tidak ditemukan. Periksa kembali angka NIM sesuai KTM/KRS. Jika masih gagal, hubungi panitia.');
         }
 
         return redirect()
