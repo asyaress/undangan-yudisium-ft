@@ -1,0 +1,67 @@
+/*--------------------------------------------------------------
+#0.5	footer-section
+--------------------------------------------------------------*/
+.footer-section {
+	text-align: center;
+	padding: 100px 0;
+
+	@include media-query(767px) {
+		padding: 0 0 80px 0;
+	}
+
+	.couple-name {
+		@include background-style("../images/footer-couple-name-frame.png", center center, cover, no-repeat, local);
+		width: 415px;
+		height: 483px;
+		margin: 0 auto 120px;
+		padding-left: 45px;
+		display: table;
+		text-align: center;
+
+		@include media-query(767px) {
+			width: 300px;
+			height: 349px;
+			margin: 0 auto 80px;
+			padding-left: 45px;
+		}
+
+		h2 {
+			font-family: $stylish-font;
+			font-size: 48px;
+			font-size: calc-rem-value(48);
+			margin: 0;
+			display: table-cell;
+			vertical-align: middle;
+
+			@include media-query(767px) {
+				font-size: 38px;
+				font-size: calc-rem-value(38);
+			}
+
+		}
+	}
+
+
+	h3 {
+		font-family: $stylish-font;
+		font-size: 48px;
+		font-size: calc-rem-value(48);
+		margin: 0 0 0.2em;
+
+		@include media-query(767px) {
+			font-size: 30px;
+			font-size: calc-rem-value(30);
+		}
+	}
+
+	p {
+		font-size: 14px;
+		font-size: calc-rem-value(14);
+		margin: 0;
+	}
+
+	a {
+		color: $theme-primary-color;
+	}
+
+}

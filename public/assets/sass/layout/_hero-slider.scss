@@ -1,0 +1,230 @@
+/*--------------------------------------------------------------
+#0.4	hero slider
+--------------------------------------------------------------*/
+.hero-slider {
+	width: 100%;
+	height: 700px;
+	display: flex;
+	position: relative;
+	z-index: 0;
+
+	@include media-query(991px) {
+		height: 600px;
+	}
+
+	@include media-query(767px) {
+		height: 500px;
+	}
+	
+	.swiper-slide {
+		overflow: hidden;
+		color: #fff;
+	}
+
+	.swiper-container {
+		width: 100%;
+		height: 100%;
+		position: absolute;
+		left: 0;
+		top: 0;
+	}
+
+	.slide-inner {
+		width: 100%;
+		height: 100%;
+		position: absolute;
+		left: 0;
+		top: 0;
+		z-index: 1;
+		background-size: cover;
+		background-position: center;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		text-align: left;
+	}
+
+
+	// slider controls
+	.swiper-button-prev,
+	.swiper-button-next {
+		background: rgba(255,255,255, 0.3);
+		width: 55px;
+		height: 55px;
+		line-height: 55px;
+		margin-top: -30px;
+		text-align: center;
+		border-radius: 60px;
+		border: 2px solid $white;
+		z-index: 10;
+		opacity: 0.5;
+		@include transition-time(0.3s);
+
+		&:hover {
+			opacity: 1;
+		}
+
+		@include media-query(991px) {
+			display: none;
+		}
+	} 
+
+	.swiper-button-prev {
+		left: 25px;
+
+		&:before {
+			font-family: "themify";
+		    content: "\e629";
+		    font-size: 15px;
+		    color: #fff;
+		}
+	}
+
+	.swiper-button-next {
+		right: 25px;
+
+		&:before {
+			font-family: "themify";
+		    content: "\e628";
+		    font-size: 15px;
+		    color: #fff;
+		}
+	}
+
+	.swiper-pagination-bullet {
+		width: 12px;
+		height: 12px;
+		text-align: center;
+		line-height: 12px;
+		font-size: 12px;
+		color:#000;
+		opacity: 1;
+		background: rgba(0,0,0,0.2);
+		display: none;
+	}
+
+	.swiper-pagination-bullet-active {
+		color:#fff;
+		background: $theme-primary-color;
+	}
+}
+
+.hero-style-1 {
+	height: calc(100vh - 100px);
+	display: flex;
+	position: relative;
+	z-index: 0;
+
+	@include media-query(991px) {
+		height: 100vh;
+	}
+
+	@include media-query(767px) {
+		height: 100vh;
+	}
+
+	&:before {
+		content: "";
+		@include background-style("../images/slider/slide-top-arrow.png", center center, cover, no-repeat, local);
+		width: 140px;
+		height: 140px;
+		position: absolute;
+		left: 30px;
+		top: 30px;
+		z-index: 10;
+
+		@include media-query(991px) {
+			width: 80px;
+			height: 80px;
+			left: 20px;
+			top: 20px;
+		}
+
+		@include media-query(767px) {
+			width: 50px;
+			height: 50px;
+			left: 20px;
+			top: 20px;
+		}
+	}
+
+	&:after {
+		content: "";
+		@include background-style("../images/slider/slide-bottom-arrow.png", center center, cover, no-repeat, local);
+		width: 140px;
+		height: 140px;
+		position: absolute;
+		right: 30px;
+		bottom: 30px;
+		z-index: 10;
+
+		@include media-query(991px) {
+			width: 80px;
+			height: 80px;
+			right: 20px;
+			bottom: 20px;
+		}
+
+		@include media-query(767px) {
+			width: 50px;
+			height: 50px;
+			right: 20px;
+			bottom: 20px;
+		}
+	}
+
+	.wedding-announcement {
+		@include widther(992px) {
+			width: 80%;
+			left: 10%;
+		}
+
+		width: 100%;
+	    height: 100%;
+	    position: absolute;
+	    left: 0;
+	    top: 0;
+	    z-index: 2;
+	    text-align: center;
+	    display: table;
+	}
+
+	.couple-text {
+		width: 100%;
+		display: table-cell;
+		vertical-align: middle;
+	}
+
+	#curve-text {
+		font-size: 24px;
+		font-size: calc-rem-value(24);
+		color: $white;
+		margin: 0 0 3.5em;
+		text-shadow: 0px 3px 0px rgba(0, 0, 0, 0.35);
+	}
+
+	.couple-name {
+		font-family: $stylish-font;
+		font-size: 90px;
+		font-size: calc-rem-value(90);
+		color: $white;
+		text-shadow: 0px 4px 0px rgba(0, 0, 0, 0.35);
+
+		@include media-query(991px) {
+			font-size: 70px;
+			font-size: calc-rem-value(70);
+		}
+
+		@include media-query(767px) {
+			font-size: 50px;
+			font-size: calc-rem-value(50);
+		}
+	}
+}
+
+.hero-static {
+	@extend .hero-style-1;
+}
+
+
+

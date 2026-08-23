@@ -1,0 +1,271 @@
+/*--------------------------------------------------------------
+	blog page
+--------------------------------------------------------------*/
+/*--------------------------------------------------------------
+#2.1	blog-pg-section
+--------------------------------------------------------------*/
+.blog-pg-section {
+	padding-bottom: 0;
+
+	.blog-content {
+		.post {
+			margin-bottom: 100px;
+
+			@include media-query(991px) {
+				margin-bottom: 70px;
+			}
+
+			@include media-query(767px) {
+				margin-bottom: 60px;
+			}
+		}
+	}
+
+	.entry-meta {
+		list-style: none;
+		overflow: hidden;
+		margin: 35px 0;
+
+		@include widther(1200px) {
+			padding-left: 60px;
+			position: relative;
+
+			&:before {
+				content: "";
+				background-color: #a7a9c0;
+				width: 40px;
+				height: 1px;
+				position: absolute;
+				left: 0;
+				top: 8px;
+			}
+		}
+
+		@include media-query(767px) {
+			margin: 25px 0;
+		}
+
+		li {
+			font-weight: 500;
+			font-size: 14px;
+			font-size: calc-rem-value(14);
+			float: left;
+
+			@include media-query(767px) {
+				font-size: 12px;
+				font-size: calc-rem-value(12);
+			}
+
+			@include media-query(600px) {
+				float: none;
+				display: block;
+				margin-bottom: 5px;
+			}
+
+			i {
+				font-size: 16px;
+				font-size: calc-rem-value(16);
+				display: inline-block;
+				padding-right: 5px;
+
+				@include media-query(767px) {
+					font-size: 12px;
+					font-size: calc-rem-value(12);
+				}
+			}
+		}
+
+		> li + li {
+			margin-left: 20px;
+			padding-left: 20px;
+			position: relative;
+
+			@include media-query(600px) {
+				margin-left: 0;
+				padding-left: 0;
+			}
+		}
+
+		li a {
+			color: #636893;
+
+			&:hover {
+				color: $theme-primary-color;
+			}
+		}
+
+		li:last-child i {
+			position: relative;
+			top: 3px;
+		}
+	}
+
+	.post {
+		h3 {
+			font-size: 28px;
+			font-size: calc-rem-value(28);
+			line-height: 1.2em;
+			font-weight: bold;
+			margin: -0.27em 0 0.7em;
+
+			@include media-query(991px) {
+				font-size: 25px;
+				font-size: calc-rem-value(25);
+			}
+
+			@include media-query(767px) {
+				font-size: 22px;
+				font-size: calc-rem-value(22);
+			}
+		}
+
+		h3 a {
+			color: $heading-color;
+		}
+
+		h3 a:hover {
+			color: $theme-primary-color;
+		}
+
+		p {
+			margin-bottom: 1.9em;
+
+			@include media-query(991px) {
+				font-size: 16px;
+				font-size: calc-rem-value(16);
+			}
+		}
+	}
+
+	/*** format-standard ***/
+	.format-standard,
+	.format-quote {
+		background-color: #f8f6f0;
+		padding: 25px 35px 45px;
+
+		@include media-query(767px) {
+			padding: 25px 20px 45px;
+		}
+	}
+
+	/*** format-gallery ***/
+	.format-gallery {
+		position: relative;
+
+		.owl-controls {
+			width: 100%;
+			margin: 0;
+			position: absolute;
+			left: 0;
+			top: 50%;
+			@include translatingY();
+		}
+
+		.owl-controls .owl-nav [class*=owl-]:hover {
+			background: $theme-primary-color;
+		}
+
+		.owl-controls .owl-nav [class*=owl-] {
+			background: transparentize(#858585, 0.5);
+			width: 50px;
+			height: 50px;
+			line-height: 50px;
+			padding: 0;
+			margin: 0;
+			border-radius: 50%;
+			@include transition-time(0.3s);
+		}
+
+		.owl-controls .owl-nav .owl-prev,
+		.owl-controls .owl-nav .owl-next {
+			position: absolute;
+			top: 50%;
+			@include translatingY();
+		}
+
+		.owl-controls .owl-nav .owl-prev {
+			left: 15px;
+		}
+
+		.owl-controls .owl-nav .owl-next {
+			right: 15px;
+		}
+	}
+
+	/*** format-quote ***/
+	.format-quote {
+		text-align: center;
+		padding: 80px 60px;
+		position: relative;
+
+		@include media-query(767px) {
+			padding: 40px 20px;
+		}
+
+		p {
+			margin-bottom: 0;
+		}
+
+		&:before {
+			font-family: "Flaticon";
+			content: "\f105";
+			font-size: 250px;
+			font-size: calc-rem-value(250);
+			color: #f0eeec;
+			margin-left: 0;
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			@include center-by-translating();
+		}
+
+		h3,
+		p {
+			position: relative;
+		}
+	}
+
+	/*** format-video ***/
+	.format-video .video-holder {
+		position: relative;
+		text-align: center;
+
+		&:before {
+			content: "";
+			background-color: $theme-primary-color;
+			width: 100%;
+			height: 100%;
+			position: absolute;
+			left: 0;
+			top: 0;
+			@include transition-time(0.3s);
+			opacity: 0.5;
+		}
+
+		&:hover:before {
+			opacity: 0.7;
+		}
+
+		a {
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			@include center-by-translating();
+		}
+
+		.fi:before {
+			font-size: 80px;
+			font-size: calc-rem-value(80);
+			color: $white;
+
+			@include media-query(767px) {
+				font-size: 60px;
+				font-size: calc-rem-value(60);
+			}
+		}
+	}
+}
+
+
+
+

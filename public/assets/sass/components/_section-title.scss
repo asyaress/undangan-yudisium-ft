@@ -1,0 +1,51 @@
+.section-title {
+	text-align: center;
+	margin-bottom: 45px;
+	
+	@include media-query(767px) {
+		margin-bottom: 40px;
+	}
+
+	h2 {
+		font-family: $stylish-font;
+		font-size: 48px;
+		font-size: calc-rem-value(48);
+		color: $heading-color;
+		margin: 0;
+		padding-top: 1.1em;
+		text-transform: capitalize;
+		position: relative;
+
+		@include media-query(991px) {
+			font-size: 40px;
+			font-size: calc-rem-value(40);
+		}
+
+		@include media-query(767px) {
+			font-size: 36px;
+			font-size: calc-rem-value(36);
+		}
+
+		&:before {
+			content: "";
+			@include background-style("../images/sec-title-flower.png", center center, cover, no-repeat, local);
+			position: absolute;
+			left: calc(50% - 47px);
+			top: 0;
+			width: 93px;
+			height: 42px;
+		}
+	}
+}
+
+.section-title-s2 {
+	@extend .section-title;
+
+	h2 {
+		margin-bottom: 0.4em;
+	}
+
+	p {
+		margin-bottom: 0;
+	}
+}

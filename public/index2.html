@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Undangan Yudisium</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="video" href="video-back.mp4" type="video/mp4" />
+  <style>
+    :root {
+      --bg: #f4e6cd;
+      --surface: rgba(255, 255, 255, 0.3);
+      --text: #1c1c1e;
+      --muted: rgba(28, 28, 30, 0.68);
+      --line: rgba(255, 255, 255, 0.46);
+      --primary: #d7871e;
+      --primary-soft: rgba(255, 246, 233, 0.24);
+      --shadow: 0 14px 30px rgba(96, 66, 25, 0.14);
+      --radius: 22px;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+      --spring: cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      color: var(--text);
+      background-color: #f8efd9;
+      background:
+        linear-gradient(120deg, rgba(255, 255, 255, 0.25) 0%, transparent 45%),
+        repeating-linear-gradient(90deg, rgba(204, 138, 33, 0.03) 0 2px, transparent 2px 18px),
+        radial-gradient(circle at 14% 12%, rgba(204, 138, 33, 0.13), transparent 42%),
+        radial-gradient(circle at 88% 6%, rgba(173, 111, 24, 0.09), transparent 36%),
+        var(--bg);
+      padding: 18px 14px 36px;
+      display: grid;
+      place-items: start center;
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+    }
+
+    body:not(.opening):not(.opened) {
+      overflow: hidden;
+    }
+
+    .bg-video-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+      background: linear-gradient(140deg, #f5e4c4, #f9f1e2);
+    }
+
+    .bg-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+      opacity: 0;
+      transform: scale(1.03);
+      filter: brightness(1) saturate(1.03) contrast(1.01);
+      transition: opacity 420ms var(--ease-out), transform 800ms var(--ease-out);
+    }
+
+    .bg-video.is-ready {
+      opacity: 0.58;
+      transform: scale(1);
+    }
+
+    .bg-video-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(255, 248, 236, 0.52) 0%, rgba(255, 249, 239, 0.58) 100%),
+        radial-gradient(circle at 15% 18%, rgba(226, 156, 46, 0.08), transparent 46%);
+      transition: background 360ms var(--ease-out);
+    }
+
+    body.opened .bg-video {
+      filter: brightness(0.95) saturate(1.03) contrast(1.01);
+    }
+
+    body.opened .bg-video-overlay {
+      background:
+        linear-gradient(180deg, rgba(28, 20, 12, 0.08) 0%, rgba(28, 20, 12, 0.1) 100%),
+        linear-gradient(180deg, rgba(255, 248, 236, 0.52) 0%, rgba(255, 249, 239, 0.58) 100%),
+        radial-gradient(circle at 15% 18%, rgba(226, 156, 46, 0.08), transparent 46%);
+    }
+
+    main {
+      width: min(100%, 480px);
+      display: grid;
+      gap: 14px;
+      position: relative;
+      z-index: 3;
+      margin-top: 8px;
+    }
+
+    .transition-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 30;
+      opacity: 0;
+      transform: scale(1.04);
+      filter: blur(6px);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.06));
+      transition:
+        opacity 620ms var(--ease-out),
+        transform 620ms var(--ease-out),
+        filter 620ms var(--ease-out);
+    }
+
+    .panel {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px) saturate(120%);
+      -webkit-backdrop-filter: blur(12px) saturate(120%);
+    }
+
+    .panel>* {
+      position: relative;
+      z-index: 1;
+    }
+
+    .cover {
+      text-align: center;
+      padding: 28px 20px;
+      background:
+        radial-gradient(circle at 10% -20%, rgba(255, 210, 147, 0.14), transparent 46%),
+        radial-gradient(circle at 90% 120%, rgba(214, 139, 24, 0.12), transparent 48%),
+        rgba(255, 255, 255, 0.24);
+      transition:
+        opacity 740ms var(--spring),
+        transform 740ms var(--spring),
+        filter 740ms var(--spring);
+      will-change: transform, opacity, filter;
+    }
+
+    .cover>* {
+      position: relative;
+      z-index: 1;
+      opacity: 0;
+      transform: translateY(12px);
+      animation: introFade 700ms var(--ease-out) forwards;
+    }
+
+    .cover>*:nth-child(1) {
+      animation-delay: 70ms;
+    }
+
+    .cover>*:nth-child(2) {
+      animation-delay: 130ms;
+    }
+
+    .cover>*:nth-child(3) {
+      animation-delay: 190ms;
+    }
+
+    .cover>*:nth-child(4) {
+      animation-delay: 250ms;
+    }
+
+    .cover>*:nth-child(5) {
+      animation-delay: 310ms;
+    }
+
+    .cover>*:nth-child(6) {
+      animation-delay: 370ms;
+    }
+
+    @keyframes introFade {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .cover .label {
+      font-size: 0.84rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .cover h1 {
+      font-size: clamp(2rem, 8vw, 2.5rem);
+      line-height: 1.08;
+      margin-bottom: 10px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #2b2b30;
+    }
+
+    .logo-frame {
+      width: min(52vw, 180px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      margin: 8px auto 14px;
+      display: grid;
+      place-items: center;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.56);
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.88) 20%, rgba(255, 243, 224, 0.52) 100%);
+      box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.46), 0 10px 22px rgba(157, 102, 23, 0.14);
+    }
+
+    .logo {
+      width: 100%;
+      display: block;
+      filter: drop-shadow(0 8px 14px rgba(161, 108, 27, 0.2));
+      transform-origin: center;
+    }
+
+    .logo-fallback {
+      display: none;
+      color: #9d6a1f;
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1.4;
+      text-align: center;
+      padding: 0 10px;
+    }
+
+    .meta {
+      color: var(--muted);
+      line-height: 1.55;
+      margin-bottom: 18px;
+      font-size: 0.96rem;
+    }
+
+    .guest {
+      font-weight: 600;
+      margin-bottom: 12px;
+      font-size: 1.04rem;
+      color: rgba(28, 28, 30, 0.9);
+    }
+
+    .guest-label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    body.cover-yudisiawan #cover {
+      background:
+        radial-gradient(circle at 10% -20%, rgba(240, 170, 72, 0.22), transparent 46%),
+        radial-gradient(circle at 90% 120%, rgba(203, 118, 24, 0.2), transparent 48%),
+        linear-gradient(140deg, rgba(255, 251, 242, 0.34), rgba(255, 255, 255, 0.2));
+      border-color: rgba(226, 164, 74, 0.52);
+      box-shadow: 0 16px 32px rgba(159, 102, 18, 0.18);
+    }
+
+    body.cover-yudisiawan #cover .label,
+    body.cover-yudisiawan #cover .meta {
+      color: rgba(108, 73, 25, 0.78);
+    }
+
+    body.cover-orangtua #cover {
+      background:
+        radial-gradient(circle at 0% 0%, rgba(160, 197, 160, 0.28), transparent 44%),
+        radial-gradient(circle at 100% 100%, rgba(117, 161, 119, 0.24), transparent 50%),
+        linear-gradient(145deg, rgba(250, 255, 248, 0.34), rgba(240, 250, 238, 0.24));
+      border-color: rgba(129, 171, 132, 0.52);
+      box-shadow: 0 16px 30px rgba(80, 118, 82, 0.18);
+    }
+
+    body.cover-orangtua #cover .logo-frame {
+      border-color: rgba(182, 214, 182, 0.66);
+      background: radial-gradient(circle, rgba(252, 255, 252, 0.94) 15%, rgba(229, 245, 229, 0.66) 100%);
+    }
+
+    body.cover-orangtua #cover h1 {
+      color: #2f4733;
+    }
+
+    body.cover-orangtua #cover .label,
+    body.cover-orangtua #cover .meta,
+    body.cover-orangtua #cover .guest-label {
+      color: rgba(59, 91, 62, 0.78);
+    }
+
+    body.cover-orangtua #cover .btn {
+      background: linear-gradient(135deg, #5f8a65, #4f7756);
+      border-color: rgba(223, 243, 223, 0.44);
+    }
+
+    body.cover-pejabat #cover {
+      background:
+        radial-gradient(circle at 50% -30%, rgba(241, 204, 143, 0.24), transparent 50%),
+        linear-gradient(145deg, rgba(28, 40, 66, 0.78), rgba(52, 35, 20, 0.72));
+      border-color: rgba(224, 183, 113, 0.62);
+      box-shadow: 0 20px 36px rgba(26, 29, 49, 0.32);
+    }
+
+    body.cover-pejabat #cover .logo-frame {
+      border-color: rgba(233, 197, 137, 0.7);
+      box-shadow: inset 0 0 0 7px rgba(255, 255, 255, 0.46), 0 14px 26px rgba(16, 24, 42, 0.36);
+    }
+
+    body.cover-pejabat #cover h1,
+    body.cover-pejabat #cover .guest,
+    body.cover-pejabat #cover .guest-label {
+      color: rgba(255, 244, 226, 0.96);
+    }
+
+    body.cover-pejabat #cover .label,
+    body.cover-pejabat #cover .meta {
+      color: rgba(244, 220, 182, 0.88);
+    }
+
+    body.cover-pejabat #cover .btn {
+      background: linear-gradient(135deg, #c89a3d, #98691a);
+      border-color: rgba(255, 236, 204, 0.44);
+      box-shadow: 0 14px 28px rgba(17, 24, 39, 0.34);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 11px 20px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--primary);
+      color: #fff;
+      transition: transform 280ms var(--spring), background 240ms var(--ease-out), box-shadow 280ms var(--spring);
+      min-width: 190px;
+      box-shadow: 0 12px 28px rgba(171, 112, 26, 0.34);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .btn::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -130%;
+      width: 42%;
+      height: 100%;
+      background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+      transform: skewX(-20deg);
+      transition: left 620ms var(--ease-out);
+      z-index: -1;
+    }
+
+    .btn:hover {
+      background: #b6791b;
+      transform: translateY(-2px) scale(1.01);
+      box-shadow: 0 14px 28px rgba(171, 112, 26, 0.4);
+    }
+
+    .btn:hover::after {
+      left: 160%;
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn.is-pressed {
+      transform: scale(0.985);
+    }
+
+    .invitation {
+      opacity: 0;
+      transform: translateY(36px) scale(0.975);
+      filter: blur(12px);
+      max-height: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transition:
+        opacity 860ms var(--spring),
+        transform 860ms var(--spring),
+        filter 860ms var(--spring);
+      display: none;
+      gap: 12px;
+    }
+
+    body.opening .cover {
+      opacity: 0;
+      transform: translateY(-34px) scale(0.93);
+      filter: blur(10px);
+      z-index: 40;
+    }
+
+    body.opening .transition-layer {
+      opacity: 0.4;
+      transform: scale(1);
+      filter: blur(0.5px);
+    }
+
+    body.opening .invitation,
+    body.opened .invitation {
+      display: grid;
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+      max-height: none;
+      overflow: visible;
+      pointer-events: auto;
+    }
+
+    body:not(.opening):not(.opened) main {
+      gap: 0;
+    }
+
+    body.opened .transition-layer {
+      opacity: 0;
+      transform: scale(0.98);
+      filter: blur(4px);
+      transition-duration: 500ms;
+    }
+
+    .reveal-item {
+      opacity: 0;
+      transform: translateY(24px) scale(0.985);
+      filter: blur(7px);
+      transition:
+        opacity 860ms var(--spring),
+        transform 860ms var(--spring),
+        filter 860ms var(--spring);
+    }
+
+    .reveal-item.in-view {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+
+    body.animating .cover {
+      pointer-events: none;
+    }
+
+    .card {
+      padding: 20px;
+      z-index: 1;
+    }
+
+    .title {
+      font-size: 1.65rem;
+      color: rgba(28, 28, 30, 0.9);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .line {
+      text-align: center;
+      color: rgba(28, 28, 30, 0.72);
+      font-size: 0.95rem;
+      margin-bottom: 14px;
+    }
+
+    .details {
+      display: grid;
+      gap: 8px;
+      line-height: 1.6;
+      font-size: 0.97rem;
+    }
+
+    .mini-brand {
+      width: 74px;
+      margin: 0 auto 12px;
+      opacity: 0.95;
+      filter: drop-shadow(0 5px 10px rgba(161, 108, 27, 0.2));
+    }
+
+    .mini-brand img {
+      width: 100%;
+      display: block;
+    }
+
+    .details p {
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.22);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.32);
+    }
+
+    .details strong {
+      color: #6d4310;
+      margin-right: 4px;
+    }
+
+    .map-btn {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 10px auto 0;
+      width: fit-content;
+      padding: 10px 18px;
+      border-radius: 999px;
+      text-decoration: none;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+
+    .map-btn:hover {
+      background: #b6791b;
+    }
+
+    .auth-stack {
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.2);
+      margin-top: 12px;
+    }
+
+    .auth-head {
+      display: grid;
+      gap: 2px;
+      justify-items: start;
+      text-align: left;
+      margin-bottom: 10px;
+      color: rgba(28, 28, 30, 0.78);
+      line-height: 1.4;
+    }
+
+    .auth-date {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .auth-salutation {
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+
+    .signature-layer {
+      position: relative;
+      min-height: 184px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .signature-box {
+      min-height: 184px;
+      width: 100%;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      padding: 0 16px;
+    }
+
+    .stamp-overlay {
+      position: absolute;
+      left: 28%;
+      top: 50%;
+      width: 122px;
+      height: 122px;
+      transform: translate(-50%, -50%) rotate(-3deg);
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      box-shadow: none;
+      pointer-events: none;
+    }
+
+    .asset-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: none;
+    }
+
+    #ttdImage.asset-image {
+      width: min(76%, 500px);
+      max-height: 170px;
+      filter: contrast(1.12) saturate(1.06);
+    }
+
+    #stampImage.asset-image {
+      width: 100%;
+      height: 100%;
+      opacity: 0.96;
+    }
+
+    .asset-placeholder {
+      text-align: center;
+      color: #7b8794;
+      font-size: 0.78rem;
+      line-height: 1.4;
+      padding: 0 6px;
+    }
+
+    .map-wrap {
+      margin-top: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.3);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+    }
+
+    .map-wrap iframe {
+      width: 100%;
+      height: 240px;
+      border: 0;
+      display: block;
+    }
+
+    .location-text {
+      text-align: center;
+      color: #654f38;
+      line-height: 1.6;
+      margin-top: 12px;
+      font-size: 0.94rem;
+    }
+
+    .event-strip {
+      background: linear-gradient(130deg, rgba(215, 135, 30, 0.68), rgba(193, 128, 26, 0.64));
+      color: rgba(255, 251, 244, 0.95);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 8px 18px rgba(159, 102, 18, 0.17);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+    }
+
+    .event-strip h3 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .event-strip ol {
+      margin-left: 18px;
+      line-height: 1.65;
+      font-size: 0.93rem;
+    }
+
+    .auth-name {
+      margin-top: 10px;
+      text-align: center;
+      color: #6d4310;
+      font-weight: 700;
+      line-height: 1.5;
+      font-size: 0.9rem;
+    }
+
+    .auth-role {
+      text-align: center;
+      color: #8e6a3f;
+      font-size: 0.82rem;
+      margin-top: 4px;
+    }
+
+    .closing {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 2px;
+    }
+
+    .note-card .title {
+      margin-bottom: 10px;
+    }
+
+    .notes-list {
+      margin-left: 18px;
+      line-height: 1.7;
+      color: rgba(28, 28, 30, 0.78);
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 390px) {
+
+      .cover,
+      .card {
+        padding: 18px 16px;
+      }
+
+      .guest {
+        font-size: 0.95rem;
+      }
+
+      .stamp-overlay {
+        width: 96px;
+        height: 96px;
+        left: 25%;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 0;
+      }
+
+      main {
+        width: 100%;
+        max-width: none;
+        margin-top: 0;
+      }
+
+      .cover {
+        min-height: 100svh;
+        min-height: 100dvh;
+        border-radius: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .invitation {
+        padding: 12px;
+      }
+    }
+
+    @media (min-width: 641px) and (max-width: 1023px) {
+      body {
+        padding: 18px 18px 34px;
+      }
+
+      main {
+        width: min(96vw, 860px);
+        gap: 16px;
+      }
+
+      .cover {
+        width: min(100%, 760px);
+        margin-inline: auto;
+        min-height: clamp(560px, 76dvh, 820px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .invitation {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .invitation>article:nth-of-type(1),
+      .invitation>article:nth-of-type(4),
+      .invitation>.note-card,
+      .invitation>.closing {
+        grid-column: 1 / -1;
+      }
+
+      .card {
+        padding: 22px;
+      }
+
+      .map-wrap iframe {
+        height: 280px;
+      }
+    }
+
+    @media (min-width: 700px) and (max-width: 920px) and (orientation: portrait) {
+      .invitation {
+        grid-template-columns: 1fr;
+      }
+
+      .invitation>article:nth-of-type(1),
+      .invitation>article:nth-of-type(4),
+      .invitation>.note-card,
+      .invitation>.closing {
+        grid-column: auto;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      body {
+        padding: 24px 24px 44px;
+      }
+
+      main {
+        width: min(92vw, 1120px);
+        gap: 18px;
+      }
+
+      .cover {
+        width: min(100%, 780px);
+        margin-inline: auto;
+        min-height: clamp(560px, 82dvh, 860px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .invitation {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .invitation>article:nth-of-type(1),
+      .invitation>article:nth-of-type(4),
+      .invitation>.note-card,
+      .invitation>.closing {
+        grid-column: 1 / -1;
+      }
+
+      .card {
+        padding: 24px;
+      }
+
+      .map-wrap iframe {
+        height: 300px;
+      }
+    }
+
+    @media (orientation: portrait) {
+      .bg-video {
+        object-position: center center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
+
+      .bg-video {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="bg-video-layer" aria-hidden="true">
+    <video class="bg-video" id="backgroundVideo" autoplay muted loop playsinline webkit-playsinline="true"
+      preload="auto">
+      <source src="video-back.mp4" type="video/mp4" />
+    </video>
+  </div>
+  <div class="bg-video-overlay" aria-hidden="true"></div>
+  <div class="transition-layer" aria-hidden="true"></div>
+  <main>
+    <section class="panel cover" id="cover">
+      <p class="label">Undangan</p>
+      <h1>Yudisium Fakultas Teknik</h1>
+      <div class="logo-frame">
+        <img class="logo" id="logoImage" data-logo="unmul" src="Unmul.png" alt="Logo Universitas Mulawarman" />
+        <span class="logo-fallback" id="logoFallback">Logo UNMUL belum terbaca.<br />Pastikan file: Unmul.png</span>
+      </div>
+      <p class="meta">
+        Program Sarjana Angkatan 81 Periode I<br />
+        Tahun 2026
+      </p>
+      <p class="guest-label">Kepada Yth.</p>
+      <p class="guest" id="recipientText">Yudisiawan</p>
+      <button class="btn" id="openInvitation" type="button">Buka Undangan</button>
+    </section>
+
+    <section class="invitation" id="invitationContent">
+      <article class="panel card">
+        <h2 class="title">Dengan Hormat</h2>
+        <p class="line" id="invitationLine">
+          Dengan hormat, kami mengundang Bapak/Ibu/Saudara(i) untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.
+        </p>
+        <div class="mini-brand">
+          <img data-logo="unmul" src="Unmul.png" alt="Logo Universitas Mulawarman" />
+        </div>
+        <div class="details">
+          <p><strong>Hari/Tanggal:</strong> Rabu, 08 April 2026</p>
+          <p><strong>Waktu:</strong> 09.00 s/d Selesai</p>
+          <p><strong>Tempat:</strong> Gedung Hexagon Fakultas Teknik UNMUL</p>
+          <p><strong>Alamat:</strong> Jl. Sambaliung No.9, Gunung Kelua, Samarinda</p>
+        </div>
+      </article>
+
+      <article class="panel card">
+        <div class="event-strip">
+          <h3>Susunan Acara</h3>
+          <ol>
+            <li>Pembukaan</li>
+            <li>Lagu Kebangsaan Indonesia Raya dan Mars Fakultas Teknik</li>
+            <li>Mengheningkan Cipta</li>
+            <li>Pembacaan Ayat Suci Al-Qur'an</li>
+            <li>Pembacaan Doa</li>
+            <li>Laporan Wakil Dekan Bidang Akademik Fakultas Teknik Universitas Mulawarman</li>
+            <li>
+              Prosesi Yudisium
+              <ol type="a">
+                <li>Pembacaan SK Yudisium</li>
+                <li>Penyerahan Medali dan Sertifikat Yudisium</li>
+                <li>Penyerahan Sertifikat untuk lulusan Terbaik Fakultas</li>
+                <li>Pembacaan Naskah Yudisium</li>
+                <li>Lagu Bagimu Negeri</li>
+              </ol>
+            </li>
+            <li>Sambutan Oleh Wakil Mahasiswa</li>
+            <li>Sambutan Dekan Fakultas Teknik</li>
+            <li>Foto Bersama</li>
+          </ol>
+        </div>
+      </article>
+
+      <article class="panel card">
+        <h3 class="title">Lokasi Acara</h3>
+        <div class="map-wrap">
+          <iframe title="Peta Gedung Hexagon Fakultas Teknik Universitas Mulawarman"
+            src="https://maps.google.com/maps?q=Gedung%20Hexagon%20Fakultas%20Teknik%20Universitas%20Mulawarman&t=&z=16&ie=UTF8&iwloc=&output=embed"
+            loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+        <p class="location-text">
+          Tempat: Gedung Hexagon Fakultas Teknik<br />
+          Jl. Sambaliung No.9, Gunung Kelua, Samarinda
+        </p>
+        <a class="map-btn"
+          href="https://www.google.com/maps/search/?api=1&query=Gedung+Hexagon+Fakultas+Teknik+Universitas+Mulawarman"
+          target="_blank" rel="noopener">
+          Petunjuk Ke Lokasi
+        </a>
+      </article>
+
+      <article class="panel card">
+        <div class="auth-stack">
+          <div class="auth-head">
+            <p class="auth-date">Samarinda, 8 Juni 2026</p>
+            <p class="auth-salutation">Dekan Fakultas Teknik Universitas Mulawarman,</p>
+          </div>
+          <div class="signature-layer">
+            <div class="signature-box">
+              <img class="asset-image" id="ttdImage" src="ttd.png" alt="Tanda tangan dekan" />
+              <span class="asset-placeholder" id="ttdPlaceholder">Taruh file TTD: ttd.png</span>
+            </div>
+            <div class="stamp-overlay">
+              <img class="asset-image" id="stampImage" src="stempel.png" alt="Stempel Fakultas Teknik" />
+              <span class="asset-placeholder" id="stampPlaceholder">Taruh stempel: stempel.png</span>
+            </div>
+          </div>
+          <p class="auth-name">Prof. Dr. Ir. Thamrin, S.T., M.T, IPU, ASEAN. Eng., APEC. Eng</p>
+          <p class="auth-role">Dekan Fakultas Teknik Universitas Mulawarman</p>
+        </div>
+      </article>
+
+      <article class="panel card note-card">
+        <h3 class="title">Catatan</h3>
+        <ol class="notes-list">
+          <li>Hadir 30 menit sebelum acara dimulai.</li>
+          <li>Pakaian PSL (Dosen &amp; Karyawan).</li>
+        </ol>
+      </article>
+
+      <p class="closing">Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.</p>
+    </section>
+  </main>
+
+  <script>
+    const openButton = document.getElementById("openInvitation");
+    const content = document.getElementById("invitationContent");
+    const cover = document.getElementById("cover");
+    const logoFallback = document.getElementById("logoFallback");
+    const backgroundVideo = document.getElementById("backgroundVideo");
+    const recipientText = document.getElementById("recipientText");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const invitationLine = document.getElementById("invitationLine");
+    const revealItems = Array.from(content.children);
+    const logoCandidates = ["Unmul.png", "unmul.png", "UNMUL.png"];
+    const recipientMap = {
+      yudisiawan: "Yudisiawan/Yudisiawati",
+      orangtua: "Orang Tua Yudisiawan/Yudisiawati",
+      pejabat: "Pejabat Fakultas Teknik Universitas Mulawarman",
+      ketuasenat: "Ketua Senat Fakultas Teknik",
+      anggotasenat: "Seluruh Anggota Senat Fakultas Teknik",
+      tendik: "Staf Tenaga Kependidikan Fakultas Teknik"
+    };
+    const recipientCoverMap = {
+      yudisiawan: "cover-yudisiawan",
+      orangtua: "cover-orangtua",
+      pejabat: "cover-pejabat",
+      ketuasenat: "cover-pejabat",
+      anggotasenat: "cover-pejabat",
+      tendik: "cover-pejabat"
+    };
+    const invitationLineMap = {
+      yudisiawan:
+        "Dengan hormat, kami mengundang para Yudisiawan/Yudisiawati untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.",
+      orangtua:
+        "Dengan hormat, kami mengundang Bapak/Ibu Orang Tua/Wali Yudisiawan/Yudisiawati untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.",
+      pejabat:
+        "Dengan hormat, kami mengundang Bapak/Ibu Pejabat Fakultas Teknik Universitas Mulawarman untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.",
+      ketuasenat:
+        "Dengan hormat, kami mengundang Bapak Ketua Senat Fakultas Teknik untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.",
+      anggotasenat:
+        "Dengan hormat, kami mengundang Bapak/Ibu Anggota Senat Fakultas Teknik untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.",
+      tendik:
+        "Dengan hormat, kami mengundang Bapak/Ibu Staf Tenaga Kependidikan Fakultas Teknik untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman."
+    };
+    const setupRecipient = () => {
+      const url = new URL(window.location.href);
+      const keyRaw = (url.searchParams.get("to") || "").toLowerCase();
+      const aliases = {
+        "ortu": "orangtua",
+        "orang-tua": "orangtua",
+        "parents": "orangtua",
+        "official": "pejabat",
+        "pejabat-fakultas": "pejabat",
+        "ketua-senat": "ketuasenat",
+        "anggota-senat": "anggotasenat",
+        "senat": "anggotasenat",
+        "staff-tenaga-kependidikan": "tendik",
+        "tenaga-kependidikan": "tendik",
+        "staff": "tendik"
+      };
+      const key = recipientMap[keyRaw] ? keyRaw : (aliases[keyRaw] || "yudisiawan");
+
+      if (recipientText) {
+        recipientText.textContent = recipientMap[key];
+      }
+      if (invitationLine) {
+        invitationLine.textContent = invitationLineMap[key] || invitationLineMap.yudisiawan;
+      }
+
+      document.body.classList.remove("cover-yudisiawan", "cover-orangtua", "cover-pejabat");
+      document.body.classList.add(recipientCoverMap[key] || "cover-yudisiawan");
+    };
+
+    const setupBackgroundVideo = () => {
+      if (!backgroundVideo) return;
+
+      const revealVideo = () => backgroundVideo.classList.add("is-ready");
+      backgroundVideo.addEventListener("loadeddata", revealVideo, { once: true });
+      backgroundVideo.addEventListener("canplay", revealVideo, { once: true });
+
+      backgroundVideo.play().then(revealVideo).catch(() => {
+        // Keep static gradient fallback when autoplay is blocked.
+      });
+    };
+
+    const setupLogoFallback = () => {
+      const logoImages = Array.from(document.querySelectorAll("img[data-logo='unmul']"));
+      logoImages.forEach((img) => {
+        let currentIndex = logoCandidates.findIndex((name) => name === img.getAttribute("src"));
+        if (currentIndex < 0) currentIndex = 0;
+        img.dataset.logoIndex = String(currentIndex);
+
+        const trySource = (index) => {
+          if (index >= logoCandidates.length) {
+            img.style.display = "none";
+            if (img.id === "logoImage" && logoFallback) {
+              logoFallback.style.display = "block";
+            }
+            return;
+          }
+          img.dataset.logoIndex = String(index);
+          img.src = logoCandidates[index];
+        };
+
+        img.addEventListener("load", () => {
+          img.style.display = "block";
+          if (img.id === "logoImage" && logoFallback) {
+            logoFallback.style.display = "none";
+          }
+        });
+
+        img.addEventListener("error", () => {
+          const next = Number(img.dataset.logoIndex || "0") + 1;
+          trySource(next);
+        });
+
+        if (img.complete && img.naturalWidth === 0) {
+          trySource(currentIndex + 1);
+        }
+      });
+    };
+
+    setupRecipient();
+    setupBackgroundVideo();
+    setupLogoFallback();
+
+    const freezeCoverForTransition = () => {
+      const rect = cover.getBoundingClientRect();
+      cover.style.position = "fixed";
+      cover.style.top = `${rect.top}px`;
+      cover.style.left = `${rect.left}px`;
+      cover.style.width = `${rect.width}px`;
+      cover.style.height = `${rect.height}px`;
+      cover.style.margin = "0";
+      cover.style.zIndex = "40";
+    };
+
+    revealItems.forEach((item, index) => {
+      item.classList.add("reveal-item");
+      item.style.transitionDelay = `${Math.min(index * 120, 420)}ms`;
+    });
+
+    const revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in-view");
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.18 }
+    );
+
+    revealItems.forEach((item) => revealObserver.observe(item));
+
+    openButton.addEventListener("click", () => {
+      if (document.body.classList.contains("opening") || document.body.classList.contains("opened")) {
+        return;
+      }
+
+      if (reduceMotion) {
+        cover.style.display = "none";
+        document.body.classList.add("opened");
+        window.scrollTo({ top: 0, behavior: "auto" });
+        return;
+      }
+
+      freezeCoverForTransition();
+      window.scrollTo({ top: 0, behavior: "auto" });
+      document.body.classList.add("opening");
+      document.body.classList.add("animating");
+      openButton.disabled = true;
+      openButton.classList.add("is-pressed");
+
+      setTimeout(() => {
+        openButton.classList.remove("is-pressed");
+      }, 280);
+
+      setTimeout(() => {
+        cover.style.display = "none";
+        document.body.classList.remove("opening");
+        document.body.classList.add("opened");
+        window.scrollTo({ top: 0, behavior: "auto" });
+        setTimeout(() => {
+          document.body.classList.remove("animating");
+        }, 520);
+      }, 760);
+    });
+
+    const setupAssetPlaceholder = (imageId, placeholderId) => {
+      const image = document.getElementById(imageId);
+      const placeholder = document.getElementById(placeholderId);
+
+      if (!image || !placeholder) return;
+
+      const showPlaceholder = () => {
+        image.style.display = "none";
+        placeholder.style.display = "block";
+      };
+
+      const showImage = () => {
+        image.style.display = "block";
+        placeholder.style.display = "none";
+      };
+
+      image.addEventListener("load", () => {
+        if (image.naturalWidth > 0) {
+          showImage();
+        } else {
+          showPlaceholder();
+        }
+      });
+
+      image.addEventListener("error", showPlaceholder);
+
+      if (image.complete && image.naturalWidth > 0) {
+        showImage();
+      } else {
+        showPlaceholder();
+      }
+    };
+
+    setupAssetPlaceholder("ttdImage", "ttdPlaceholder");
+    setupAssetPlaceholder("stampImage", "stampPlaceholder");
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,42 @@
+.see-location-btn {
+	font-size: 14px;
+	font-size: calc-rem-value(14);
+	font-weight: bold;
+	padding: 12px 25px;
+	border: 2px solid $theme-primary-color;
+	color: $text-color;
+	border-radius: 60px;
+	text-transform: uppercase;
+
+	@include media-query(991px) {
+		padding: 8px 15px;
+		font-size: 12px;
+		text-transform: capitalize;
+	}
+
+	&:hover {
+		background-color: $theme-primary-color;
+		color: $white;
+	}
+}
+
+.theme-btn {
+	background-color: $theme-primary-color;
+	color: $white;
+	font-weight: bold;
+	padding: 12px 30px;
+	border: 0;
+	outline: 0;
+	display: inline-block;
+	border-radius: 50px;
+	@include transition-time(0.3s);
+	text-transform: uppercase;
+
+	&:hover {
+		background-color: darken($theme-primary-color, 10%);
+	}
+
+	@include media-query(767px) {
+		font-size: 14px;
+	}
+}

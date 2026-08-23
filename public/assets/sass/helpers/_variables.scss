@@ -1,0 +1,24 @@
+/*---------------------------
+	Fonts
+----------------------------*/
+@import url('https://fonts.googleapis.com/css?family=Great+Vibes|Muli:400,400i,600,700&display=swap');
+
+// fonts
+$base-font-size: 16;
+$base-font: 'Muli', sans-serif;
+$stylish-font: 'Great Vibes', cursive;
+
+
+
+// color
+$white: #fff;
+$black: #000;
+$golden: #b19a56;
+$mid-gray: #818492;
+$dark-gray: #2f2f2f;
+
+$theme-primary-color: $golden;
+$body-bg-color: $white;
+$section-bg-color: #edecec;
+$text-color: $mid-gray;
+$heading-color: $dark-gray;
