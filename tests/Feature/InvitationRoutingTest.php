@@ -117,7 +117,7 @@ class InvitationRoutingTest extends TestCase
             ->assertOk()
             ->assertSee('formalPreviewStage')
             ->assertSee($participant->name)
-            ->assertSee('Unduh PNG')
+            ->assertDontSee('Unduh PNG')
             ->assertDontSee('QR Buku Tamu')
             ->assertDontSee('Kartu Registrasi Mahasiswa');
     }
@@ -134,6 +134,21 @@ class InvitationRoutingTest extends TestCase
             ->assertOk()
             ->assertSee('Unduh kartu konfirmasi ini', false)
             ->assertSee('tunjukkan QR-nya di meja registrasi', false);
+    }
+
+    public function test_student_qr_card_is_hidden_when_confirmation_is_declined(): void
+    {
+        $period = $this->period();
+        $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+        $participant->submitRsvp('declined', 'Berhalangan hadir.');
+
+        $this->withSession(['success' => 'Konfirmasi berhalangan berhasil disimpan.'])
+            ->get('/?event='.$period->slug.'&to=yudisiawan&ref='.$participant->invitation_token.'#letterRsvp')
+            ->assertOk()
+            ->assertSee('Berhalangan Hadir')
+            ->assertDontSee('Unduh PNG')
+            ->assertDontSee('Unduh kartu konfirmasi ini', false);
     }
 
     private function period(): YudisiumPeriod

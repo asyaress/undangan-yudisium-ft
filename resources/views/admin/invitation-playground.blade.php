@@ -42,6 +42,13 @@
     $studentQrFileName = $participant
         ? 'qr-buku-tamu-'.$participant->nim.'.png'
         : null;
+    $showStudentQrCard = $participant && $studentQrPayload && $rsvpStatus === 'attending';
+    $studentQrGuideSteps = $showStudentQrCard
+        ? [[
+            'text' => 'Konfirmasi sudah tersimpan. Unduh kartu konfirmasi ini dan simpan di ponsel. Saat hari acara, tunjukkan QR-nya di meja registrasi untuk dipindai panitia.',
+            'target' => 'letterStudentQr',
+        ]]
+        : [];
 @endphp
 
 @extends(($standalone ?? false) ? 'layouts.playground' : 'layouts.dashboard')
@@ -1955,7 +1962,7 @@
                 </section>
             @endif
 
-            @if ($participant && $studentQrPayload)
+            @if ($showStudentQrCard)
                 <section class="letter-section letter-reveal" id="letterStudentQr">
                     <div
                         class="student-qr-card"
@@ -2020,7 +2027,7 @@
 @endsection
 
 @push('scripts')
-    @if ($participant && $studentQrPayload)
+    @if ($showStudentQrCard)
         <script src="{{ asset('vendor/qrcode/qrcode.min.js') }}"></script>
     @endif
     <script>
@@ -2046,7 +2053,7 @@
                 ? document.getElementById(window.location.hash.slice(1))
                 : null;
             var tutorialAudience = @js($recipientSalutation);
-            var shouldShowStudentQrGuide = @json($participant && $studentQrPayload && $rsvpStatus !== 'pending' && session('success'));
+            var shouldShowStudentQrGuide = @json($showStudentQrCard && session('success'));
 
             function openingGreeting() {
                 var hour = new Date().getHours();
@@ -2083,12 +2090,7 @@
                 }
             ];
             var tutorialSteps = defaultTutorialSteps;
-            var studentQrGuideSteps = [
-                {
-                    text: 'Konfirmasi sudah tersimpan. Unduh kartu konfirmasi ini dan simpan di ponsel. Saat hari acara, tunjukkan QR-nya di meja registrasi untuk dipindai panitia.',
-                    target: 'letterStudentQr'
-                }
-            ];
+            var studentQrGuideSteps = @json($studentQrGuideSteps);
 
             function lockCoverScroll() {
                 if (cover && !stage.classList.contains('is-open')) {
