@@ -87,7 +87,7 @@ class AdminInvitationPlaygroundController extends Controller
         $originalUrl = route('home', array_filter([
             'event' => $period->slug,
             'to' => $category->slug,
-            'ref' => $recipient?->token ?: $participant?->invitation_token,
+            'ref' => $recipient?->token,
         ]));
 
         return view('admin.invitation-playground', compact(

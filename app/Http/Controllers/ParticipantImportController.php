@@ -128,7 +128,7 @@ class ParticipantImportController extends Controller
 
         $message = "Import selesai. {$saved} berhasil, {$failed} gagal. Urutan file dipertahankan.";
         $warning = $missingBirthDate > 0
-            ? "{$missingBirthDate} data tidak memiliki tanggal lahir. Data tetap masuk, tetapi verifikasi undangan dengan tanggal lahir belum bisa digunakan untuk data tersebut."
+            ? "{$missingBirthDate} data tidak memiliki tanggal lahir. Data tetap masuk; undangan mahasiswa dibuka dengan NIM."
             : null;
 
         return redirect()

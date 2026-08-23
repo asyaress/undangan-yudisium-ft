@@ -58,7 +58,7 @@
                 'Undangan Yudisium Fakultas Teknik Universitas Mulawarman telah dibuka untuk Saudara/i.',
                 'Silakan membaca detail undangan pada bagian ini, meliputi hari, tanggal, waktu, tempat, serta susunan acara.',
                 'Setelah memahami informasi acara, Saudara/i dimohon melanjutkan ke tahap konfirmasi kehadiran pada bagian bawah halaman.',
-                'Masukkan Nomor Induk Mahasiswa (NIM), lakukan verifikasi data, lalu pilih status kehadiran Hadir atau Berhalangan.',
+                'Masukkan Nomor Induk Mahasiswa (NIM) yang terdaftar, lalu pilih status kehadiran Hadir atau Berhalangan.',
             ];
         } else {
             $rsvpTutorialSteps = [
@@ -77,7 +77,6 @@
         || session()->has('error')
         || $errors->any()
         || old('nim')
-        || old('birth_date')
     );
     if ($autoOpenInvitation) {
         $bodyClasses = trim($bodyClasses.' opened invitation-postback');

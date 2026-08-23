@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InvitationCategory;
 use App\Models\StudyProgram;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
@@ -24,20 +25,42 @@ class AdminParticipantController extends Controller
         $search = trim($request->string('q')->toString());
 
         $participants = YudisiumParticipant::query()
+            ->select('yudisium_participants.*')
             ->with(['period', 'studyProgram'])
+            ->leftJoin('study_programs', 'study_programs.id', '=', 'yudisium_participants.study_program_id')
             ->when($period, fn ($query) => $query->where('period_id', $period->id))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('nim', 'like', "%{$search}%")
-                        ->orWhere('name', 'like', "%{$search}%")
-                        ->orWhere('study_program', 'like', "%{$search}%");
+                    $inner->where('yudisium_participants.nim', 'like', "%{$search}%")
+                        ->orWhere('yudisium_participants.name', 'like', "%{$search}%")
+                        ->orWhere('yudisium_participants.study_program', 'like', "%{$search}%")
+                        ->orWhere('study_programs.name', 'like', "%{$search}%")
+                        ->orWhere('study_programs.code', 'like', "%{$search}%");
                 });
             })
-            ->orderByRaw('sequence_number is null')
-            ->orderBy('sequence_number')
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
+            ->orderByRaw('study_programs.sort_order is null')
+            ->orderBy('study_programs.sort_order')
+            ->orderBy('study_programs.code')
+            ->orderBy('yudisium_participants.study_program')
+            ->orderByRaw('yudisium_participants.sequence_number is null')
+            ->orderBy('yudisium_participants.sequence_number')
+            ->orderBy('yudisium_participants.name')
+            ->get();
+
+        $participantSections = $participants
+            ->groupBy(fn (YudisiumParticipant $participant) => $participant->study_program_id
+                ? 'program-'.$participant->study_program_id
+                : 'manual-'.($participant->study_program ?: 'tanpa-prodi'))
+            ->map(function ($items) {
+                $first = $items->first();
+
+                return [
+                    'code' => $first->studyProgram?->code,
+                    'name' => $first->studyProgram?->name ?: ($first->study_program ?: 'Tanpa Program Studi'),
+                    'participants' => $items->values(),
+                ];
+            })
+            ->values();
 
         $stats = [
             'total' => $period
@@ -57,7 +80,29 @@ class AdminParticipantController extends Controller
             ->orderBy('code')
             ->get();
 
-        return view('admin.participants.index', compact('period', 'participants', 'search', 'stats', 'studyPrograms'));
+        $studentCategory = $period
+            ? InvitationCategory::query()
+                ->where('period_id', $period->id)
+                ->where('access_mode', InvitationCategory::ACCESS_NIM)
+                ->orderByRaw("slug = 'yudisiawan' desc")
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->first()
+            : null;
+        $studentInvitationUrl = $period && $studentCategory
+            ? route('home', ['event' => $period->slug, 'to' => $studentCategory->slug])
+            : null;
+
+        return view('admin.participants.index', compact(
+            'period',
+            'participants',
+            'participantSections',
+            'search',
+            'stats',
+            'studyPrograms',
+            'studentCategory',
+            'studentInvitationUrl'
+        ));
     }
 
     public function destroySelected(Request $request): RedirectResponse

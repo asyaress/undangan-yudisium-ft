@@ -467,11 +467,11 @@
                     <div class="rsvp-badge">✓</div>
                     <div>
                         <h3>Konfirmasi Kehadiran</h3>
-                        <p>Baca detail undangan terlebih dahulu, lalu lakukan konfirmasi kehadiran melalui verifikasi NIM dan tanggal lahir.</p>
+                        <p>Masukkan NIM terlebih dahulu. Setelah cocok dengan data panitia, undangan dan formulir konfirmasi akan terbuka.</p>
                     </div>
                 </div>
                 <div class="rsvp-steps">
-                    <div class="rsvp-step is-active"><span class="rsvp-step-num">1</span><span>Masukkan NIM dan tanggal lahir</span></div>
+                    <div class="rsvp-step is-active"><span class="rsvp-step-num">1</span><span>Masukkan NIM</span></div>
                     <div class="rsvp-step"><span class="rsvp-step-num">2</span><span>Periksa data mahasiswa</span></div>
                     <div class="rsvp-step"><span class="rsvp-step-num">3</span><span>Isi status kehadiran dan simpan bukti</span></div>
                 </div>

@@ -187,7 +187,7 @@
       scrollToTarget(rsvpSection, isMobileView ? "center" : "start");
       window.sessionStorage.removeItem(RSVP_RETURN_KEY);
       window.setTimeout(() => {
-        const preferredInput = rsvpSection.querySelector("[aria-invalid='true'], .is-invalid, #nim, #birth_date, input:not([type='hidden']), textarea");
+        const preferredInput = rsvpSection.querySelector("[aria-invalid='true'], .is-invalid, #nim, input:not([type='hidden']), textarea");
         preferredInput?.focus?.({ preventScroll: true });
       }, reduceMotion ? 0 : 350);
     };

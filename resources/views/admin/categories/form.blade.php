@@ -623,7 +623,7 @@
 
             function accessText(mode) {
                 if (mode === 'nim') {
-                    return 'Kategori mahasiswa memakai verifikasi NIM dan tanggal lahir sebelum konfirmasi.';
+                    return 'Kategori mahasiswa memakai verifikasi NIM sebelum undangan dan konfirmasi terbuka.';
                 }
 
                 if (mode === 'public') {
@@ -635,7 +635,7 @@
 
             function rsvpText(mode) {
                 if (mode === 'nim') {
-                    return 'Baca detail undangan terlebih dahulu, lalu lakukan konfirmasi melalui verifikasi NIM dan tanggal lahir.';
+                    return 'Masukkan NIM terlebih dahulu. Setelah cocok dengan data panitia, undangan dan formulir konfirmasi akan terbuka.';
                 }
 
                 if (mode === 'private') {

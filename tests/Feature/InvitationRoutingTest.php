@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\InvitationCategory;
+use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -46,6 +47,58 @@ class InvitationRoutingTest extends TestCase
             ->assertSee('Dengan hormat');
     }
 
+    public function test_student_category_uses_generic_link_and_nim_gate(): void
+    {
+        $period = $this->period();
+        $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+
+        $this->get('/?event='.$period->slug.'&to=yudisiawan')
+            ->assertOk()
+            ->assertSee('NIM Mahasiswa')
+            ->assertSee('Buka Undangan')
+            ->assertDontSee('formalPreviewStage');
+    }
+
+    public function test_valid_nim_opens_student_invitation_without_birth_date(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+
+        $this->post(route('undangan.verify-nim'), [
+            'event_id' => $period->id,
+            'category_slug' => $category->slug,
+            'nim' => $participant->nim,
+        ])
+            ->assertRedirect(route('home', ['event' => $period->slug, 'to' => $category->slug]))
+            ->assertSessionHas("verified_participants.{$period->id}.{$category->slug}", $participant->invitation_token)
+            ->assertSessionHas("confirmed_participants.{$period->id}.{$category->slug}", $participant->invitation_token);
+    }
+
+    public function test_invalid_nim_returns_to_generic_student_link(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+
+        $this->post(route('undangan.verify-nim'), [
+            'event_id' => $period->id,
+            'category_slug' => $category->slug,
+            'nim' => 'tidak-ada',
+        ])
+            ->assertRedirect(route('home', ['event' => $period->slug, 'to' => $category->slug]).'#rsvpSection')
+            ->assertSessionHas('error', 'NIM tidak ditemukan pada data mahasiswa event ini.');
+    }
+
+    public function test_student_private_ref_link_is_not_valid_anymore(): void
+    {
+        $period = $this->period();
+        $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+
+        $this->get('/?event='.$period->slug.'&to=yudisiawan&ref='.$participant->invitation_token)
+            ->assertNotFound();
+    }
+
     private function period(): YudisiumPeriod
     {
         return YudisiumPeriod::query()->create([
@@ -59,7 +112,7 @@ class InvitationRoutingTest extends TestCase
         ]);
     }
 
-    private function category(YudisiumPeriod $period, string $slug, string $accessMode): InvitationCategory
+    private function category(YudisiumPeriod $period, string $slug, string $accessMode, bool $rsvpEnabled = false): InvitationCategory
     {
         return InvitationCategory::query()->create([
             'period_id' => $period->id,
@@ -71,7 +124,18 @@ class InvitationRoutingTest extends TestCase
             'closing_text' => 'Terima kasih.',
             'sort_order' => 1,
             'access_mode' => $accessMode,
-            'rsvp_enabled' => false,
+            'rsvp_enabled' => $rsvpEnabled,
+        ]);
+    }
+
+    private function participant(YudisiumPeriod $period): YudisiumParticipant
+    {
+        return YudisiumParticipant::query()->create([
+            'period_id' => $period->id,
+            'nim' => '2200000001',
+            'name' => 'Mahasiswa Test',
+            'study_program' => 'Teknik Informatika',
+            'faculty' => 'Fakultas Teknik',
         ]);
     }
 }

@@ -1,4 +1,5 @@
-﻿        <div class="invitation-details-section card--full">
+﻿        @unless ($isStudentCategory && ! $participant)
+        <div class="invitation-details-section card--full">
         <div class="details-divider" id="invitationDetails">Detail Undangan</div>
 
         <div class="invitation-details" id="invitationContentDetails">
@@ -109,8 +110,9 @@
         </article>
         </div>
         </div>
+        @endunless
 
-        @if ($requiresRsvp)
+        @if ($requiresRsvp || ($isStudentCategory && ! $participant))
         <article class="panel rsvp-card card--full watermark-card {{ $rsvpStatus === 'pending' && ! $rsvpClosed ? 'is-pulse' : '' }}" id="rsvpSection">
           <div class="rsvp-card-head">
             <div class="rsvp-badge">✓</div>
@@ -118,7 +120,7 @@
               <h3>Konfirmasi Kehadiran</h3>
               <p>
                 @if ($isStudentCategory)
-                  Baca detail undangan terlebih dahulu, lalu lakukan konfirmasi kehadiran melalui verifikasi NIM dan tanggal lahir.
+                  Masukkan NIM terlebih dahulu. Setelah cocok dengan data panitia, undangan dan formulir konfirmasi akan terbuka.
                 @else
                   Silakan mengisi konfirmasi kehadiran melalui formulir berikut.
                 @endif
@@ -133,15 +135,11 @@
             <div class="rsvp-steps">
               <div class="rsvp-step {{ ! $participant ? 'is-active' : '' }}">
                 <span class="rsvp-step-num">1</span>
-                <span>Masukkan NIM dan tanggal lahir</span>
+                <span>Masukkan NIM</span>
               </div>
-              <div class="rsvp-step {{ $participant && ! $studentIdentityConfirmed ? 'is-active' : '' }}">
+              <div class="rsvp-step {{ $participant ? 'is-active' : '' }}">
                 <span class="rsvp-step-num">2</span>
-                <span>Periksa data mahasiswa</span>
-              </div>
-              <div class="rsvp-step {{ $participant && $studentIdentityConfirmed ? 'is-active' : '' }}">
-                <span class="rsvp-step-num">3</span>
-                <span>Isi status kehadiran dan simpan bukti</span>
+                <span>Buka undangan dan isi konfirmasi</span>
               </div>
             </div>
           @endif
@@ -171,12 +169,8 @@
                 <label for="nim">NIM Mahasiswa</label>
                 <input id="nim" name="nim" type="text" value="{{ old('nim') }}" placeholder="Contoh: 2200000001" inputmode="numeric" autocomplete="off">
               </div>
-              <div class="field">
-                <label for="birth_date">Tanggal Lahir</label>
-                <input id="birth_date" name="birth_date" type="date" value="{{ old('birth_date') }}" autocomplete="bday">
-              </div>
               <div class="action-row">
-                <button class="btn" type="submit">Verifikasi &amp; Lanjut Konfirmasi</button>
+                <button class="btn" type="submit">Buka Undangan</button>
               </div>
             </form>
           @endif
@@ -242,7 +236,7 @@
               </div>
               <div class="field">
                 <label>Status Kehadiran</label>
-                <div class="radio-grid">
+                <div class="radio-grid two-options">
                   <label class="radio-option">
                     <input type="radio" name="attendance" value="attending" @checked(old('attendance', $participant->rsvp_status) === 'attending') required>
                     <span class="radio-mark" aria-hidden="true"></span>
@@ -253,21 +247,11 @@
                     <span class="radio-mark" aria-hidden="true"></span>
                     <span>Berhalangan Hadir</span>
                   </label>
-                  <label class="radio-option">
-                    <input type="radio" name="attendance" value="represented" @checked(old('attendance', $participant->rsvp_status) === 'represented') required>
-                    <span class="radio-mark" aria-hidden="true"></span>
-                    <span>Diwakilkan</span>
-                  </label>
                 </div>
               </div>
               <div class="field" id="participantNoteField" data-participant-note-field hidden>
                 <label for="note" id="participantNoteLabel">Catatan berhalangan</label>
                 <textarea id="note" name="note" data-declined-placeholder="Tuliskan alasan berhalangan hadir secara singkat." placeholder="Tuliskan alasan berhalangan hadir secara singkat.">{{ old('note') }}</textarea>
-              </div>
-              <div class="field" id="participantDelegateField" data-delegate-fields hidden>
-                <label>Data Perwakilan</label>
-                <input name="representative_name" value="{{ old('representative_name') }}" placeholder="Nama lengkap perwakilan">
-                <input name="representative_position" value="{{ old('representative_position') }}" placeholder="Jabatan perwakilan">
               </div>
               <div class="action-row">
                 <button class="btn" type="submit">Simpan Konfirmasi</button>

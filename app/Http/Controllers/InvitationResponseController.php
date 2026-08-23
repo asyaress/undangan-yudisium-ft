@@ -15,10 +15,8 @@ class InvitationResponseController extends Controller
         $data = $request->validate([
             'event_id' => ['required', 'integer', 'exists:yudisium_periods,id'],
             'participant_token' => ['required', 'string', 'max:255'],
-            'attendance' => ['required', 'in:attending,declined,represented'],
+            'attendance' => ['required', 'in:attending,declined'],
             'note' => ['nullable', 'required_if:attendance,declined', 'string', 'max:1000'],
-            'representative_name' => ['nullable', 'required_if:attendance,represented', 'string', 'max:255'],
-            'representative_position' => ['nullable', 'required_if:attendance,represented', 'string', 'max:255'],
             'return_to' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -30,7 +28,10 @@ class InvitationResponseController extends Controller
 
         $category = InvitationCategory::query()
             ->where('period_id', $participant->period_id)
-            ->where('slug', 'yudisiawan')
+            ->where('access_mode', InvitationCategory::ACCESS_NIM)
+            ->orderByRaw("slug = 'yudisiawan' desc")
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->first();
         if (! $category?->requiresRsvp()) {
             return back()->with('error', 'Konfirmasi kehadiran tidak tersedia untuk kategori ini.');

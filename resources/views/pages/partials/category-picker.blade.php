@@ -6,7 +6,7 @@
 
   $accessCopy = function ($category) {
       if ($category->usesNimAccess()) {
-          return 'Kategori mahasiswa. Pengunjung akan diminta memasukkan NIM dan tanggal lahir sebelum konfirmasi.';
+          return 'Kategori mahasiswa. Pengunjung akan diminta memasukkan NIM sebelum undangan dan konfirmasi terbuka.';
       }
 
       if ($category->usesPrivateAccess()) {

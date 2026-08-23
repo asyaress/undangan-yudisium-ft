@@ -31,6 +31,7 @@
         'declined' => 'Berhalangan Hadir',
         'represented' => 'Diwakilkan',
     ];
+    $confirmationOptionsText = $participant ? 'hadir atau berhalangan' : 'hadir, berhalangan, atau diwakilkan';
     $rsvpClosed = $period->rsvpIsClosed();
     $rsvpDeadlineLabel = $period->rsvp_deadline?->locale('id')->translatedFormat('d F Y H:i');
     $rsvpRespondedAt = $participant?->rsvp_responded_at ?? $recipient?->responded_at;
@@ -603,6 +604,10 @@
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 8px;
+        }
+
+        .radio-grid.two-options {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .radio-option {
@@ -1783,7 +1788,7 @@
                                 </div>
                                 <div class="playground-field">
                                     <label>Status Kehadiran</label>
-                                    <div class="radio-grid">
+                                    <div class="radio-grid two-options">
                                         <label class="radio-option">
                                             <input type="radio" name="attendance" value="attending" @checked(old('attendance', $participant->rsvp_status) === 'attending') required>
                                             <span class="radio-mark" aria-hidden="true"></span>
@@ -1800,29 +1805,11 @@
                                             </span>
                                             <span>Berhalangan Hadir</span>
                                         </label>
-                                        <label class="radio-option">
-                                            <input type="radio" name="attendance" value="represented" @checked(old('attendance', $participant->rsvp_status) === 'represented') required>
-                                            <span class="radio-mark" aria-hidden="true"></span>
-                                            <span class="radio-icon" aria-hidden="true">
-                                                <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="4"></circle><path d="M17 8l4 4-4 4M21 12h-7"></path></svg>
-                                            </span>
-                                            <span>Diwakilkan</span>
-                                        </label>
                                     </div>
                                 </div>
                                 <div class="playground-field" data-playground-note-field hidden>
                                     <label for="playground-participant-note" data-playground-note-label>Catatan berhalangan</label>
                                     <textarea class="playground-note" id="playground-participant-note" name="note" data-declined-placeholder="Tuliskan alasan berhalangan hadir secara singkat." placeholder="Tuliskan alasan berhalangan hadir secara singkat.">{{ old('note') }}</textarea>
-                                </div>
-                                <div class="playground-delegate-grid" data-playground-delegate-fields hidden>
-                                    <div class="playground-field">
-                                        <label for="playground-participant-representative-name">Nama Perwakilan</label>
-                                        <input class="playground-input" id="playground-participant-representative-name" name="representative_name" value="{{ old('representative_name') }}" placeholder="Nama lengkap perwakilan">
-                                    </div>
-                                    <div class="playground-field">
-                                        <label for="playground-participant-representative-position">Jabatan Perwakilan</label>
-                                        <input class="playground-input" id="playground-participant-representative-position" name="representative_position" value="{{ old('representative_position') }}" placeholder="Jabatan perwakilan">
-                                    </div>
                                 </div>
                                 <button class="playground-submit" type="submit">Simpan Konfirmasi</button>
                             </form>
@@ -1903,7 +1890,7 @@
                     target: 'letterAgenda'
                 },
                 {
-                    text: 'Di bagian akhir, mohon isi konfirmasi kehadiran sesuai kondisi sebenarnya: hadir, berhalangan, atau diwakilkan.',
+                    text: @js("Di bagian akhir, mohon isi konfirmasi kehadiran sesuai kondisi sebenarnya: {$confirmationOptionsText}."),
                     target: '{{ $category->requiresRsvp() ? 'letterRsvp' : 'letterNotes' }}'
                 }
             ];

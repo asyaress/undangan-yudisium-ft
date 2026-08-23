@@ -1530,6 +1530,10 @@
       gap: 10px;
     }
 
+    .radio-grid.two-options {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .radio-option {
       display: flex;
       align-items: center;

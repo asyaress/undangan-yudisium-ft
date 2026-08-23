@@ -59,7 +59,7 @@
                                 <input class="form-control" name="file" type="file" accept=".xlsx" required>
                             </div>
                         </div>
-                        <small class="text-muted">Bisa import template Excel standar, atau file absensi yang sudah dipisah per program studi. Untuk format absensi, urutan peserta mengikuti urutan file dan tanggal lahir boleh kosong.</small><br>
+                        <small class="text-muted">Bisa import template Excel standar, atau file absensi yang sudah dipisah per program studi. Untuk format absensi, urutan peserta mengikuti urutan file. Tanggal lahir tetap boleh kosong karena undangan mahasiswa dibuka dengan NIM.</small><br>
                         <button class="btn btn-primary mt-2" type="submit">Import</button>
                     </form>
 
@@ -110,6 +110,24 @@
                     </div>
                 </form>
 
+                <div class="student-link-box mb-3">
+                    <div>
+                        <strong>Link Undangan Mahasiswa</strong>
+                        <p class="mb-0 text-muted">Satu link untuk seluruh mahasiswa. Mahasiswa akan memasukkan NIM sebelum undangan dan konfirmasi kehadiran terbuka.</p>
+                    </div>
+                    @if ($studentInvitationUrl)
+                        <div class="input-group input-group-sm student-link-input">
+                            <input id="studentInvitationUrl" class="form-control" type="text" value="{{ $studentInvitationUrl }}" readonly>
+                            <div class="input-group-append">
+                                <a class="btn btn-outline-secondary" href="{{ $studentInvitationUrl }}" target="_blank" rel="noopener">Buka</a>
+                                <button class="btn btn-outline-secondary" type="button" data-copy="studentInvitationUrl">Salin</button>
+                            </div>
+                        </div>
+                    @else
+                        <span class="badge badge-warning">Kategori mahasiswa belum tersedia untuk event ini</span>
+                    @endif
+                </div>
+
                 <form id="participantBulkDeleteForm" method="post" action="{{ route('admin.participants.destroy-selected') }}">
                     @csrf
                     @method('DELETE')
@@ -118,66 +136,64 @@
                 </form>
 
                 <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
-                    <small class="text-muted">Centang data yang ingin dihapus, lalu klik Hapus Terpilih.</small>
+                    <small class="text-muted">Data ditampilkan per program studi mengikuti urutan prodi dan urutan import di dalam prodi.</small>
                     <button class="btn btn-outline-danger btn-sm" type="submit" form="participantBulkDeleteForm" data-confirm-delete>
                         Hapus Terpilih
                     </button>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th style="width:42px;"><input type="checkbox" data-check-all="participant"></th>
-                                <th>No</th>
-                                <th>NIM</th>
-                                <th>Nama</th>
-                                <th>Tanggal Lahir</th>
-                                <th>Prodi</th>
-                                <th>Konfirmasi Kehadiran</th>
-                                <th>Link Undangan</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($participants as $participant)
-                                @php
-                                    $linkId = 'link-participant-'.$participant->id;
-                                    $inviteUrl = route('home', ['event' => $participant->period?->slug, 'to' => 'yudisiawan', 'ref' => $participant->invitation_token]);
-                                @endphp
-                                <tr>
-                                    <td><input type="checkbox" name="ids[]" value="{{ $participant->id }}" form="participantBulkDeleteForm" data-check-item="participant"></td>
-                                    <td>{{ $participant->sequence_number ?: '-' }}</td>
-                                    <td>{{ $participant->nim }}</td>
-                                    <td>
-                                        <strong>{{ $participant->name }}</strong>
-                                    </td>
-                                    <td>{{ $participant->birth_date?->format('Y-m-d') ?: '-' }}</td>
-                                    <td>{{ $participant->studyProgram?->name ?: ($participant->study_program ?: '-') }}</td>
-                                    <td>
-                                        @if ($participant->rsvp_status === 'attending')<span class="badge badge-success">Hadir</span>
-                                        @elseif ($participant->rsvp_status === 'declined')<span class="badge badge-danger">Berhalangan</span>
-                                        @elseif ($participant->rsvp_status === 'represented')<span class="badge badge-info">Diwakilkan</span>
-                                        @else<span class="badge badge-warning">Belum</span>@endif
-                                    </td>
-                                    <td style="min-width:280px;">
-                                        <div class="input-group input-group-sm">
-                                            <input id="{{ $linkId }}" class="form-control" type="text" value="{{ $inviteUrl }}" readonly>
-                                            <div class="input-group-append">
-                                                <button class="btn btn-outline-secondary" type="button" data-copy="{{ $linkId }}">Salin</button>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-outline-danger btn-sm" type="submit" form="deleteParticipant{{ $participant->id }}" data-confirm-delete>Hapus</button>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="9" class="text-muted">Belum ada data mahasiswa.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                @forelse ($participantSections as $section)
+                    <div class="participant-section mb-4">
+                        <div class="participant-section-head">
+                            <div>
+                                <h5 class="mb-1">{{ $section['name'] }}</h5>
+                                @if ($section['code'])
+                                    <span class="text-muted">Kode prodi: {{ $section['code'] }}</span>
+                                @endif
+                            </div>
+                            <span class="badge badge-light border">{{ $section['participants']->count() }} mahasiswa</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0 participant-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:42px;"><input type="checkbox" data-check-section></th>
+                                        <th style="width:68px;">No</th>
+                                        <th>NIM</th>
+                                        <th>Nama</th>
+                                        <th>Tanggal Lahir</th>
+                                        <th>Konfirmasi Kehadiran</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($section['participants'] as $participant)
+                                        <tr>
+                                            <td><input type="checkbox" name="ids[]" value="{{ $participant->id }}" form="participantBulkDeleteForm" data-check-item="participant"></td>
+                                            <td>{{ $loop->iteration }}</td>
+                                            <td>{{ $participant->nim ?: '-' }}</td>
+                                            <td>
+                                                <strong>{{ $participant->name }}</strong>
+                                            </td>
+                                            <td>{{ $participant->birth_date?->format('Y-m-d') ?: '-' }}</td>
+                                            <td>
+                                                @if ($participant->rsvp_status === 'attending')<span class="badge badge-success">Hadir</span>
+                                                @elseif ($participant->rsvp_status === 'declined')<span class="badge badge-danger">Berhalangan</span>
+                                                @elseif ($participant->rsvp_status === 'represented')<span class="badge badge-info">Diwakilkan</span>
+                                                @else<span class="badge badge-warning">Belum</span>@endif
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-outline-danger btn-sm" type="submit" form="deleteParticipant{{ $participant->id }}" data-confirm-delete>Hapus</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-muted border rounded p-3">Belum ada data mahasiswa.</div>
+                @endforelse
 
                 @foreach ($participants as $participant)
                     <form id="deleteParticipant{{ $participant->id }}" method="post" action="{{ route('admin.participants.destroy-selected') }}">
@@ -188,15 +204,76 @@
                         <input type="hidden" name="q" value="{{ $search }}">
                     </form>
                 @endforeach
-
-                @if ($participants->hasPages())
-                    <div class="admin-pagination">{{ $participants->links() }}</div>
-                @endif
             </div>
         </div>
     </div>
 </div>
 @endsection
+
+@push('head')
+    <style>
+        .participant-section {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .participant-section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid #e5e7eb;
+            background: #fff7ed;
+        }
+
+        .participant-section-head h5 {
+            color: #111827;
+            font-weight: 800;
+        }
+
+        .participant-table thead th {
+            border-top: 0;
+            white-space: nowrap;
+        }
+
+        .participant-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .student-link-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            border: 1px solid #e5e7eb;
+            border-left: 4px solid #d96c0f;
+            border-radius: 8px;
+            padding: 14px 16px;
+            background: #fff;
+        }
+
+        .student-link-input {
+            max-width: 620px;
+            min-width: 320px;
+        }
+
+        @media (max-width: 767.98px) {
+            .student-link-box {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .student-link-input {
+                max-width: none;
+                min-width: 0;
+                width: 100%;
+            }
+        }
+    </style>
+@endpush
 
 @push('scripts')
     @include('admin.partials.copy-script')
@@ -205,6 +282,17 @@
             checkbox.addEventListener('change', function () {
                 var group = checkbox.getAttribute('data-check-all');
                 document.querySelectorAll('[data-check-item="' + group + '"]').forEach(function (item) {
+                    item.checked = checkbox.checked;
+                });
+            });
+        });
+
+        document.querySelectorAll('[data-check-section]').forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                var section = checkbox.closest('.participant-section');
+                if (!section) return;
+
+                section.querySelectorAll('[data-check-item="participant"]').forEach(function (item) {
                     item.checked = checkbox.checked;
                 });
             });
