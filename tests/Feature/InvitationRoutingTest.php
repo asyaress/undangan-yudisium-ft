@@ -122,6 +122,20 @@ class InvitationRoutingTest extends TestCase
             ->assertDontSee('Kartu Registrasi Mahasiswa');
     }
 
+    public function test_student_confirmation_success_shows_qr_download_guide(): void
+    {
+        $period = $this->period();
+        $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+        $participant->submitRsvp('attending');
+
+        $this->withSession(['success' => 'Konfirmasi hadir berhasil disimpan.'])
+            ->get('/?event='.$period->slug.'&to=yudisiawan&ref='.$participant->invitation_token.'#letterRsvp')
+            ->assertOk()
+            ->assertSee('Unduh kartu konfirmasi ini', false)
+            ->assertSee('tunjukkan QR-nya di meja registrasi', false);
+    }
+
     private function period(): YudisiumPeriod
     {
         return YudisiumPeriod::query()->create([

@@ -2037,6 +2037,8 @@
             var spotlight = document.getElementById('formalSpotlight');
             var tutorialCard = document.getElementById('formalTutorialCard');
             var tutorialIndex = 0;
+            var tutorialFinalLabel = 'Mulai baca';
+            var tutorialCloseTarget = null;
             var highlightedTarget = null;
             var tutorialTransitionTimer = null;
             var spotlightFrame = null;
@@ -2044,6 +2046,7 @@
                 ? document.getElementById(window.location.hash.slice(1))
                 : null;
             var tutorialAudience = @js($recipientSalutation);
+            var shouldShowStudentQrGuide = @json($participant && $studentQrPayload && $rsvpStatus !== 'pending' && session('success'));
 
             function openingGreeting() {
                 var hour = new Date().getHours();
@@ -2061,7 +2064,7 @@
                 return openingGreeting() + audience + '. Terima kasih sudah membuka undangan ini. Saya bantu arahkan sebentar supaya bagian pentingnya mudah diikuti.';
             }
 
-            var tutorialSteps = [
+            var defaultTutorialSteps = [
                 {
                     text: openingTutorialText(),
                     target: 'letterRecipientName'
@@ -2077,6 +2080,13 @@
                 {
                     text: @js("Di bagian akhir, mohon isi konfirmasi kehadiran sesuai kondisi sebenarnya: {$confirmationOptionsText}."),
                     target: '{{ $category->requiresRsvp() ? 'letterRsvp' : 'letterNotes' }}'
+                }
+            ];
+            var tutorialSteps = defaultTutorialSteps;
+            var studentQrGuideSteps = [
+                {
+                    text: 'Konfirmasi sudah tersimpan. Unduh kartu konfirmasi ini dan simpan di ponsel. Saat hari acara, tunjukkan QR-nya di meja registrasi untuk dipindai panitia.',
+                    target: 'letterStudentQr'
                 }
             ];
 
@@ -2230,7 +2240,7 @@
                 tutorialTransitionTimer = window.setTimeout(function () {
                     tutorialText.textContent = step.text;
                     tutorialProgress.textContent = (tutorialIndex + 1) + ' / ' + tutorialSteps.length;
-                    tutorialNext.textContent = tutorialIndex >= tutorialSteps.length - 1 ? 'Mulai baca' : 'Lanjut';
+                    tutorialNext.textContent = tutorialIndex >= tutorialSteps.length - 1 ? tutorialFinalLabel : 'Lanjut';
 
                     if (target) {
                         moveSpotlight(target);
@@ -2243,7 +2253,11 @@
                 }, 130);
             }
 
-            function openTutorial() {
+            function openTutorial(customSteps, options) {
+                options = options || {};
+                tutorialSteps = customSteps || defaultTutorialSteps;
+                tutorialFinalLabel = options.finalLabel || 'Mulai baca';
+                tutorialCloseTarget = options.closeTarget || null;
                 tutorialIndex = 0;
                 tutorial.classList.add('is-visible');
                 showTutorialStep();
@@ -2254,7 +2268,13 @@
                 tutorial.classList.remove('is-visible');
                 tutorialCard.classList.remove('is-changing');
                 clearHighlight();
-                stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                var closeTarget = tutorialCloseTarget ? document.getElementById(tutorialCloseTarget) : null;
+                if (closeTarget) {
+                    closeTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    stage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                tutorialCloseTarget = null;
             }
 
             if (openButton) {
@@ -2383,6 +2403,27 @@
                 link.remove();
             }
 
+            function openStudentQrGuide() {
+                var target = document.getElementById('letterStudentQr');
+                if (!target || !tutorial) return;
+
+                target.classList.add('is-visible');
+
+                if (!stage.classList.contains('is-open')) {
+                    openInvitation({
+                        skipTutorial: true,
+                        target: target
+                    });
+                }
+
+                window.setTimeout(function () {
+                    openTutorial(studentQrGuideSteps, {
+                        finalLabel: 'Selesai',
+                        closeTarget: 'letterStudentQr'
+                    });
+                }, 520);
+            }
+
             async function drawQrCard(card, qrCanvas, fileName) {
                 var canvas = document.createElement('canvas');
                 canvas.width = 900;
@@ -2465,6 +2506,10 @@
                     });
                 }
             });
+
+            if (shouldShowStudentQrGuide) {
+                window.setTimeout(openStudentQrGuide, 720);
+            }
 
             document.querySelectorAll('.playground-rsvp-form').forEach(function (form) {
                 var noteField = form.querySelector('[data-playground-note-field]');
