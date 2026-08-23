@@ -23,6 +23,83 @@
     <div class="col-lg-12">
         <div class="card">
             <div class="header">
+                <h2>Tambah Manual</h2>
+            </div>
+            <div class="card-body py-3">
+                @if ($adminPeriods->isEmpty())
+                    <p class="text-muted mb-0">Buat event terlebih dahulu sebelum menambahkan mahasiswa.</p>
+                @elseif ($studyPrograms->isEmpty())
+                    <p class="text-muted mb-0">Tambahkan master program studi terlebih dahulu.</p>
+                @else
+                    <form method="post" action="{{ route('admin.participants.store') }}" class="manual-participant-form">
+                        @csrf
+                        <div class="row">
+                            <div class="col-lg-4 col-md-6 form-group">
+                                <label>Event</label>
+                                <select class="form-control @error('period_id') is-invalid @enderror" name="period_id" required>
+                                    @foreach ($adminPeriods as $p)
+                                        <option value="{{ $p->id }}" @selected((int) old('period_id', $period?->id) === $p->id)>{{ $p->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('period_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-lg-4 col-md-6 form-group">
+                                <label>Program Studi</label>
+                                <select class="form-control @error('study_program_id') is-invalid @enderror" name="study_program_id" required>
+                                    <option value="">Pilih program studi</option>
+                                    @foreach ($studyPrograms as $program)
+                                        <option value="{{ $program->id }}" @selected((int) old('study_program_id') === $program->id)>{{ $program->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('study_program_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-lg-4 col-md-6 form-group">
+                                <label>No Urut</label>
+                                <input class="form-control @error('sequence_number') is-invalid @enderror" name="sequence_number" type="number" min="1" value="{{ old('sequence_number') }}" placeholder="Otomatis jika kosong">
+                                @error('sequence_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-lg-4 col-md-6 form-group">
+                                <label>NIM</label>
+                                <input class="form-control @error('nim') is-invalid @enderror" name="nim" value="{{ old('nim') }}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-numeric-only required>
+                                @error('nim')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-lg-4 col-md-6 form-group">
+                                <label>Nama Mahasiswa</label>
+                                <input class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" required>
+                                @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-lg-4 col-md-6 form-group">
+                                <label>Tanggal Lahir</label>
+                                <input class="form-control @error('birth_date') is-invalid @enderror" name="birth_date" type="date" value="{{ old('birth_date') }}">
+                                @error('birth_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-lg-4 col-md-6 form-group">
+                                <label>Email</label>
+                                <input class="form-control @error('email') is-invalid @enderror" name="email" type="email" value="{{ old('email') }}">
+                                @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-lg-4 col-md-6 form-group">
+                                <label>No WhatsApp</label>
+                                <input class="form-control @error('phone') is-invalid @enderror" name="phone" value="{{ old('phone') }}" inputmode="tel">
+                                @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="col-lg-4 col-md-12 form-group d-flex align-items-end">
+                                <button class="btn btn-primary btn-block" type="submit">
+                                    <i class="fa fa-plus"></i> Tambah Mahasiswa
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row clearfix">
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="header">
                 <h2>Import Excel</h2>
                 <ul class="header-dropdown">
                     <li><a class="btn btn-outline-secondary btn-sm" href="{{ route('admin.participants.template') }}">Download Template Excel</a></li>
@@ -243,6 +320,14 @@
             border-bottom: 0;
         }
 
+        .manual-participant-form label {
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
         .student-link-box {
             display: flex;
             align-items: center;
@@ -303,6 +388,12 @@
                 if (!confirm('Hapus data yang dipilih? Tindakan ini tidak bisa dibatalkan.')) {
                     event.preventDefault();
                 }
+            });
+        });
+
+        document.querySelectorAll('[data-numeric-only]').forEach(function (input) {
+            input.addEventListener('input', function () {
+                input.value = input.value.replace(/\D/g, '');
             });
         });
     </script>

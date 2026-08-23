@@ -59,6 +59,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::post('/checkin/manual/search', [CheckinController::class, 'manualSearch'])->name('checkin.manual.search');
         Route::post('/checkin/manual/confirm', [CheckinController::class, 'manualConfirm'])->name('checkin.manual.confirm');
         Route::get('/participants', [AdminParticipantController::class, 'index'])->name('participants.index');
+        Route::post('/participants', [AdminParticipantController::class, 'store'])->name('participants.store');
         Route::delete('/participants/delete-selected', [AdminParticipantController::class, 'destroySelected'])->name('participants.destroy-selected');
         Route::get('/participants/template', [ParticipantImportController::class, 'template'])->name('participants.template');
         Route::post('/participants/import', [ParticipantImportController::class, 'store'])->name('participants.import');

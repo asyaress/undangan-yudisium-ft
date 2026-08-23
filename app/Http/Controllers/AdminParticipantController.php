@@ -8,6 +8,7 @@ use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AdminParticipantController extends Controller
@@ -105,6 +106,50 @@ class AdminParticipantController extends Controller
         ));
     }
 
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'period_id' => ['required', 'integer', 'exists:yudisium_periods,id'],
+            'study_program_id' => ['required', 'integer', Rule::exists('study_programs', 'id')->where('is_active', true)],
+            'sequence_number' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'nim' => ['required', 'regex:/^[0-9]+$/', 'max:30', Rule::unique('yudisium_participants', 'nim')],
+            'name' => ['required', 'string', 'max:255'],
+            'birth_date' => ['nullable', 'date'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
+        ], [
+            'nim.regex' => 'NIM hanya boleh berisi angka.',
+            'nim.unique' => 'NIM ini sudah terdaftar.',
+            'study_program_id.required' => 'Pilih program studi.',
+        ]);
+
+        $studyProgram = StudyProgram::query()
+            ->where('is_active', true)
+            ->findOrFail($data['study_program_id']);
+
+        $sequenceNumber = $data['sequence_number'] ?? $this->nextSequenceNumber(
+            (int) $data['period_id'],
+            $studyProgram->id
+        );
+
+        YudisiumParticipant::query()->create([
+            'period_id' => $data['period_id'],
+            'sequence_number' => $sequenceNumber,
+            'study_program_id' => $studyProgram->id,
+            'nim' => $data['nim'],
+            'name' => $data['name'],
+            'birth_date' => $data['birth_date'] ?? null,
+            'study_program' => $studyProgram->name,
+            'faculty' => 'Fakultas Teknik',
+            'email' => $data['email'] ?? null,
+            'phone' => $data['phone'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('admin.participants.index', ['period_id' => $data['period_id']])
+            ->with('success', 'Data mahasiswa berhasil ditambahkan.');
+    }
+
     public function destroySelected(Request $request): RedirectResponse
     {
         $data = $request->validate([
@@ -135,5 +180,13 @@ class AdminParticipantController extends Controller
                 'q' => $data['q'] ?? null,
             ]))
             ->with('success', "{$deleted} data mahasiswa berhasil dihapus.");
+    }
+
+    private function nextSequenceNumber(int $periodId, int $studyProgramId): int
+    {
+        return ((int) YudisiumParticipant::query()
+            ->where('period_id', $periodId)
+            ->where('study_program_id', $studyProgramId)
+            ->max('sequence_number')) + 1;
     }
 }
