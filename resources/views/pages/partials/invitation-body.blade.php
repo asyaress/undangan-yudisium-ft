@@ -181,7 +181,7 @@
                   data-warning-target="nimFilterNotice"
                   aria-describedby="nimHelp nimFilterNotice{{ $errors->has('nim') ? ' nimError' : '' }}"
                   @error('nim') aria-invalid="true" class="is-invalid" @enderror>
-                <p class="form-hint" id="nimHelp">Masukkan NIM sesuai KTM/KRS. Jika NIM diawali 0, tetap tuliskan 0.</p>
+                <p class="form-hint" id="nimHelp">Masukkan NIM Anda.</p>
                 <p class="field-warning" id="nimFilterNotice" hidden></p>
                 @error('nim')
                   <p class="field-error" id="nimError">{{ $message }}</p>
