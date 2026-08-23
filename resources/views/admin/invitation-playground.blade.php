@@ -856,7 +856,7 @@
         .student-qr-frame {
             display: grid;
             place-items: center;
-            min-height: 250px;
+            min-height: 310px;
             padding: 16px;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
@@ -865,7 +865,7 @@
 
         .student-qr-canvas {
             display: block;
-            width: min(220px, 100%);
+            width: min(280px, 100%);
             height: auto;
             image-rendering: crisp-edges;
         }
@@ -2396,8 +2396,8 @@
 
             async function drawQrCard(card, qrCanvas, fileName) {
                 var canvas = document.createElement('canvas');
-                canvas.width = 1080;
-                canvas.height = 620;
+                canvas.width = 900;
+                canvas.height = 1280;
                 var context = canvas.getContext('2d');
                 var logo = await loadCardImage(card.dataset.unmulLogo);
                 var qrImage = await loadCardImage(qrCanvas.toDataURL('image/png'));
@@ -2406,7 +2406,7 @@
                 context.fillRect(0, 0, canvas.width, canvas.height);
 
                 context.save();
-                roundedRect(context, 44, 42, 992, 536, 30);
+                roundedRect(context, 54, 54, 792, 1172, 34);
                 context.fillStyle = '#ffffff';
                 context.fill();
                 context.strokeStyle = '#e5e7eb';
@@ -2417,41 +2417,41 @@
                 if (logo) {
                     context.save();
                     context.globalAlpha = 0.06;
-                    context.translate(885, 455);
+                    context.translate(650, 1060);
                     context.rotate(-18 * Math.PI / 180);
-                    context.drawImage(logo, -180, -180, 360, 360);
+                    context.drawImage(logo, -230, -230, 460, 460);
                     context.restore();
                 }
 
                 context.fillStyle = '#e85d04';
-                context.fillRect(44, 42, 10, 536);
+                context.fillRect(54, 54, 12, 1172);
 
                 context.fillStyle = '#e85d04';
-                context.font = '700 22px Manrope, Arial, sans-serif';
-                context.fillText('QR BUKU TAMU', 92, 118);
+                context.font = '700 24px Manrope, Arial, sans-serif';
+                context.fillText('QR BUKU TAMU', 106, 134);
 
                 context.fillStyle = '#111827';
-                context.font = '800 44px Manrope, Arial, sans-serif';
-                fitText(context, 'Kartu Registrasi Mahasiswa', 92, 176, 560, 52, 2);
+                context.font = '800 52px Manrope, Arial, sans-serif';
+                fitText(context, 'Kartu Registrasi Mahasiswa', 106, 208, 680, 62, 2);
 
                 context.fillStyle = '#475467';
-                context.font = '500 24px Manrope, Arial, sans-serif';
-                fitText(context, card.dataset.eventTitle || '', 92, 284, 560, 34, 2);
+                context.font = '500 26px Manrope, Arial, sans-serif';
+                fitText(context, card.dataset.eventTitle || '', 106, 342, 680, 38, 2);
 
                 context.fillStyle = '#111827';
-                context.font = '800 30px Manrope, Arial, sans-serif';
-                fitText(context, card.dataset.studentName || '', 92, 392, 560, 38, 2);
+                context.font = '800 36px Manrope, Arial, sans-serif';
+                fitText(context, card.dataset.studentName || '', 106, 458, 680, 46, 2);
 
                 context.fillStyle = '#667085';
-                context.font = '600 22px Manrope, Arial, sans-serif';
-                fitText(context, (card.dataset.studentNim || '-') + ' - ' + (card.dataset.studentProgram || '-'), 92, 474, 560, 30, 2);
+                context.font = '600 25px Manrope, Arial, sans-serif';
+                fitText(context, (card.dataset.studentNim || '-') + ' - ' + (card.dataset.studentProgram || '-'), 106, 548, 680, 34, 2);
 
                 context.fillStyle = '#9a3412';
-                context.font = '700 19px Manrope, Arial, sans-serif';
-                fitText(context, card.dataset.eventDate || '', 92, 546, 560, 26, 1);
+                context.font = '700 23px Manrope, Arial, sans-serif';
+                fitText(context, card.dataset.eventDate || '', 106, 644, 680, 30, 1);
 
                 context.save();
-                roundedRect(context, 715, 98, 256, 318, 18);
+                roundedRect(context, 128, 704, 644, 450, 28);
                 context.fillStyle = '#ffffff';
                 context.fill();
                 context.strokeStyle = '#e5e7eb';
@@ -2460,13 +2460,13 @@
                 context.restore();
 
                 if (qrImage) {
-                    context.drawImage(qrImage, 743, 126, 200, 200);
+                    context.drawImage(qrImage, 170, 746, 560, 560);
                 }
 
                 context.fillStyle = '#667085';
-                context.font = '700 18px Manrope, Arial, sans-serif';
+                context.font = '700 24px Manrope, Arial, sans-serif';
                 context.textAlign = 'center';
-                context.fillText('Scan di meja registrasi', 843, 374);
+                context.fillText('Scan di meja registrasi', 450, 1196);
                 context.textAlign = 'left';
 
                 downloadCanvas(canvas, fileName);
