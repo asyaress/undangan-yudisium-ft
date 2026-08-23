@@ -36,72 +36,12 @@
     $rsvpDeadlineLabel = $period->rsvp_deadline?->locale('id')->translatedFormat('d F Y H:i');
     $rsvpRespondedAt = $participant?->rsvp_responded_at ?? $recipient?->responded_at;
     $playgroundReturnUrl = request()->getRequestUri().'#letterRsvp';
-    $studentBarcodePayload = $participant
+    $studentQrPayload = $participant
         ? 'YFT|'.$period->id.'|'.$participant->id.'|'.$participant->invitation_token
         : null;
-    $studentBarcodeFileName = $participant
-        ? 'barcode-buku-tamu-'.$participant->nim.'.svg'
+    $studentQrFileName = $participant
+        ? 'qr-buku-tamu-'.$participant->nim.'.png'
         : null;
-    $code128Patterns = [
-        '212222', '222122', '222221', '121223', '121322', '131222', '122213', '122312', '132212', '221213',
-        '221312', '231212', '112232', '122132', '122231', '113222', '123122', '123221', '223211', '221132',
-        '221231', '213212', '223112', '312131', '311222', '321122', '321221', '312212', '322112', '322211',
-        '212123', '212321', '232121', '111323', '131123', '131321', '112313', '132113', '132311', '211313',
-        '231113', '231311', '112133', '112331', '132131', '113123', '113321', '133121', '313121', '211331',
-        '231131', '213113', '213311', '213131', '311123', '311321', '331121', '312113', '312311', '332111',
-        '314111', '221411', '431111', '111224', '111422', '121124', '121421', '141122', '141221', '112214',
-        '112412', '122114', '122411', '142112', '142211', '241211', '221114', '413111', '241112', '134111',
-        '111242', '121142', '121241', '114212', '124112', '124211', '411212', '421112', '421211', '212141',
-        '214121', '412121', '111143', '111341', '131141', '114113', '114311', '411113', '411311', '113141',
-        '114131', '311141', '411131', '211412', '211214', '211232', '2331112',
-    ];
-    $makeCode128Svg = function (?string $value) use ($code128Patterns): string {
-        if (! $value) {
-            return '';
-        }
-
-        $codes = [104];
-        $checksum = 104;
-        $weight = 1;
-        foreach (str_split($value) as $char) {
-            $ord = ord($char);
-            if ($ord < 32 || $ord > 126) {
-                continue;
-            }
-
-            $code = $ord - 32;
-            $codes[] = $code;
-            $checksum += $code * $weight;
-            $weight++;
-        }
-
-        $codes[] = $checksum % 103;
-        $codes[] = 106;
-
-        $quiet = 10;
-        $height = 86;
-        $x = $quiet;
-        $rects = '';
-
-        foreach ($codes as $code) {
-            $pattern = $code128Patterns[$code] ?? '';
-            $bar = true;
-
-            foreach (str_split($pattern) as $width) {
-                $width = (int) $width;
-                if ($bar) {
-                    $rects .= '<rect x="'.$x.'" y="0" width="'.$width.'" height="'.$height.'" />';
-                }
-                $x += $width;
-                $bar = ! $bar;
-            }
-        }
-
-        $width = $x + $quiet;
-
-        return '<svg class="student-barcode-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '.$width.' '.$height.'" role="img" aria-label="Barcode buku tamu mahasiswa" data-barcode-svg><rect width="'.$width.'" height="'.$height.'" fill="#fff" />'.$rects.'</svg>';
-    };
-    $studentBarcodeSvg = $makeCode128Svg($studentBarcodePayload);
 @endphp
 
 @extends(($standalone ?? false) ? 'layouts.playground' : 'layouts.dashboard')
@@ -835,7 +775,7 @@
             color: #667085;
         }
 
-        .student-barcode-card {
+        .student-qr-card {
             position: relative;
             overflow: hidden;
             display: grid;
@@ -848,7 +788,7 @@
             background: #fff;
         }
 
-        .student-barcode-card::after {
+        .student-qr-card::after {
             content: "";
             position: absolute;
             right: -34px;
@@ -861,13 +801,13 @@
             pointer-events: none;
         }
 
-        .student-barcode-copy,
-        .student-barcode-panel {
+        .student-qr-copy,
+        .student-qr-panel {
             position: relative;
             z-index: 1;
         }
 
-        .student-barcode-eyebrow {
+        .student-qr-eyebrow {
             display: block;
             margin-bottom: 8px;
             color: #e85d04;
@@ -877,7 +817,7 @@
             text-transform: uppercase;
         }
 
-        .student-barcode-copy h4 {
+        .student-qr-copy h4 {
             margin: 0 0 8px;
             color: #111827;
             font-size: 22px;
@@ -886,14 +826,14 @@
             letter-spacing: -0.02em;
         }
 
-        .student-barcode-copy p {
+        .student-qr-copy p {
             margin: 0;
             color: #667085;
             font-size: 14px;
             line-height: 1.7;
         }
 
-        .student-barcode-person {
+        .student-qr-person {
             display: grid;
             gap: 2px;
             margin-top: 14px;
@@ -901,38 +841,36 @@
             font-size: 13px;
         }
 
-        .student-barcode-person strong {
+        .student-qr-person strong {
             color: #111827;
             font-size: 15px;
             font-weight: 850;
         }
 
-        .student-barcode-panel {
+        .student-qr-panel {
             display: grid;
             gap: 12px;
             justify-items: stretch;
         }
 
-        .student-barcode-frame {
+        .student-qr-frame {
             display: grid;
             place-items: center;
-            min-height: 124px;
+            min-height: 250px;
             padding: 16px;
             border: 1px solid #e5e7eb;
             border-radius: 8px;
             background: #fff;
         }
 
-        .student-barcode-svg {
+        .student-qr-canvas {
             display: block;
-            width: 100%;
+            width: min(220px, 100%);
             height: auto;
-            max-height: 92px;
-            fill: #111827;
-            shape-rendering: crispEdges;
+            image-rendering: crisp-edges;
         }
 
-        .student-barcode-code {
+        .student-qr-code {
             color: #667085;
             font-size: 12px;
             line-height: 1.4;
@@ -940,7 +878,7 @@
             word-break: break-all;
         }
 
-        .student-barcode-download {
+        .student-qr-download {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -956,7 +894,7 @@
             cursor: pointer;
         }
 
-        .student-barcode-download svg {
+        .student-qr-download svg {
             width: 16px;
             height: 16px;
             fill: none;
@@ -1288,13 +1226,13 @@
                 padding: 24px 0;
             }
 
-            .student-barcode-card {
+            .student-qr-card {
                 grid-template-columns: 1fr;
                 gap: 16px;
                 padding: 18px;
             }
 
-            .student-barcode-copy h4 {
+            .student-qr-copy h4 {
                 font-size: 20px;
             }
 
@@ -2027,34 +1965,48 @@
                 </section>
             @endif
 
-            @if ($participant && $studentBarcodePayload && $studentBarcodeSvg)
-                <section class="letter-section letter-reveal" id="letterStudentBarcode">
-                    <div class="student-barcode-card">
-                        <div class="student-barcode-copy">
-                            <span class="student-barcode-eyebrow">Barcode Buku Tamu</span>
+            @if ($participant && $studentQrPayload)
+                <section class="letter-section letter-reveal" id="letterStudentQr">
+                    <div
+                        class="student-qr-card"
+                        data-student-qr-card
+                        data-qr-payload="{{ $studentQrPayload }}"
+                        data-student-name="{{ $participant->name }}"
+                        data-student-nim="{{ $participant->nim }}"
+                        data-student-program="{{ $participant->studyProgram?->name ?: ($participant->study_program ?: 'Program studi belum diisi') }}"
+                        data-event-title="{{ $period->archive_title }}"
+                        data-event-date="{{ $eventDateLabel }}"
+                        data-unmul-logo="{{ asset('Unmul.png') }}">
+                        <div class="student-qr-copy">
+                            <span class="student-qr-eyebrow">QR Buku Tamu</span>
                             <h4>Kartu Registrasi Mahasiswa</h4>
-                            <p>Tunjukkan barcode ini di meja registrasi saat tiba di lokasi.</p>
-                            <div class="student-barcode-person">
+                            <p>Tunjukkan QR ini di meja registrasi saat tiba di lokasi.</p>
+                            <div class="student-qr-person">
                                 <strong>{{ $participant->name }}</strong>
-                                <span>{{ $participant->nim }} · {{ $participant->studyProgram?->name ?: ($participant->study_program ?: 'Program studi belum diisi') }}</span>
+                                <span>{{ $participant->nim }} - {{ $participant->studyProgram?->name ?: ($participant->study_program ?: 'Program studi belum diisi') }}</span>
                             </div>
                         </div>
-                        <div class="student-barcode-panel">
-                            <div class="student-barcode-frame">
-                                {!! $studentBarcodeSvg !!}
+                        <div class="student-qr-panel">
+                            <div class="student-qr-frame">
+                                <canvas
+                                    class="student-qr-canvas"
+                                    width="220"
+                                    height="220"
+                                    aria-label="QR buku tamu mahasiswa"
+                                    data-qr-canvas></canvas>
                             </div>
-                            <span class="student-barcode-code">Kode: {{ strtoupper(substr($participant->invitation_token, -8)) }}</span>
+                            <span class="student-qr-code">Kode: {{ strtoupper(substr($participant->invitation_token, -8)) }}</span>
                             <button
-                                class="student-barcode-download"
+                                class="student-qr-download"
                                 type="button"
-                                data-download-barcode
-                                data-file-name="{{ $studentBarcodeFileName }}">
+                                data-download-qr-card
+                                data-file-name="{{ $studentQrFileName }}">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <path d="M7 10l5 5 5-5"></path>
                                     <path d="M12 15V3"></path>
                                 </svg>
-                                <span>Unduh Barcode</span>
+                                <span>Unduh PNG</span>
                             </button>
                         </div>
                     </div>
@@ -2079,6 +2031,9 @@
 @endsection
 
 @push('scripts')
+    @if ($participant && $studentQrPayload)
+        <script src="{{ asset('vendor/qrcode/qrcode.min.js') }}"></script>
+    @endif
     <script>
         (function () {
             var stage = document.getElementById('formalPreviewStage');
@@ -2377,27 +2332,166 @@
                 }
             }, { passive: true });
 
-            document.querySelectorAll('[data-download-barcode]').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    var card = button.closest('.student-barcode-card');
-                    var svg = card ? card.querySelector('[data-barcode-svg]') : null;
-                    if (!svg) return;
+            function loadCardImage(src) {
+                return new Promise(function (resolve) {
+                    if (!src) {
+                        resolve(null);
+                        return;
+                    }
 
-                    var clone = svg.cloneNode(true);
-                    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-                    var source = new XMLSerializer().serializeToString(clone);
-                    var blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
-                    var url = URL.createObjectURL(blob);
-                    var link = document.createElement('a');
-                    link.href = url;
-                    link.download = button.dataset.fileName || 'barcode-buku-tamu.svg';
-                    document.body.appendChild(link);
-                    link.click();
-                    link.remove();
-                    window.setTimeout(function () {
-                        URL.revokeObjectURL(url);
-                    }, 500);
+                    var image = new Image();
+                    image.crossOrigin = 'anonymous';
+                    image.onload = function () { resolve(image); };
+                    image.onerror = function () { resolve(null); };
+                    image.src = src;
                 });
+            }
+
+            function roundedRect(context, x, y, width, height, radius) {
+                context.beginPath();
+                context.moveTo(x + radius, y);
+                context.arcTo(x + width, y, x + width, y + height, radius);
+                context.arcTo(x + width, y + height, x, y + height, radius);
+                context.arcTo(x, y + height, x, y, radius);
+                context.arcTo(x, y, x + width, y, radius);
+                context.closePath();
+            }
+
+            function fitText(context, text, x, y, maxWidth, lineHeight, maxLines) {
+                var words = String(text || '').split(/\s+/).filter(Boolean);
+                var line = '';
+                var lines = [];
+
+                words.forEach(function (word) {
+                    var testLine = line ? line + ' ' + word : word;
+                    if (context.measureText(testLine).width > maxWidth && line) {
+                        lines.push(line);
+                        line = word;
+                    } else {
+                        line = testLine;
+                    }
+                });
+
+                if (line) lines.push(line);
+                lines.slice(0, maxLines).forEach(function (item, index) {
+                    var output = item;
+                    if (index === maxLines - 1 && lines.length > maxLines) {
+                        while (context.measureText(output + '...').width > maxWidth && output.length > 0) {
+                            output = output.slice(0, -1);
+                        }
+                        output += '...';
+                    }
+                    context.fillText(output, x, y + (index * lineHeight));
+                });
+            }
+
+            function downloadCanvas(canvas, fileName) {
+                var link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = fileName || 'qr-buku-tamu.png';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            }
+
+            async function drawQrCard(card, qrCanvas, fileName) {
+                var canvas = document.createElement('canvas');
+                canvas.width = 1080;
+                canvas.height = 620;
+                var context = canvas.getContext('2d');
+                var logo = await loadCardImage(card.dataset.unmulLogo);
+                var qrImage = await loadCardImage(qrCanvas.toDataURL('image/png'));
+
+                context.fillStyle = '#f8fafc';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+
+                context.save();
+                roundedRect(context, 44, 42, 992, 536, 30);
+                context.fillStyle = '#ffffff';
+                context.fill();
+                context.strokeStyle = '#e5e7eb';
+                context.lineWidth = 2;
+                context.stroke();
+                context.restore();
+
+                if (logo) {
+                    context.save();
+                    context.globalAlpha = 0.06;
+                    context.translate(885, 455);
+                    context.rotate(-18 * Math.PI / 180);
+                    context.drawImage(logo, -180, -180, 360, 360);
+                    context.restore();
+                }
+
+                context.fillStyle = '#e85d04';
+                context.fillRect(44, 42, 10, 536);
+
+                context.fillStyle = '#e85d04';
+                context.font = '700 22px Manrope, Arial, sans-serif';
+                context.fillText('QR BUKU TAMU', 92, 118);
+
+                context.fillStyle = '#111827';
+                context.font = '800 44px Manrope, Arial, sans-serif';
+                fitText(context, 'Kartu Registrasi Mahasiswa', 92, 176, 560, 52, 2);
+
+                context.fillStyle = '#475467';
+                context.font = '500 24px Manrope, Arial, sans-serif';
+                fitText(context, card.dataset.eventTitle || '', 92, 284, 560, 34, 2);
+
+                context.fillStyle = '#111827';
+                context.font = '800 30px Manrope, Arial, sans-serif';
+                fitText(context, card.dataset.studentName || '', 92, 392, 560, 38, 2);
+
+                context.fillStyle = '#667085';
+                context.font = '600 22px Manrope, Arial, sans-serif';
+                fitText(context, (card.dataset.studentNim || '-') + ' - ' + (card.dataset.studentProgram || '-'), 92, 474, 560, 30, 2);
+
+                context.fillStyle = '#9a3412';
+                context.font = '700 19px Manrope, Arial, sans-serif';
+                fitText(context, card.dataset.eventDate || '', 92, 546, 560, 26, 1);
+
+                context.save();
+                roundedRect(context, 715, 98, 256, 318, 18);
+                context.fillStyle = '#ffffff';
+                context.fill();
+                context.strokeStyle = '#e5e7eb';
+                context.lineWidth = 2;
+                context.stroke();
+                context.restore();
+
+                if (qrImage) {
+                    context.drawImage(qrImage, 743, 126, 200, 200);
+                }
+
+                context.fillStyle = '#667085';
+                context.font = '700 18px Manrope, Arial, sans-serif';
+                context.textAlign = 'center';
+                context.fillText('Scan di meja registrasi', 843, 374);
+                context.textAlign = 'left';
+
+                downloadCanvas(canvas, fileName);
+            }
+
+            document.querySelectorAll('[data-student-qr-card]').forEach(function (card) {
+                var qrCanvas = card.querySelector('[data-qr-canvas]');
+                if (!qrCanvas || !window.QRCode) return;
+
+                window.QRCode.toCanvas(qrCanvas, card.dataset.qrPayload || '', {
+                    errorCorrectionLevel: 'M',
+                    margin: 2,
+                    scale: 8,
+                    color: {
+                        dark: '#111827',
+                        light: '#ffffff'
+                    }
+                });
+
+                var button = card.querySelector('[data-download-qr-card]');
+                if (button) {
+                    button.addEventListener('click', function () {
+                        drawQrCard(card, qrCanvas, button.dataset.fileName || 'qr-buku-tamu.png');
+                    });
+                }
             });
 
             document.querySelectorAll('.playground-rsvp-form').forEach(function (form) {

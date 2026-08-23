@@ -45,7 +45,7 @@ class InvitationRoutingTest extends TestCase
             ->assertOk()
             ->assertSee('formalPreviewStage')
             ->assertSee('Dengan hormat')
-            ->assertDontSee('Barcode Buku Tamu');
+            ->assertDontSee('QR Buku Tamu');
     }
 
     public function test_student_category_uses_generic_link_and_nim_gate(): void
@@ -117,8 +117,8 @@ class InvitationRoutingTest extends TestCase
             ->assertOk()
             ->assertSee('formalPreviewStage')
             ->assertSee($participant->name)
-            ->assertSee('Barcode Buku Tamu')
-            ->assertSee('Unduh Barcode');
+            ->assertSee('QR Buku Tamu')
+            ->assertSee('Unduh PNG');
     }
 
     private function period(): YudisiumPeriod
