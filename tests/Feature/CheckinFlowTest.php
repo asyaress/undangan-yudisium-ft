@@ -188,6 +188,62 @@ class CheckinFlowTest extends TestCase
         ]);
     }
 
+    public function test_admin_scanner_qr_checks_in_participant(): void
+    {
+        [$event, $participant] = $this->eventAndParticipant();
+        $admin = $this->admin();
+        $qrPayload = 'YFT|'.$event->id.'|'.$participant->id.'|'.$participant->invitation_token;
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.checkin.manual.scan'), [
+                'period_id' => $event->id,
+                'scan_code' => $qrPayload,
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('status', 'accepted')
+            ->assertJsonPath('participant.nim', $participant->nim)
+            ->assertJsonPath('payload.summary.checked_in', 1);
+
+        $this->assertNotNull($participant->fresh()->checked_in_at);
+        $this->assertDatabaseHas('checkin_logs', [
+            'participant_id' => $participant->id,
+            'status' => 'accepted',
+            'source' => 'scanner',
+            'admin_id' => $admin->id,
+        ]);
+    }
+
+    public function test_admin_scanner_accepts_manual_nim_and_live_payload(): void
+    {
+        [$event, $participant] = $this->eventAndParticipant();
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.checkin.manual.scan'), [
+                'period_id' => $event->id,
+                'scan_code' => $participant->nim,
+                'manual_note' => 'Mahasiswa menyebutkan NIM di meja registrasi.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('status', 'accepted')
+            ->assertJsonPath('payload.participants.0.checked_in', true);
+
+        $this->actingAs($admin)
+            ->getJson(route('admin.checkin.manual.live', ['period_id' => $event->id]))
+            ->assertOk()
+            ->assertJsonPath('summary.checked_in', 1)
+            ->assertJsonPath('participants.0.nim', $participant->nim)
+            ->assertJsonPath('logs.0.source', 'manual');
+
+        $this->assertDatabaseHas('checkin_logs', [
+            'participant_id' => $participant->id,
+            'source' => 'manual',
+            'manual_note' => 'Mahasiswa menyebutkan NIM di meja registrasi.',
+        ]);
+    }
+
     public function test_location_validation_can_be_disabled(): void
     {
         [$event, $participant] = $this->eventAndParticipant([

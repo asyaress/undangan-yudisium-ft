@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\CheckinLog;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class CheckinController extends Controller
@@ -230,6 +232,7 @@ class CheckinController extends Controller
             'lookupNim' => null,
             'lookupError' => null,
             'logs' => $this->recentLogs($event),
+            'livePayload' => $this->manualLivePayload($event),
         ]);
     }
 
@@ -253,7 +256,53 @@ class CheckinController extends Controller
             'lookupNim' => $data['nim'],
             'lookupError' => $participant ? null : 'Data peserta dengan NIM tersebut tidak ditemukan.',
             'logs' => $this->recentLogs($event),
+            'livePayload' => $this->manualLivePayload($event),
         ]);
+    }
+
+    public function manualScan(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'period_id' => ['required', 'integer', 'exists:yudisium_periods,id'],
+            'scan_code' => ['required', 'string', 'max:500'],
+            'manual_note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $event = YudisiumPeriod::query()->findOrFail($data['period_id']);
+        $scanCode = trim($data['scan_code']);
+        [$participant, $source, $error] = $this->resolveScannedParticipant($event, $scanCode);
+
+        if (! $participant) {
+            return response()->json([
+                'ok' => false,
+                'status' => 'not_found',
+                'message' => $error ?: 'Data mahasiswa tidak ditemukan.',
+                'payload' => $this->manualLivePayload($event),
+            ], 200);
+        }
+
+        $result = $this->storeManualCheckin(
+            $request,
+            $event,
+            $participant,
+            $data['manual_note'] ?? ($source === 'scanner' ? 'Scan QR kartu konfirmasi.' : 'Input NIM di meja registrasi.'),
+            $source
+        );
+
+        return response()->json([
+            'ok' => true,
+            'status' => $result['alreadyCheckedIn'] ? 'duplicate' : 'accepted',
+            'message' => $result['alreadyCheckedIn']
+                ? 'Mahasiswa ini sudah check-in sebelumnya.'
+                : 'Check-in berhasil.',
+            'participant' => $this->participantPayload($result['participant']),
+            'payload' => $this->manualLivePayload($event),
+        ]);
+    }
+
+    public function manualLive(Request $request): JsonResponse
+    {
+        return response()->json($this->manualLivePayload($this->adminEvent($request)));
     }
 
     public function manualConfirm(Request $request): RedirectResponse
@@ -275,32 +324,7 @@ class CheckinController extends Controller
             return back()->withInput()->with('error', 'NIM tidak cocok dengan data yang ditemukan.');
         }
 
-        $result = DB::transaction(function () use ($request, $event, $participant, $data) {
-            $lockedParticipant = YudisiumParticipant::query()
-                ->whereKey($participant->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            $alreadyCheckedIn = (bool) $lockedParticipant->checked_in_at;
-            if (! $alreadyCheckedIn) {
-                $lockedParticipant->markCheckedIn('manual');
-            }
-
-            $this->logAttempt($request, $event, $lockedParticipant, [
-                'status' => $alreadyCheckedIn ? 'duplicate' : 'accepted',
-                'source' => 'manual',
-                'admin_id' => $request->user()?->id,
-                'manual_note' => $data['manual_note'],
-                'message' => $alreadyCheckedIn
-                    ? 'Peserta sudah check-in sebelumnya.'
-                    : 'Check-in manual oleh panitia.',
-            ]);
-
-            return [
-                'alreadyCheckedIn' => $alreadyCheckedIn,
-                'participant' => $lockedParticipant,
-            ];
-        });
+        $result = $this->storeManualCheckin($request, $event, $participant, $data['manual_note'], 'manual');
 
         return redirect()
             ->route('admin.checkin.manual.index', ['period_id' => $event->id])
@@ -372,6 +396,171 @@ class CheckinController extends Controller
             ->latest('attempted_at')
             ->limit(50)
             ->get();
+    }
+
+    private function resolveScannedParticipant(YudisiumPeriod $event, string $scanCode): array
+    {
+        $scanCode = trim($scanCode);
+
+        if (Str::startsWith($scanCode, 'YFT|')) {
+            $parts = explode('|', $scanCode);
+
+            if (count($parts) !== 4) {
+                return [null, 'scanner', 'Format QR tidak valid.'];
+            }
+
+            [, $periodId, $participantId, $token] = $parts;
+
+            if ((int) $periodId !== (int) $event->id) {
+                return [null, 'scanner', 'QR ini bukan untuk event yang sedang dipilih.'];
+            }
+
+            $participant = YudisiumParticipant::query()
+                ->with(['period', 'studyProgram'])
+                ->where('period_id', $event->id)
+                ->whereKey((int) $participantId)
+                ->where('invitation_token', $token)
+                ->first();
+
+            return [$participant, 'scanner', $participant ? null : 'QR tidak cocok dengan data mahasiswa.'];
+        }
+
+        if (! preg_match('/^[0-9]+$/', $scanCode)) {
+            return [null, 'manual', 'Masukkan NIM angka atau scan QR kartu konfirmasi.'];
+        }
+
+        $participant = YudisiumParticipant::query()
+            ->with(['period', 'studyProgram'])
+            ->where('period_id', $event->id)
+            ->where('nim', $scanCode)
+            ->first();
+
+        return [$participant, 'manual', $participant ? null : 'NIM tidak ditemukan pada event ini.'];
+    }
+
+    private function storeManualCheckin(
+        Request $request,
+        YudisiumPeriod $event,
+        YudisiumParticipant $participant,
+        string $manualNote,
+        string $source = 'manual'
+    ): array {
+        return DB::transaction(function () use ($request, $event, $participant, $manualNote, $source) {
+            $lockedParticipant = YudisiumParticipant::query()
+                ->with(['period', 'studyProgram'])
+                ->whereKey($participant->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $alreadyCheckedIn = (bool) $lockedParticipant->checked_in_at;
+            if (! $alreadyCheckedIn) {
+                $lockedParticipant->markCheckedIn($source);
+                $lockedParticipant->refresh()->load(['period', 'studyProgram']);
+            }
+
+            $this->logAttempt($request, $event, $lockedParticipant, [
+                'status' => $alreadyCheckedIn ? 'duplicate' : 'accepted',
+                'source' => $source,
+                'admin_id' => $request->user()?->id,
+                'manual_note' => $manualNote,
+                'message' => $alreadyCheckedIn
+                    ? 'Peserta sudah check-in sebelumnya.'
+                    : ($source === 'scanner' ? 'Check-in melalui scan QR.' : 'Check-in manual oleh panitia.'),
+            ]);
+
+            return [
+                'alreadyCheckedIn' => $alreadyCheckedIn,
+                'participant' => $lockedParticipant,
+            ];
+        });
+    }
+
+    private function manualLivePayload(?YudisiumPeriod $event): array
+    {
+        $participants = $this->manualParticipants($event);
+        $logs = $this->recentLogs($event);
+        $total = $participants->count();
+        $checkedIn = $participants->whereNotNull('checked_in_at')->count();
+        $attending = $participants->where('rsvp_status', 'attending')->count();
+
+        return [
+            'generated_at' => now()->toIso8601String(),
+            'period' => [
+                'id' => $event?->id,
+                'name' => $event?->name ?: 'Belum ada event',
+            ],
+            'summary' => [
+                'total' => $total,
+                'attending' => $attending,
+                'checked_in' => $checkedIn,
+                'remaining' => max(0, $total - $checkedIn),
+                'rate' => $total > 0 ? (int) round(($checkedIn / $total) * 100) : 0,
+            ],
+            'logs' => $logs->map(fn (CheckinLog $log) => [
+                'id' => $log->id,
+                'time' => $log->attempted_at?->format('H:i:s') ?: '-',
+                'date_time' => $log->attempted_at?->format('d/m/Y H:i') ?: '-',
+                'name' => $log->participant?->name ?: '-',
+                'nim' => $log->nim ?: $log->participant?->nim ?: '-',
+                'program' => $log->participant?->studyProgram?->name ?: ($log->participant?->study_program ?: '-'),
+                'status' => $log->status,
+                'status_label' => $this->checkinStatusLabel($log->status),
+                'source' => $log->source,
+                'message' => $log->message ?: '-',
+            ])->values(),
+            'participants' => $participants->take(600)->map(fn (YudisiumParticipant $participant) => $this->participantPayload($participant))->values(),
+        ];
+    }
+
+    private function manualParticipants(?YudisiumPeriod $event)
+    {
+        return YudisiumParticipant::query()
+            ->select('yudisium_participants.*')
+            ->with(['period', 'studyProgram'])
+            ->leftJoin('study_programs', 'study_programs.id', '=', 'yudisium_participants.study_program_id')
+            ->when($event, fn ($query) => $query->where('period_id', $event->id))
+            ->orderByRaw('study_programs.sort_order is null')
+            ->orderBy('study_programs.sort_order')
+            ->orderBy('study_programs.code')
+            ->orderBy('yudisium_participants.study_program')
+            ->orderByRaw('yudisium_participants.sequence_number is null')
+            ->orderBy('yudisium_participants.sequence_number')
+            ->orderBy('yudisium_participants.name')
+            ->get();
+    }
+
+    private function participantPayload(YudisiumParticipant $participant): array
+    {
+        return [
+            'id' => $participant->id,
+            'sequence_number' => $participant->sequence_number,
+            'nim' => $participant->nim,
+            'name' => $participant->name,
+            'program' => $participant->studyProgram?->name ?: ($participant->study_program ?: '-'),
+            'program_key' => $participant->study_program_id ? 'program-'.$participant->study_program_id : 'manual-'.Str::slug($participant->study_program ?: 'tanpa-prodi'),
+            'program_code' => $participant->studyProgram?->code ?: '',
+            'rsvp_status' => $participant->rsvp_status ?: 'pending',
+            'rsvp_label' => match ($participant->rsvp_status ?: 'pending') {
+                'attending' => 'Hadir',
+                'declined' => 'Berhalangan',
+                default => 'Belum konfirmasi',
+            },
+            'checked_in' => $participant->checked_in_at !== null,
+            'checked_in_at' => $participant->checked_in_at?->format('d/m/Y H:i') ?: '-',
+            'checkin_source' => $participant->checkin_source ?: '-',
+        ];
+    }
+
+    private function checkinStatusLabel(?string $status): string
+    {
+        return match ($status) {
+            'accepted' => 'Diterima',
+            'manual_review' => 'Perlu manual',
+            'duplicate' => 'Duplikat',
+            'failed_time' => 'Di luar waktu',
+            'rejected_location' => 'Lokasi ditolak',
+            default => 'Ditolak',
+        };
     }
 
     private function logAttempt(Request $request, YudisiumPeriod $event, ?YudisiumParticipant $participant, array $payload): void
