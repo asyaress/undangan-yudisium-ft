@@ -102,7 +102,7 @@ class InvitationRoutingTest extends TestCase
             'nim' => 'ABC123',
         ])
             ->assertSessionHasErrors([
-                'nim' => 'NIM hanya boleh berisi angka. Hapus huruf, spasi, atau tanda baca.',
+                'nim' => 'Masukkan NIM dalam format angka.',
             ]);
     }
 

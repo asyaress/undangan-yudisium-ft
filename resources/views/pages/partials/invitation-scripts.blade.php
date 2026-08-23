@@ -219,7 +219,7 @@
 
       const showNumericWarning = () => {
         if (!warning) return;
-        warning.textContent = "NIM hanya boleh angka. Huruf, spasi, atau tanda baca otomatis dihapus.";
+        warning.textContent = "Masukkan NIM dalam format angka.";
         warning.hidden = false;
         window.clearTimeout(warningTimer);
         warningTimer = window.setTimeout(() => {

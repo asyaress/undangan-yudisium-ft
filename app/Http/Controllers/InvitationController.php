@@ -127,7 +127,7 @@ class InvitationController extends Controller
         ], [
             'nim.required' => 'NIM wajib diisi terlebih dahulu.',
             'nim.max' => 'NIM terlalu panjang. Maksimal 20 digit angka.',
-            'nim.regex' => 'NIM hanya boleh berisi angka. Hapus huruf, spasi, atau tanda baca.',
+            'nim.regex' => 'Masukkan NIM dalam format angka.',
         ]);
 
         $event = YudisiumPeriod::query()
