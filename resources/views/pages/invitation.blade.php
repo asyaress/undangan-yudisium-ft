@@ -55,7 +55,7 @@
     if ($showRsvpGuide) {
         if ($isStudentCategory) {
             $rsvpTutorialSteps = [
-                'Masukkan NIM yang terdaftar. Setelah cocok, undangan pribadi dan formulir konfirmasi akan terbuka.',
+                'Masukkan NIM yang terdaftar. Setelah cocok, undangan dan formulir konfirmasi akan terbuka.',
             ];
         } else {
             $rsvpTutorialSteps = [
