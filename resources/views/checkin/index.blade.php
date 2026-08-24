@@ -72,28 +72,28 @@
             font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: var(--text);
             background: var(--bg);
-            padding: 16px;
+            padding: clamp(14px, 4vw, 28px);
         }
 
         .shell {
-            width: min(100%, 560px);
-            min-height: calc(100dvh - 32px);
+            width: min(100%, 700px);
+            min-height: calc(100dvh - clamp(28px, 8vw, 56px));
             margin: 0 auto;
             display: grid;
             align-content: center;
-            gap: 14px;
+            gap: 18px;
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 4px 2px;
+            gap: 18px;
+            padding: 0 4px;
         }
 
         .brand-mark {
-            width: 58px;
-            height: 58px;
+            width: 72px;
+            height: 72px;
             display: grid;
             place-items: center;
             flex: 0 0 auto;
@@ -103,14 +103,14 @@
         }
 
         .brand-mark img {
-            width: 44px;
-            height: 44px;
+            width: 56px;
+            height: 56px;
             object-fit: contain;
         }
 
         .brand h1 {
             margin: 0;
-            font-size: 1.42rem;
+            font-size: clamp(1.5rem, 4.5vw, 1.95rem);
             line-height: 1.18;
             letter-spacing: 0;
             font-weight: 800;
@@ -120,15 +120,35 @@
             margin: 6px 0 0;
             color: var(--muted);
             line-height: 1.6;
-            font-size: 0.92rem;
+            font-size: clamp(0.92rem, 2.8vw, 1rem);
         }
 
         .card {
+            position: relative;
+            overflow: hidden;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--surface);
             box-shadow: var(--shadow);
-            padding: 20px;
+            padding: clamp(20px, 4vw, 26px);
+        }
+
+        .card::after {
+            content: "";
+            position: absolute;
+            right: clamp(-42px, -5vw, -22px);
+            bottom: clamp(-54px, -7vw, -28px);
+            width: clamp(160px, 32vw, 230px);
+            aspect-ratio: 1;
+            background: var(--watermark-logo) center / contain no-repeat;
+            opacity: 0.045;
+            transform: rotate(-16deg);
+            pointer-events: none;
+        }
+
+        .card > * {
+            position: relative;
+            z-index: 1;
         }
 
         .card[hidden] {
@@ -152,7 +172,7 @@
 
         h2 {
             margin: 0 0 10px;
-            font-size: 1.18rem;
+            font-size: clamp(1.24rem, 3.6vw, 1.55rem);
             line-height: 1.3;
             font-weight: 800;
         }
@@ -176,12 +196,12 @@
         .meta-row,
         .person-row {
             display: grid;
-            grid-template-columns: 112px minmax(0, 1fr);
+            grid-template-columns: minmax(110px, 0.34fr) minmax(0, 1fr);
             gap: 10px;
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid var(--line);
             color: var(--muted);
-            font-size: 0.9rem;
+            font-size: clamp(0.9rem, 2.5vw, 1rem);
             line-height: 1.55;
         }
 
@@ -193,14 +213,15 @@
         .meta-row strong,
         .person-row strong {
             color: var(--text);
+            font-weight: 800;
             overflow-wrap: anywhere;
         }
 
         .step-list {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 16px;
+            gap: 10px;
+            margin-bottom: 22px;
         }
 
         .step-dot {
@@ -343,14 +364,9 @@
                 min-height: calc(100dvh - 20px);
             }
 
-            .card {
-                padding: 16px;
-                border-radius: 8px;
-            }
-
             .meta-row,
             .person-row {
-                grid-template-columns: 92px minmax(0, 1fr);
+                grid-template-columns: minmax(78px, 0.35fr) minmax(0, 1fr);
                 font-size: 0.86rem;
             }
         }
@@ -358,15 +374,22 @@
         @media (max-width: 430px) {
             .brand {
                 align-items: flex-start;
+                gap: 12px;
             }
 
-            .brand h1 {
-                font-size: 1.28rem;
+            .brand-mark {
+                width: 58px;
+                height: 58px;
+            }
+
+            .brand-mark img {
+                width: 44px;
+                height: 44px;
             }
         }
     </style>
 </head>
-<body>
+<body style="--watermark-logo: url('{{ asset('Unmul.png') }}');">
     <main class="shell">
         <section class="brand">
             <div class="brand-mark">
