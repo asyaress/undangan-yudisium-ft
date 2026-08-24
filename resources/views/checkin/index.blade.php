@@ -460,8 +460,8 @@
                     <div class="step-list" aria-hidden="true">
                         <span class="step-dot is-active"></span>
                         <span class="step-dot is-active"></span>
-                        <span class="step-dot"></span>
-                        <span class="step-dot"></span>
+                        <span class="step-dot {{ $participant->checked_in_at ? 'is-active' : '' }}"></span>
+                        <span class="step-dot {{ $participant->checked_in_at ? 'is-active' : '' }}"></span>
                     </div>
                     <span class="kicker">Langkah 2</span>
                     <h2>Verifikasi Data</h2>
