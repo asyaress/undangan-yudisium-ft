@@ -44,18 +44,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #f7f4ef;
+            --bg: #f4f6f8;
             --surface: #ffffff;
-            --text: #172033;
+            --text: #111827;
             --muted: #6b7280;
             --line: #e5e7eb;
             --soft: #f8fafc;
-            --primary: #f5530d;
+            --primary: #d9480f;
             --primary-dark: #d9450b;
             --good: #047857;
             --warn: #b45309;
             --bad: #b91c1c;
-            --shadow: 0 18px 42px rgba(15, 23, 42, 0.1);
+            --shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
         }
 
         * {
@@ -71,61 +71,64 @@
         body {
             font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: var(--text);
-            background:
-                radial-gradient(circle at 12% 8%, rgba(245, 83, 13, 0.1), transparent 34%),
-                linear-gradient(180deg, #fffaf5 0%, var(--bg) 100%);
+            background: var(--bg);
             padding: 16px;
         }
 
         .shell {
-            width: min(100%, 520px);
+            width: min(100%, 560px);
             min-height: calc(100dvh - 32px);
             margin: 0 auto;
             display: grid;
             align-content: center;
-            gap: 12px;
+            gap: 14px;
         }
 
         .brand {
-            text-align: center;
-            padding: 6px 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 4px 2px;
         }
 
         .brand-mark {
             width: 58px;
             height: 58px;
-            margin: 0 auto 12px;
             display: grid;
             place-items: center;
-            border-radius: 18px;
+            flex: 0 0 auto;
+            border-radius: 8px;
             background: #fff;
-            border: 1px solid rgba(245, 83, 13, 0.16);
-            box-shadow: 0 8px 24px rgba(245, 83, 13, 0.1);
-            color: var(--primary);
-            font-weight: 800;
+            border: 1px solid var(--line);
+        }
+
+        .brand-mark img {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
         }
 
         .brand h1 {
             margin: 0;
-            font-size: 1.55rem;
+            font-size: 1.42rem;
             line-height: 1.18;
             letter-spacing: 0;
             font-weight: 800;
         }
 
         .brand p {
-            margin: 8px 0 0;
+            margin: 6px 0 0;
             color: var(--muted);
             line-height: 1.6;
             font-size: 0.92rem;
         }
 
         .card {
-            border: 1px solid rgba(229, 231, 235, 0.92);
-            border-radius: 18px;
-            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface);
             box-shadow: var(--shadow);
-            padding: 18px;
+            padding: 20px;
         }
 
         .card[hidden] {
@@ -136,9 +139,9 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: #fff3ee;
+            padding: 0 0 0 10px;
+            border-left: 3px solid var(--primary);
+            background: transparent;
             color: var(--primary);
             font-size: 0.72rem;
             font-weight: 800;
@@ -196,13 +199,13 @@
         .step-list {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-            margin-bottom: 14px;
+            gap: 8px;
+            margin-bottom: 16px;
         }
 
         .step-dot {
-            height: 5px;
-            border-radius: 999px;
+            height: 4px;
+            border-radius: 0;
             background: #e5e7eb;
         }
 
@@ -226,7 +229,7 @@
             width: 100%;
             min-height: 50px;
             border: 1px solid var(--line);
-            border-radius: 14px;
+            border-radius: 8px;
             background: #fff;
             color: var(--text);
             font: inherit;
@@ -235,8 +238,8 @@
 
         input:focus {
             outline: none;
-            border-color: rgba(245, 83, 13, 0.45);
-            box-shadow: 0 0 0 4px rgba(245, 83, 13, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(217, 72, 15, 0.12);
         }
 
         .actions {
@@ -249,7 +252,7 @@
             width: 100%;
             min-height: 50px;
             border: 0;
-            border-radius: 14px;
+            border-radius: 8px;
             background: var(--primary);
             color: #fff;
             font: inherit;
@@ -259,7 +262,7 @@
             align-items: center;
             justify-content: center;
             text-decoration: none;
-            box-shadow: 0 12px 24px rgba(245, 83, 13, 0.22);
+            box-shadow: none;
         }
 
         .btn:hover {
@@ -281,7 +284,7 @@
         }
 
         .notice {
-            border-radius: 14px;
+            border-radius: 8px;
             padding: 12px 14px;
             margin-top: 14px;
             background: var(--soft);
@@ -314,7 +317,7 @@
             width: fit-content;
             align-items: center;
             padding: 7px 10px;
-            border-radius: 999px;
+            border-radius: 8px;
             color: var(--good);
             background: rgba(4, 120, 87, 0.08);
             border: 1px solid rgba(4, 120, 87, 0.14);
@@ -342,7 +345,7 @@
 
             .card {
                 padding: 16px;
-                border-radius: 16px;
+                border-radius: 8px;
             }
 
             .meta-row,
@@ -351,14 +354,28 @@
                 font-size: 0.86rem;
             }
         }
+
+        @media (max-width: 430px) {
+            .brand {
+                align-items: flex-start;
+            }
+
+            .brand h1 {
+                font-size: 1.28rem;
+            }
+        }
     </style>
 </head>
 <body>
     <main class="shell">
         <section class="brand">
-            <div class="brand-mark">FT</div>
-            <h1>Check-in Yudisium</h1>
-            <p>Fakultas Teknik Universitas Mulawarman</p>
+            <div class="brand-mark">
+                <img src="{{ asset('Unmul.png') }}" alt="Logo Universitas Mulawarman">
+            </div>
+            <div>
+                <h1>Check-in Yudisium</h1>
+                <p>Fakultas Teknik Universitas Mulawarman</p>
+            </div>
         </section>
 
         @if (! $event || $step === 'blocked')
