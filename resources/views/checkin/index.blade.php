@@ -2,6 +2,8 @@
     $step = $step ?? 'intro';
     $event = $event ?? null;
     $participant = $participant ?? null;
+    $cannotSelfCheckin = $participant?->rsvp_status === 'declined';
+    $sessionError = $sessionError ?? null;
     $checkinStatus = $checkinStatus ?? ($event?->checkinStatus() ?? 'no_event');
     $radius = (int) ($radius ?? $event?->checkin_radius_meter ?? 300);
     $locationRequired = (bool) ($event?->checkin_location_required ?? true);
@@ -42,6 +44,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('assets-template/assets/vendor/sweetalert/sweetalert.css') }}">
     <style>
         :root {
             --bg: #f4f6f8;
@@ -131,6 +134,7 @@
             background: var(--surface);
             box-shadow: var(--shadow);
             padding: clamp(20px, 4vw, 26px);
+            animation: cardIn 0.24s ease both;
         }
 
         .card::after {
@@ -153,6 +157,28 @@
 
         .card[hidden] {
             display: none;
+        }
+
+        .card.is-leaving {
+            animation: cardOut 0.18s ease both;
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes cardOut {
+            to {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
         }
 
         .kicker {
@@ -232,6 +258,50 @@
 
         .step-dot.is-active {
             background: var(--primary);
+        }
+
+        .auto-progress {
+            display: grid;
+            gap: 12px;
+            margin-top: 16px;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            background: #fff;
+        }
+
+        .auto-progress-track {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .auto-progress-bar {
+            height: 5px;
+            background: #e5e7eb;
+        }
+
+        .auto-progress-bar.is-active {
+            background: var(--primary);
+        }
+
+        .auto-progress-bar.is-pulse {
+            animation: progressPulse 0.8s ease-in-out infinite alternate;
+        }
+
+        .auto-progress-text {
+            color: var(--muted);
+            font-size: 0.88rem;
+            line-height: 1.6;
+        }
+
+        @keyframes progressPulse {
+            from {
+                opacity: 0.35;
+            }
+            to {
+                opacity: 1;
+            }
         }
 
         .field {
@@ -347,6 +417,213 @@
             margin-bottom: 12px;
         }
 
+        .success-card {
+            padding: clamp(22px, 5vw, 30px);
+        }
+
+        .success-head {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 16px;
+            align-items: start;
+            margin-bottom: 18px;
+        }
+
+        .success-icon {
+            position: relative;
+            display: inline-grid;
+            place-items: center;
+            border-radius: 999px;
+            background: rgba(4, 120, 87, 0.1);
+            border: 1px solid rgba(4, 120, 87, 0.18);
+            flex: 0 0 auto;
+        }
+
+        .success-icon {
+            width: 52px;
+            height: 52px;
+        }
+
+        .success-icon::before {
+            content: "";
+            width: 14px;
+            height: 8px;
+            border-left: 3px solid var(--good);
+            border-bottom: 3px solid var(--good);
+            transform: rotate(-45deg) translate(1px, -1px);
+        }
+
+        .success-title {
+            margin-bottom: 6px;
+        }
+
+        .success-text {
+            color: var(--muted);
+            line-height: 1.7;
+            font-size: clamp(0.94rem, 2.6vw, 1rem);
+        }
+
+        .success-summary {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--line);
+            margin-top: 16px;
+        }
+
+        .success-item {
+            padding: 14px;
+            background: #fff;
+            min-width: 0;
+        }
+
+        .success-item span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.76rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+
+        .success-item strong {
+            color: var(--text);
+            font-size: clamp(0.92rem, 2.5vw, 1rem);
+            line-height: 1.45;
+            overflow-wrap: anywhere;
+        }
+
+        .sweet-overlay {
+            background: rgba(17, 24, 39, 0.28);
+            transition: opacity 0.2s ease;
+        }
+
+        .sweet-alert.checkin-swal {
+            width: min(calc(100vw - 32px), 430px);
+            max-width: calc(100vw - 32px);
+            left: 50% !important;
+            top: 50% !important;
+            margin-left: 0;
+            margin-top: 0;
+            padding: 24px 22px 22px;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            transform: translate(-50%, -50%);
+            -webkit-transform: translate(-50%, -50%);
+            will-change: opacity, transform;
+        }
+
+        .sweet-alert.checkin-swal.showSweetAlert[data-animation=pop] {
+            animation: checkinSwalIn 0.24s ease both;
+            -webkit-animation: checkinSwalIn 0.24s ease both;
+        }
+
+        .sweet-alert.checkin-swal.hideSweetAlert[data-animation=pop] {
+            animation: checkinSwalOut 0.16s ease both;
+            -webkit-animation: checkinSwalOut 0.16s ease both;
+        }
+
+        @keyframes checkinSwalIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, calc(-50% + 10px)) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @-webkit-keyframes checkinSwalIn {
+            from {
+                opacity: 0;
+                -webkit-transform: translate(-50%, calc(-50% + 10px)) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                -webkit-transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes checkinSwalOut {
+            from {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translate(-50%, calc(-50% + 6px)) scale(0.99);
+            }
+        }
+
+        @-webkit-keyframes checkinSwalOut {
+            from {
+                opacity: 1;
+                -webkit-transform: translate(-50%, -50%) scale(1);
+            }
+            to {
+                opacity: 0;
+                -webkit-transform: translate(-50%, calc(-50% + 6px)) scale(0.99);
+            }
+        }
+
+        .sweet-alert.checkin-swal h2 {
+            color: var(--text);
+            font-size: clamp(1.18rem, 4vw, 1.38rem);
+            line-height: 1.35;
+            font-weight: 800;
+            margin: 12px 0 8px;
+            letter-spacing: 0;
+        }
+
+        .sweet-alert.checkin-swal p {
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.65;
+        }
+
+        .sweet-alert.checkin-swal .sa-icon.sa-success {
+            border-color: rgba(4, 120, 87, 0.24);
+            background: rgba(4, 120, 87, 0.08);
+            margin: 0 auto 8px;
+        }
+
+        .sweet-alert.checkin-swal .sa-icon.sa-success::before,
+        .sweet-alert.checkin-swal .sa-icon.sa-success::after,
+        .sweet-alert.checkin-swal .sa-icon.sa-success .sa-fix {
+            background: transparent;
+        }
+
+        .sweet-alert.checkin-swal .sa-icon.sa-success .sa-line {
+            background-color: var(--good);
+        }
+
+        .sweet-alert.checkin-swal .sa-icon.sa-success .sa-placeholder {
+            border-color: rgba(4, 120, 87, 0.2);
+        }
+
+        .sweet-alert.checkin-swal button {
+            background: var(--good) !important;
+            border-radius: 8px;
+            box-shadow: none !important;
+            font-family: inherit;
+            font-weight: 800;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .sweet-alert.checkin-swal.showSweetAlert[data-animation=pop],
+            .sweet-alert.checkin-swal.hideSweetAlert[data-animation=pop] {
+                animation: none;
+                -webkit-animation: none;
+            }
+        }
+
         .footer-note {
             text-align: center;
             color: var(--muted);
@@ -369,6 +646,16 @@
                 grid-template-columns: minmax(78px, 0.35fr) minmax(0, 1fr);
                 font-size: 0.86rem;
             }
+
+            .success-head {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .success-summary {
+                grid-template-columns: 1fr;
+            }
+
         }
 
         @media (max-width: 430px) {
@@ -438,6 +725,9 @@
                 <span class="kicker">Langkah 1</span>
                 <h2>Masukkan NIM</h2>
                 <p class="copy">Masukkan NIM Anda.</p>
+                @if ($sessionError)
+                    <div class="notice bad">{{ $sessionError }}</div>
+                @endif
                 @if ($lookupError)
                     <div class="notice bad">{{ $lookupError }} Silakan periksa kembali atau hubungi panitia.</div>
                 @endif
@@ -450,7 +740,6 @@
                     </div>
                     <div class="actions">
                         <button class="btn" type="submit">Verifikasi Data</button>
-                        <button class="btn secondary" type="button" data-back-intro>Kembali</button>
                     </div>
                 </form>
             </section>
@@ -460,8 +749,8 @@
                     <div class="step-list" aria-hidden="true">
                         <span class="step-dot is-active"></span>
                         <span class="step-dot is-active"></span>
-                        <span class="step-dot {{ $participant->checked_in_at ? 'is-active' : '' }}"></span>
-                        <span class="step-dot {{ $participant->checked_in_at ? 'is-active' : '' }}"></span>
+                        <span class="step-dot {{ $participant->checked_in_at || $cannotSelfCheckin ? 'is-active' : '' }}"></span>
+                        <span class="step-dot {{ $participant->checked_in_at || $cannotSelfCheckin ? 'is-active' : '' }}"></span>
                     </div>
                     <span class="kicker">Langkah 2</span>
                     <h2>Verifikasi Data</h2>
@@ -474,6 +763,13 @@
                         <div class="notice good">
                             Anda sudah melakukan check-in pada {{ $participant->checked_in_at?->locale('id')->translatedFormat('d F Y H:i') }} WITA.
                         </div>
+                    @elseif ($cannotSelfCheckin)
+                        <div class="notice warn">
+                            Anda tercatat berhalangan hadir pada konfirmasi kehadiran, sehingga self check-in tidak tersedia. Jika status ini perlu diubah, silakan hubungi panitia di meja registrasi.
+                        </div>
+                        <div class="actions">
+                            <a class="btn secondary" href="{{ route('checkin.form', ['slug' => $event->slug]) }}">Selesai</a>
+                        </div>
                     @else
                         <p class="copy" style="margin-top: 12px;">Apakah ini data Anda?</p>
                         <div class="actions">
@@ -483,7 +779,7 @@
                     @endif
                 </section>
 
-                @if (! $participant->checked_in_at)
+                @if (! $participant->checked_in_at && ! $cannotSelfCheckin)
                     <section class="card" id="locationCard" @if ($step !== 'location') hidden @endif>
                         <div class="step-list" aria-hidden="true">
                             <span class="step-dot is-active"></span>
@@ -493,14 +789,23 @@
                         </div>
                         <span class="kicker">Langkah 3</span>
                         <h2>Verifikasi Lokasi</h2>
-                        <p class="copy">Sistem perlu memeriksa apakah Anda sudah berada di area acara.</p>
+                        <p class="copy">Browser akan meminta izin lokasi. Setelah lokasi terbaca dan sesuai, check-in langsung disimpan.</p>
                         @if ($locationError)
                             <div class="notice bad" id="locationStatus">{{ $locationError }}</div>
                         @else
                             <div class="notice" id="locationStatus">
-                                Radius check-in: {{ number_format($radius) }} meter.
+                                Menunggu izin lokasi dari browser. Pastikan GPS perangkat aktif. Radius check-in: {{ number_format($radius) }} meter.
                             </div>
                         @endif
+                        <div class="auto-progress" id="autoCheckinProgress" aria-live="polite">
+                            <div class="auto-progress-track" aria-hidden="true">
+                                <span class="auto-progress-bar is-active" data-auto-bar></span>
+                                <span class="auto-progress-bar" data-auto-bar></span>
+                                <span class="auto-progress-bar" data-auto-bar></span>
+                                <span class="auto-progress-bar" data-auto-bar></span>
+                            </div>
+                            <p class="auto-progress-text" id="autoProgressText">Menunggu izin lokasi dari browser.</p>
+                        </div>
                         <form method="post" action="{{ route('checkin.confirm') }}" id="finalCheckinForm">
                             @csrf
                             <input type="hidden" name="event_id" value="{{ $event->id }}">
@@ -509,9 +814,8 @@
                             <input type="hidden" name="latitude" id="latitudeInput">
                             <input type="hidden" name="longitude" id="longitudeInput">
                             <input type="hidden" name="accuracy" id="accuracyInput">
-                            <div class="actions">
-                                <button class="btn" type="button" id="locateButton">Izinkan Lokasi &amp; Cek Radius</button>
-                                <button class="btn" type="submit" id="submitCheckinButton" hidden>Konfirmasi Saya Hadir di Lokasi</button>
+                            <div class="actions" id="locationFallbackActions" hidden>
+                                <button class="btn" type="submit" id="submitCheckinButton" hidden>Kirim ke Panitia</button>
                                 <button class="btn secondary" type="button" id="retryLocationButton" hidden>Coba Lagi</button>
                             </div>
                         </form>
@@ -538,17 +842,30 @@
             @endif
 
             @if ($participant && $step === 'success')
-                <section class="card">
-                    <span class="status-chip">Check-in Berhasil</span>
-                    <h2>{{ $alreadyCheckedIn ? 'Anda Sudah Check-in' : 'Check-in Berhasil' }}</h2>
-                    <p class="copy">{{ $alreadyCheckedIn ? 'Data kehadiran Anda sudah tercatat sebelumnya.' : 'Kehadiran Anda telah tercatat.' }}</p>
-                    <div class="meta">
-                        <div class="meta-row"><span>Nama</span><strong>{{ $participant->name }}</strong></div>
-                        <div class="meta-row"><span>NIM</span><strong>{{ $participant->nim }}</strong></div>
-                        <div class="meta-row"><span>Prodi</span><strong>{{ $participant->studyProgram?->name ?: ($participant->study_program ?: '-') }}</strong></div>
-                        <div class="meta-row"><span>Waktu</span><strong>{{ $participant->checked_in_at?->locale('id')->translatedFormat('d F Y H:i') }} WITA</strong></div>
+                <section class="card success-card">
+                    <div class="step-list" aria-hidden="true">
+                        <span class="step-dot is-active"></span>
+                        <span class="step-dot is-active"></span>
+                        <span class="step-dot is-active"></span>
+                        <span class="step-dot is-active"></span>
+                    </div>
+                    <div class="success-head">
+                        <span class="success-icon" aria-hidden="true"></span>
+                        <div>
+                            <span class="kicker">Check-in</span>
+                            <h2 class="success-title">{{ $alreadyCheckedIn ? 'Sudah Pernah Check-in' : 'Check-in Selesai' }}</h2>
+                            <p class="success-text">
+                                {{ $alreadyCheckedIn ? 'Data kehadiran Anda sudah tercatat sebelumnya.' : 'Terima kasih, '.$participant->name.'. Kehadiran Anda sudah tercatat oleh sistem.' }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="success-summary">
+                        <div class="success-item"><span>Nama</span><strong>{{ $participant->name }}</strong></div>
+                        <div class="success-item"><span>NIM</span><strong>{{ $participant->nim }}</strong></div>
+                        <div class="success-item"><span>Prodi</span><strong>{{ $participant->studyProgram?->name ?: ($participant->study_program ?: '-') }}</strong></div>
+                        <div class="success-item"><span>Waktu</span><strong>{{ $participant->checked_in_at?->locale('id')->translatedFormat('d F Y H:i') }} WITA</strong></div>
                         @if ($distance !== null)
-                            <div class="meta-row"><span>Jarak</span><strong>{{ number_format($distance) }} meter</strong></div>
+                            <div class="success-item"><span>Jarak</span><strong>{{ number_format($distance) }} meter</strong></div>
                         @endif
                     </div>
                     <div class="actions">
@@ -561,21 +878,24 @@
         <p class="footer-note">Jika lokasi sulit terbaca, hubungi panitia di meja registrasi.</p>
     </main>
 
+    <script src="{{ asset('assets-template/assets/vendor/sweetalert/sweetalert.min.js') }}"></script>
     <script>
         const introCard = document.getElementById("introCard");
         const nimCard = document.getElementById("nimCard");
         const startButton = document.getElementById("startButton");
-        const backButtons = document.querySelectorAll("[data-back-intro]");
         const confirmIdentity = document.getElementById("confirmIdentity");
         const identityCard = document.getElementById("identityCard");
         const locationCard = document.getElementById("locationCard");
-        const locateButton = document.getElementById("locateButton");
         const retryLocationButton = document.getElementById("retryLocationButton");
         const submitCheckinButton = document.getElementById("submitCheckinButton");
+        const locationFallbackActions = document.getElementById("locationFallbackActions");
+        const finalCheckinForm = document.getElementById("finalCheckinForm");
         const locationStatus = document.getElementById("locationStatus");
         const latitudeInput = document.getElementById("latitudeInput");
         const longitudeInput = document.getElementById("longitudeInput");
         const accuracyInput = document.getElementById("accuracyInput");
+        const autoProgressText = document.getElementById("autoProgressText");
+        const autoProgressBars = document.querySelectorAll("[data-auto-bar]");
         const eventCoordinate = {
             enabled: @json($locationRequired && $hasCoordinate),
             latitude: @json($event?->checkin_latitude !== null ? (float) $event->checkin_latitude : null),
@@ -594,10 +914,63 @@
             if (card) card.hidden = true;
         };
 
+        const transitionToCard = (from, to) => {
+            if (!to) return;
+            if (!from) {
+                showCard(to);
+                return;
+            }
+
+            from.classList.add("is-leaving");
+            window.setTimeout(() => {
+                from.classList.remove("is-leaving");
+                hideCard(from);
+                showCard(to);
+            }, 180);
+        };
+
+        const showLocationAlert = (title, text) => {
+            if (typeof window.swal !== "function") return;
+
+            window.swal({
+                title,
+                text,
+                type: "success",
+                timer: 1400,
+                showConfirmButton: false,
+                allowOutsideClick: true,
+                animation: "pop",
+                customClass: "checkin-swal",
+            });
+        };
+
         const setNotice = (type, text) => {
             if (!locationStatus) return;
             locationStatus.className = `notice ${type}`;
             locationStatus.textContent = text;
+        };
+
+        const setAutoProgress = (activeCount, text, pulseIndex = null) => {
+            autoProgressBars.forEach((bar, index) => {
+                bar.classList.toggle("is-active", index < activeCount);
+                bar.classList.toggle("is-pulse", pulseIndex === index);
+            });
+
+            if (autoProgressText) {
+                autoProgressText.textContent = text;
+            }
+        };
+
+        const showFallbackActions = ({ submit = false, retry = true } = {}) => {
+            if (locationFallbackActions) locationFallbackActions.hidden = false;
+            if (submitCheckinButton) submitCheckinButton.hidden = !submit;
+            if (retryLocationButton) retryLocationButton.hidden = !retry;
+        };
+
+        const hideFallbackActions = () => {
+            if (locationFallbackActions) locationFallbackActions.hidden = true;
+            if (submitCheckinButton) submitCheckinButton.hidden = true;
+            if (retryLocationButton) retryLocationButton.hidden = true;
         };
 
         const distanceMeters = (latA, lngA, latB, lngB) => {
@@ -616,44 +989,38 @@
             window.setTimeout(() => document.getElementById("nim")?.focus(), 220);
         });
 
-        backButtons.forEach((button) => {
-            button.addEventListener("click", () => {
-                hideCard(nimCard);
-                showCard(introCard);
-            });
-        });
-
         confirmIdentity?.addEventListener("click", () => {
-            showCard(locationCard);
+            showLocationAlert("Data cocok", "Browser akan meminta izin lokasi untuk check-in.");
+            transitionToCard(identityCard, locationCard);
             if (!eventCoordinate.enabled) {
-                setNotice("good", "Verifikasi lokasi tidak diwajibkan untuk event ini.");
-                if (locateButton) locateButton.hidden = true;
-                if (submitCheckinButton) {
-                    submitCheckinButton.hidden = false;
-                    submitCheckinButton.textContent = "Konfirmasi Saya Hadir di Lokasi";
-                }
+                setNotice("good", "Lokasi tidak perlu diverifikasi. Check-in sedang disimpan.");
+                setAutoProgress(4, "Check-in sedang disimpan.");
+                window.setTimeout(() => finalCheckinForm?.submit(), 650);
                 return;
             }
 
-            locationCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+            requestLocation();
         });
 
         const requestLocation = () => {
             const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
             if (!window.isSecureContext && !isLocalhost) {
                 setNotice("bad", "Akses lokasi membutuhkan HTTPS. Silakan buka link check-in resmi dengan https atau hubungi panitia.");
+                setAutoProgress(1, "Lokasi belum bisa dibaca karena halaman tidak dibuka melalui HTTPS.");
+                showFallbackActions({ submit: false, retry: true });
                 return;
             }
 
             if (!navigator.geolocation) {
                 setNotice("bad", "Perangkat ini belum mendukung akses lokasi. Silakan konfirmasi langsung ke panitia.");
+                setAutoProgress(1, "Perangkat belum mendukung akses lokasi.");
+                showFallbackActions({ submit: false, retry: true });
                 return;
             }
 
-            if (submitCheckinButton) submitCheckinButton.hidden = true;
-            if (retryLocationButton) retryLocationButton.hidden = true;
-            if (locateButton) locateButton.disabled = true;
-            setNotice("", "Membaca lokasi perangkat...");
+            hideFallbackActions();
+            setAutoProgress(2, "Menunggu izin lokasi dari browser...", 1);
+            setNotice("", "Silakan izinkan akses lokasi dari browser. Setelah izin diberikan, check-in akan diproses otomatis.");
 
             navigator.geolocation.getCurrentPosition((position) => {
                 const lat = position.coords.latitude;
@@ -668,32 +1035,41 @@
                 accuracyInput.value = accuracy;
 
                 if (inside && accurate) {
-                    setNotice("good", `Anda berada di area acara. Jarak terdeteksi ${distance} meter, akurasi GPS ${accuracy} meter.`);
-                    submitCheckinButton.textContent = "Konfirmasi Saya Hadir di Lokasi";
+                    setAutoProgress(4, "Lokasi sesuai. Check-in sedang disimpan.");
+                    setNotice("good", `Lokasi sesuai. Check-in sedang disimpan. Jarak terdeteksi ${distance} meter, akurasi GPS ${accuracy} meter.`);
+                    showLocationAlert("Lokasi sesuai", "Check-in sedang disimpan.");
+                    window.setTimeout(() => finalCheckinForm?.submit(), 650);
+                    return;
                 } else {
                     const reason = inside ? "GPS kurang akurat" : "lokasi berada di luar area acara";
-                    setNotice("warn", `Lokasi perlu diverifikasi karena ${reason}. Jarak terdeteksi ${distance} meter, akurasi GPS ${accuracy} meter.`);
+                    setAutoProgress(2, "Lokasi perlu dibantu panitia sebelum check-in dicatat.");
+                    setNotice("warn", `Lokasi perlu diverifikasi karena ${reason}. Jarak terdeteksi ${distance} meter, akurasi GPS ${accuracy} meter. Kirim data ini agar panitia dapat membantu validasi.`);
                     submitCheckinButton.textContent = "Kirim Info ke Panitia";
                 }
 
-                if (submitCheckinButton) submitCheckinButton.hidden = false;
-                if (retryLocationButton) retryLocationButton.hidden = false;
-                if (locateButton) locateButton.disabled = false;
+                showFallbackActions({ submit: true, retry: true });
             }, (error) => {
                 const denied = error.code === error.PERMISSION_DENIED;
-                setNotice("bad", denied
+                const unavailable = error.code === error.POSITION_UNAVAILABLE;
+                const timedOut = error.code === error.TIMEOUT;
+                const progressText = denied
+                    ? "Izin lokasi belum diberikan."
+                    : (unavailable ? "Lokasi perangkat belum tersedia." : "Lokasi belum berhasil terbaca.");
+                const noticeText = denied
                     ? "Izin lokasi ditolak. Aktifkan izin lokasi browser atau konfirmasi langsung ke panitia."
-                    : "Lokasi belum berhasil terbaca. Coba lagi atau konfirmasi langsung ke panitia.");
-                if (retryLocationButton) retryLocationButton.hidden = false;
-                if (locateButton) locateButton.disabled = false;
+                    : (timedOut
+                        ? "Browser terlalu lama membaca lokasi. Pastikan GPS aktif lalu coba lagi."
+                        : "Lokasi belum berhasil terbaca. Pastikan GPS aktif lalu coba lagi.");
+
+                setAutoProgress(1, progressText);
+                setNotice("bad", noticeText);
+                showFallbackActions({ submit: false, retry: true });
             }, {
                 enableHighAccuracy: true,
-                timeout: 15000,
                 maximumAge: 0,
             });
         };
 
-        locateButton?.addEventListener("click", requestLocation);
         retryLocationButton?.addEventListener("click", requestLocation);
 
         if (@json($step === 'nim')) {

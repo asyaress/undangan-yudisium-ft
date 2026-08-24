@@ -20,9 +20,10 @@ class CheckinController extends Controller
     {
         $event = $this->resolveEvent($slug);
         $checkinStatus = $this->effectiveCheckinStatus($event);
+        $step = session()->has('checkin_error') && $checkinStatus === 'open' ? 'nim' : ($checkinStatus === 'open' ? 'intro' : 'blocked');
 
         return $this->publicView($event, [
-            'step' => $checkinStatus === 'open' ? 'intro' : 'blocked',
+            'step' => $step,
             'checkinStatus' => $checkinStatus,
         ]);
     }
@@ -85,6 +86,20 @@ class CheckinController extends Controller
             return $this->publicView($event, [
                 'step' => 'nim',
                 'lookupError' => 'NIM tidak cocok dengan data yang ditemukan.',
+            ]);
+        }
+
+        if ($participant->rsvp_status === 'declined') {
+            $this->logAttempt($request, $event, $participant, [
+                'status' => 'rejected_rsvp',
+                'source' => 'web',
+                'message' => 'Peserta sudah mengisi konfirmasi berhalangan hadir.',
+            ]);
+
+            return $this->publicView($event, [
+                'step' => 'identity',
+                'participant' => $participant,
+                'lookupNim' => $data['nim'],
             ]);
         }
 
@@ -347,6 +362,7 @@ class CheckinController extends Controller
             'radius' => $event?->checkin_radius_meter ?: 300,
             'alreadyCheckedIn' => false,
             'checkinStatus' => $event?->checkinStatus() ?? 'no_event',
+            'sessionError' => session('checkin_error'),
         ], $data));
     }
 
@@ -559,6 +575,7 @@ class CheckinController extends Controller
             'duplicate' => 'Duplikat',
             'failed_time' => 'Di luar waktu',
             'rejected_location' => 'Lokasi ditolak',
+            'rejected_rsvp' => 'RSVP berhalangan',
             default => 'Ditolak',
         };
     }

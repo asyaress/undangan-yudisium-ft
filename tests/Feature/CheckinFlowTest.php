@@ -22,7 +22,7 @@ class CheckinFlowTest extends TestCase
             'latitude' => -0.46905,
             'longitude' => 117.14365,
             'accuracy' => 25,
-        ]))->assertOk();
+        ]))->assertOk()->assertSee('Check-in Selesai');
 
         $this->assertNotNull($participant->fresh()->checked_in_at);
         $this->assertDatabaseHas('checkin_logs', [
@@ -126,13 +126,40 @@ class CheckinFlowTest extends TestCase
 
         $this->post(route('checkin.confirm'), $payload)->assertOk();
         $firstCheckedInAt = $participant->fresh()->checked_in_at;
-        $this->post(route('checkin.confirm'), $payload)->assertOk();
+        $this->post(route('checkin.confirm'), $payload)->assertOk()->assertSee('Sudah Pernah Check-in');
 
         $this->assertEquals($firstCheckedInAt?->timestamp, $participant->fresh()->checked_in_at?->timestamp);
         $this->assertSame(1, CheckinLog::where('participant_id', $participant->id)->where('status', 'accepted')->count());
         $this->assertDatabaseHas('checkin_logs', [
             'participant_id' => $participant->id,
             'status' => 'duplicate',
+        ]);
+    }
+
+    public function test_declined_rsvp_cannot_continue_self_checkin(): void
+    {
+        [$event, $participant] = $this->eventAndParticipant();
+        $participant->forceFill([
+            'rsvp_status' => 'declined',
+            'rsvp_responded_at' => now(),
+        ])->save();
+
+        $this->post(route('checkin.search'), [
+            'event_id' => $event->id,
+            'nim' => $participant->nim,
+        ])->assertOk()->assertSee('self check-in tidak tersedia');
+
+        $this->post(route('checkin.confirm'), $this->payload($event, $participant, [
+            'latitude' => -0.46905,
+            'longitude' => 117.14365,
+            'accuracy' => 25,
+        ]))->assertOk()->assertSee('self check-in tidak tersedia');
+
+        $this->assertNull($participant->fresh()->checked_in_at);
+        $this->assertDatabaseHas('checkin_logs', [
+            'participant_id' => $participant->id,
+            'status' => 'rejected_rsvp',
+            'source' => 'web',
         ]);
     }
 
