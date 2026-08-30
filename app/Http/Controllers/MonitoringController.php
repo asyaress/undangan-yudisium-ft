@@ -46,7 +46,7 @@ class MonitoringController extends Controller
         abort_unless(in_array($type, ['mahasiswa', 'private'], true), 404);
 
         $filters = $this->filters($request, $type);
-        $rows = $this->applyRowFilters($this->rows($filters), $filters);
+        $rows = $this->applyRowFilters($this->rows($filters, true), $filters);
         $format = $request->string('format', 'xls')->lower()->toString();
 
         if ($format === 'pdf') {
@@ -74,7 +74,7 @@ class MonitoringController extends Controller
             foreach ($rows as $row) {
                 echo '<tr>';
                 foreach ($this->exportRow($row, $type) as $value) {
-                    echo '<td>'.e((string) $value).'</td>';
+                    echo $this->exportCell($value);
                 }
                 echo '</tr>';
             }
@@ -83,6 +83,18 @@ class MonitoringController extends Controller
         }, 'monitoring-'.$type.'-'.now()->format('Ymd-His').'.xls', [
             'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
         ]);
+    }
+
+    public function signature(InvitationRecipient $recipient): Response
+    {
+        abort_unless($recipient->category && in_array($recipient->category->access_mode, $this->recipientAccessModes(), true), 404);
+
+        $png = $this->decodeSignature($recipient->rsvp_signature);
+        abort_unless($png !== null, 404);
+
+        return response($png)
+            ->header('Content-Type', 'image/png')
+            ->header('Cache-Control', 'private, max-age=300');
     }
 
     private function page(Request $request, string $type): View
@@ -119,10 +131,10 @@ class MonitoringController extends Controller
         ];
     }
 
-    private function rows(array $filters): Collection
+    private function rows(array $filters, bool $withSignatureData = false): Collection
     {
         return $filters['type'] === 'private'
-            ? $this->privateRows($filters)
+            ? $this->privateRows($filters, $withSignatureData)
             : $this->studentRows($filters);
     }
 
@@ -199,7 +211,7 @@ class MonitoringController extends Controller
             ->get();
     }
 
-    private function privateRows(array $filters): Collection
+    private function privateRows(array $filters, bool $withSignatureData = false): Collection
     {
         return InvitationRecipient::query()
             ->with(['period', 'category'])
@@ -207,30 +219,43 @@ class MonitoringController extends Controller
             ->whereHas('category', fn ($query) => $query->whereIn('access_mode', $this->recipientAccessModes()))
             ->orderBy('name')
             ->get()
-            ->map(fn (InvitationRecipient $recipient) => [
-                'id' => 'private-'.$recipient->id,
-                'event' => $recipient->period?->name ?: '-',
-                'category' => $recipient->category?->title ?: '-',
-                'category_key' => $recipient->category?->slug ?: 'private',
-                'type' => 'Undangan Private',
-                'sequence_number' => null,
-                'nim' => $recipient->participant?->nim ?: '',
-                'name' => $recipient->invitation_name,
-                'context' => $recipient->context_note ?: '-',
-                'note' => $recipient->rsvp_note ?: '',
-                'rsvp_status' => $recipient->rsvp_status ?: 'pending',
-                'rsvp_label' => $this->rsvpLabel($recipient->rsvp_status ?: 'pending'),
-                'responded_at' => $recipient->responded_at?->toIso8601String(),
-                'responded_at_label' => $recipient->responded_at?->format('d/m/Y H:i') ?: '-',
-                'checked_in' => false,
-                'checkin_status' => 'not_applicable',
-                'checked_in_at' => null,
-                'checked_in_at_label' => '-',
-                'updated_marker' => max(
-                    $recipient->responded_at?->timestamp ?? 0,
-                    $recipient->updated_at?->timestamp ?? 0,
-                ),
-            ]);
+            ->map(function (InvitationRecipient $recipient) use ($withSignatureData) {
+                $hasSignature = $this->decodeSignature($recipient->rsvp_signature) !== null;
+                $row = [
+                    'id' => 'private-'.$recipient->id,
+                    'recipient_id' => $recipient->id,
+                    'event' => $recipient->period?->name ?: '-',
+                    'category' => $recipient->category?->title ?: '-',
+                    'category_key' => $recipient->category?->slug ?: 'private',
+                    'type' => 'Undangan Private',
+                    'sequence_number' => null,
+                    'nim' => $recipient->participant?->nim ?: '',
+                    'name' => $recipient->invitation_name,
+                    'context' => $recipient->context_note ?: '-',
+                    'note' => $recipient->rsvp_note ?: '',
+                    'rsvp_status' => $recipient->rsvp_status ?: 'pending',
+                    'rsvp_label' => $this->rsvpLabel($recipient->rsvp_status ?: 'pending'),
+                    'responded_at' => $recipient->responded_at?->toIso8601String(),
+                    'responded_at_label' => $recipient->responded_at?->format('d/m/Y H:i') ?: '-',
+                    'has_signature' => $hasSignature,
+                    'signature_label' => $this->signatureLabel($recipient->rsvp_status ?: 'pending'),
+                    'signature_url' => $hasSignature ? route('monitoring.private.signature', $recipient) : null,
+                    'checked_in' => false,
+                    'checkin_status' => 'not_applicable',
+                    'checked_in_at' => null,
+                    'checked_in_at_label' => '-',
+                    'updated_marker' => max(
+                        $recipient->responded_at?->timestamp ?? 0,
+                        $recipient->updated_at?->timestamp ?? 0,
+                    ),
+                ];
+
+                if ($withSignatureData) {
+                    $row['signature_data'] = $hasSignature ? $recipient->rsvp_signature : null;
+                }
+
+                return $row;
+            });
     }
 
     private function applyRowFilters(Collection $rows, array $filters): Collection
@@ -314,6 +339,7 @@ class MonitoringController extends Controller
             $headers[] = 'waktu_check_in';
         } else {
             array_splice($headers, 2, 0, ['keterangan']);
+            $headers[] = 'tanda_tangan_paraf';
         }
 
         return $headers;
@@ -345,7 +371,45 @@ class MonitoringController extends Controller
             $row['rsvp_label'],
             $row['responded_at_label'],
             $row['note'],
+            [
+                'type' => 'signature',
+                'label' => $row['signature_label'] ?? 'Tanda tangan',
+                'data' => $row['signature_data'] ?? null,
+            ],
         ];
+    }
+
+    private function exportCell(mixed $value): string
+    {
+        if (is_array($value) && ($value['type'] ?? null) === 'signature') {
+            if (empty($value['data'])) {
+                return '<td style="height:72px;text-align:center;vertical-align:middle;color:#6b7280">-</td>';
+            }
+
+            return '<td style="height:86px;text-align:center;vertical-align:middle">'
+                .'<div style="font-size:10px;color:#6b7280;margin-bottom:4px">'.e($value['label']).'</div>'
+                .'<img src="'.e($value['data']).'" width="180" height="58" style="display:block;margin:0 auto;border:1px solid #d1d5db;background:#fff">'
+                .'</td>';
+        }
+
+        return '<td>'.e((string) $value).'</td>';
+    }
+
+    private function signatureLabel(string $status): string
+    {
+        return $status === 'represented' ? 'Paraf perwakilan' : 'Tanda tangan';
+    }
+
+    private function decodeSignature(?string $signature): ?string
+    {
+        if (! is_string($signature) || ! str_starts_with($signature, 'data:image/png;base64,')) {
+            return null;
+        }
+
+        $payload = substr($signature, strlen('data:image/png;base64,'));
+        $decoded = base64_decode($payload, true);
+
+        return $decoded === false ? null : $decoded;
     }
 
     private function recipientAccessModes(): array

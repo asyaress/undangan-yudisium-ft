@@ -252,7 +252,7 @@ class CheckinFlowTest extends TestCase
             ->assertSee('Scan QR Check-in')
             ->assertDontSee('navbar-brand', false)
             ->assertDontSee('left-sidebar', false)
-            ->assertSee('scannerToast', false)
+            ->assertSee('assets-template/assets/vendor/toastr/toastr.js', false)
             ->assertSee(route('admin.checkin.manual.scan'), false)
             ->assertSee('vendor/html5-qrcode/html5-qrcode.min.js', false);
     }

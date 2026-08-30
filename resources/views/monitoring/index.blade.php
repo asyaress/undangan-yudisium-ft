@@ -334,6 +334,10 @@
         padding: 12px;
     }
 
+    .monitor-row.is-private {
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 0.82fr) minmax(128px, 0.7fr);
+    }
+
     .monitor-row.is-new {
         animation: rowFlash 1.6s ease-out;
     }
@@ -381,6 +385,53 @@
         color: #D9450B;
     }
 
+    .signature-preview {
+        display: grid;
+        gap: 6px;
+        justify-items: start;
+    }
+
+    .signature-preview-label {
+        color: #6b7280;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+    }
+
+    .signature-preview a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 148px;
+        height: 56px;
+        border: 1px solid #dfe3ea;
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+        text-decoration: none;
+    }
+
+    .signature-preview img {
+        display: block;
+        max-width: 136px;
+        max-height: 46px;
+        object-fit: contain;
+    }
+
+    .signature-empty {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 36px;
+        padding: 0 10px;
+        border: 1px dashed #d1d5db;
+        border-radius: 8px;
+        color: #6b7280;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
     .monitor-empty {
         padding: 28px;
         text-align: center;
@@ -391,11 +442,16 @@
         .monitor-row {
             grid-template-columns: 1fr 1fr;
         }
+
+        .monitor-row.is-private {
+            grid-template-columns: 1fr 1fr;
+        }
     }
 
     @media (max-width: 640px) {
         .monitor-stat-grid,
-        .monitor-row {
+        .monitor-row,
+        .monitor-row.is-private {
             grid-template-columns: 1fr;
         }
 
@@ -563,7 +619,7 @@
         toastr[variant](`<span>${detail}</span>`, escapeHtml(message));
       };
 
-      const rowSignature = (row) => `${row.rsvp_status}|${row.responded_at || ""}|${row.checked_in ? "1" : "0"}|${row.checked_in_at || ""}`;
+      const rowSignature = (row) => `${row.rsvp_status}|${row.responded_at || ""}|${row.checked_in ? "1" : "0"}|${row.checked_in_at || ""}|${row.has_signature ? "1" : "0"}`;
 
       const detectChanges = (nextRows) => {
         const changed = new Set();
@@ -610,28 +666,39 @@
       };
 
       const rowHtml = (row, changed) => {
-        const checkin = monitorType === "mahasiswa"
+        const secondary = monitorType === "mahasiswa"
+          ? `<div>
+              <span class="badge-soft">${escapeHtml(row.context)}</span>
+              ${row.note ? `<div class="row-muted">${escapeHtml(row.note)}</div>` : ""}
+            </div>`
+          : `<div>
+              <span class="badge-soft">${escapeHtml(row.category)}</span>
+              <div class="row-muted">${escapeHtml(row.context)}</div>
+            </div>`;
+        const lastColumn = monitorType === "mahasiswa"
           ? `<div><span class="badge-soft ${row.checked_in ? "good" : ""}">${row.checked_in ? "Sudah check-in" : "Belum check-in"}</span><div class="row-muted">${escapeHtml(row.checked_in_at_label)}</div></div>`
-          : `<div><span class="badge-soft">${escapeHtml(row.category)}</span><div class="row-muted">${escapeHtml(row.context)}</div></div>`;
+          : `<div class="signature-preview">
+              <span class="signature-preview-label">${escapeHtml(row.signature_label || "Tanda tangan")}</span>
+              ${row.has_signature && row.signature_url
+                ? `<a href="${escapeHtml(row.signature_url)}" target="_blank" rel="noopener" title="Buka ${escapeHtml(row.signature_label || "tanda tangan")}"><img src="${escapeHtml(row.signature_url)}" alt="${escapeHtml(row.signature_label || "Tanda tangan")} ${escapeHtml(row.name)}"></a>`
+                : `<span class="signature-empty">Belum ada</span>`}
+            </div>`;
         const meta = monitorType === "mahasiswa"
           ? `${row.sequence_number || "-"} / ${escapeHtml(row.nim || "-")}`
           : escapeHtml(row.context || "-");
 
         return `
-          <div class="monitor-row ${changed.has(row.id) ? "is-new" : ""}">
+          <div class="monitor-row ${monitorType !== "mahasiswa" ? "is-private" : ""} ${changed.has(row.id) ? "is-new" : ""}">
             <div class="row-name">
               <strong>${escapeHtml(row.name)}</strong>
               <small class="d-block">${meta}</small>
             </div>
-            <div>
-              <span class="badge-soft">${escapeHtml(row.context)}</span>
-              ${row.note ? `<div class="row-muted">${escapeHtml(row.note)}</div>` : ""}
-            </div>
+            ${secondary}
             <div>
               <span class="badge-soft ${statusClass(row.rsvp_status)}">${escapeHtml(row.rsvp_label)}</span>
               <div class="row-muted">${escapeHtml(row.responded_at_label)}</div>
             </div>
-            ${checkin}
+            ${lastColumn}
           </div>
         `;
       };

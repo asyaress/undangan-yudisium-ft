@@ -75,6 +75,21 @@
       text-transform: uppercase;
     }
 
+    .signature-print {
+      width: 150px;
+      height: 52px;
+      object-fit: contain;
+      border: 1px solid #d1d5db;
+      background: #fff;
+    }
+
+    .signature-label {
+      display: block;
+      color: #6b7280;
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+
     @media print {
       body {
         margin: 12mm;
@@ -124,6 +139,9 @@
           <th>Check-in</th>
         @endif
         <th>Catatan</th>
+        @if ($type !== 'mahasiswa')
+          <th>Tanda Tangan / Paraf</th>
+        @endif
       </tr>
     </thead>
     <tbody>
@@ -143,6 +161,16 @@
             <td>{{ $row['checked_in'] ? 'Sudah check-in' : 'Belum check-in' }}<br>{{ $row['checked_in_at_label'] }}</td>
           @endif
           <td>{{ $row['note'] ?: '-' }}</td>
+          @if ($type !== 'mahasiswa')
+            <td>
+              @if (! empty($row['signature_data']))
+                <span class="signature-label">{{ $row['signature_label'] }}</span>
+                <img class="signature-print" src="{{ $row['signature_data'] }}" alt="{{ $row['signature_label'] }} {{ $row['name'] }}">
+              @else
+                -
+              @endif
+            </td>
+          @endif
         </tr>
       @endforeach
     </tbody>

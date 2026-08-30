@@ -111,17 +111,10 @@
         <div id="recentMobileLogs"></div>
     </section>
 </div>
-
-<div class="scanner-toast" id="scannerToast" role="status" aria-live="polite" aria-atomic="true" hidden>
-    <span class="scanner-toast-icon" id="scannerToastIcon"><i class="fa fa-check"></i></span>
-    <div>
-        <strong id="scannerToastTitle">Berhasil</strong>
-        <span id="scannerToastMessage">Data check-in tersimpan.</span>
-    </div>
-</div>
 @endsection
 
 @push('head')
+    <link rel="stylesheet" href="{{ asset('assets-template/assets/vendor/toastr/toastr.min.css') }}">
     <style>
         * {
             box-sizing: border-box;
@@ -410,7 +403,9 @@
 
         .scan-button:disabled {
             cursor: not-allowed;
-            opacity: 0.55;
+            border: 1px solid #d0d5dd;
+            background: #f3f4f6;
+            color: #98a2b3;
         }
 
         .scan-alert {
@@ -643,76 +638,20 @@
             text-align: center;
         }
 
-        .scanner-toast {
-            position: fixed;
-            top: max(14px, env(safe-area-inset-top));
-            left: 50%;
-            z-index: 50;
-            display: grid;
-            grid-template-columns: 42px minmax(0, 1fr);
-            gap: 12px;
-            align-items: center;
-            width: min(calc(100vw - 24px), 420px);
-            padding: 12px 14px;
-            border: 1px solid #d0d5dd;
-            border-left: 5px solid #059669;
+        #toast-container.toast-top-center {
+            top: max(12px, env(safe-area-inset-top));
+            right: 12px;
+            left: 12px;
+            width: auto;
+        }
+
+        #toast-container.toast-top-center > div {
+            width: min(100%, 420px);
+            margin-right: auto;
+            margin-left: auto;
             border-radius: 12px;
-            background: #fff;
-            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
-            opacity: 0;
-            transform: translate(-50%, -16px);
-            transition: opacity 180ms ease, transform 180ms ease;
-        }
-
-        .scanner-toast.is-open {
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.16);
             opacity: 1;
-            transform: translate(-50%, 0);
-        }
-
-        .scanner-toast.is-warning {
-            border-left-color: #e85d04;
-        }
-
-        .scanner-toast.is-error {
-            border-left-color: #dc2626;
-        }
-
-        .scanner-toast-icon {
-            display: grid;
-            place-items: center;
-            width: 42px;
-            height: 42px;
-            border-radius: 999px;
-            background: #059669;
-            color: #fff;
-            font-size: 18px;
-        }
-
-        .scanner-toast.is-warning .scanner-toast-icon {
-            background: #e85d04;
-        }
-
-        .scanner-toast.is-error .scanner-toast-icon {
-            background: #dc2626;
-        }
-
-        .scanner-toast strong,
-        .scanner-toast span {
-            display: block;
-        }
-
-        .scanner-toast strong {
-            color: #111827;
-            font-size: 15px;
-            font-weight: 850;
-            line-height: 1.25;
-        }
-
-        .scanner-toast span {
-            margin-top: 2px;
-            color: #667085;
-            font-size: 13px;
-            line-height: 1.45;
         }
 
         @media (max-width: 420px) {
@@ -778,6 +717,8 @@
 @endpush
 
 @push('scripts')
+    <script src="{{ asset('assets-template/assets/vendor/jquery/jquery.min.js') }}"></script>
+    <script src="{{ asset('assets-template/assets/vendor/toastr/toastr.js') }}"></script>
     <script src="{{ asset('vendor/html5-qrcode/html5-qrcode.min.js') }}"></script>
     <script>
         (function () {
@@ -799,10 +740,6 @@
             var quickInput = document.getElementById('quickNim');
             var recentLogs = document.getElementById('recentMobileLogs');
             var lastSync = document.getElementById('lastSync');
-            var scannerToast = document.getElementById('scannerToast');
-            var scannerToastIcon = document.getElementById('scannerToastIcon');
-            var scannerToastTitle = document.getElementById('scannerToastTitle');
-            var scannerToastMessage = document.getElementById('scannerToastMessage');
             var numberFormat = new Intl.NumberFormat('id-ID');
             var livePayload = @json($livePayload);
             var scanner = null;
@@ -810,7 +747,22 @@
             var busy = false;
             var lastCode = '';
             var lastCodeAt = 0;
-            var toastTimer = null;
+
+            if (window.toastr) {
+                toastr.options = {
+                    closeButton: false,
+                    newestOnTop: true,
+                    progressBar: false,
+                    positionClass: 'toast-top-center',
+                    preventDuplicates: true,
+                    showDuration: 180,
+                    hideDuration: 180,
+                    timeOut: 3200,
+                    extendedTimeOut: 900,
+                    showMethod: 'fadeIn',
+                    hideMethod: 'fadeOut'
+                };
+            }
 
             function escapeHtml(value) {
                 return String(value || '').replace(/[&<>"']/g, function (char) {
@@ -826,27 +778,10 @@
             }
 
             function showToast(type, title, message) {
-                if (!scannerToast) return;
+                if (!window.toastr) return;
 
-                window.clearTimeout(toastTimer);
-                scannerToast.hidden = false;
-                scannerToast.className = 'scanner-toast is-' + type;
-                scannerToastIcon.innerHTML = type === 'error'
-                    ? '<i class="fa fa-times"></i>'
-                    : (type === 'warning' ? '<i class="fa fa-exclamation"></i>' : '<i class="fa fa-check"></i>');
-                scannerToastTitle.textContent = title;
-                scannerToastMessage.textContent = message;
-
-                window.requestAnimationFrame(function () {
-                    scannerToast.classList.add('is-open');
-                });
-
-                toastTimer = window.setTimeout(function () {
-                    scannerToast.classList.remove('is-open');
-                    window.setTimeout(function () {
-                        scannerToast.hidden = true;
-                    }, 220);
-                }, type === 'error' ? 4200 : 3000);
+                var variant = ['success', 'warning', 'error'].indexOf(type) >= 0 ? type : 'info';
+                toastr[variant](escapeHtml(message || ''), escapeHtml(title || 'Informasi'));
             }
 
             function setResult(type, title, message, participant) {

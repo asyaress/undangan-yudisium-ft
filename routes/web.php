@@ -42,6 +42,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::redirect('/monitoring', '/monitoring/mahasiswa')->name('monitoring.index');
     Route::get('/monitoring/mahasiswa', [MonitoringController::class, 'mahasiswa'])->name('monitoring.mahasiswa');
     Route::get('/monitoring/private', [MonitoringController::class, 'private'])->name('monitoring.private');
+    Route::get('/monitoring/private/signature/{recipient}', [MonitoringController::class, 'signature'])->name('monitoring.private.signature');
     Route::get('/monitoring/{type}/live', [MonitoringController::class, 'live'])->name('monitoring.live');
     Route::get('/monitoring/{type}/export', [MonitoringController::class, 'export'])->name('monitoring.export');
 
