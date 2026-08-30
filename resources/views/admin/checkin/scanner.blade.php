@@ -111,6 +111,14 @@
         <div id="recentMobileLogs"></div>
     </section>
 </div>
+
+<div class="scanner-toast" id="scannerToast" role="status" aria-live="polite" aria-atomic="true" hidden>
+    <span class="scanner-toast-icon" id="scannerToastIcon"><i class="fa fa-check"></i></span>
+    <div>
+        <strong id="scannerToastTitle">Berhasil</strong>
+        <span id="scannerToastMessage">Data check-in tersimpan.</span>
+    </div>
+</div>
 @endsection
 
 @push('head')
@@ -231,7 +239,7 @@
         .scanner-event select:focus,
         .quick-nim-row input:focus {
             border-color: #e85d04;
-            box-shadow: 0 0 0 4px rgba(232, 93, 4, 0.12);
+            box-shadow: 0 0 0 2px #e85d04;
             outline: 0;
         }
 
@@ -246,9 +254,9 @@
             align-items: center;
             margin-bottom: 12px;
             padding: 12px;
-            border: 1px solid #fed7aa;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
-            background: #fff7ed;
+            background: #fff;
         }
 
         .scan-guide-icon {
@@ -349,7 +357,7 @@
             inset: 18%;
             z-index: 3;
             pointer-events: none;
-            border: 2px solid rgba(232, 93, 4, 0.88);
+            border: 2px solid #e85d04;
             border-radius: 18px;
             opacity: 0;
             transition: opacity 180ms ease;
@@ -408,24 +416,27 @@
         .scan-alert {
             margin-top: 12px;
             padding: 12px 14px;
-            border: 1px solid #fed7aa;
+            border: 1px solid #e5e7eb;
+            border-left: 4px solid #e85d04;
             border-radius: 10px;
-            background: #fff7ed;
-            color: #9a3412;
+            background: #fff;
+            color: #111827;
             font-size: 14px;
             font-weight: 700;
             line-height: 1.5;
         }
 
         .scan-alert.is-success {
-            border-color: #a7f3d0;
-            background: #ecfdf5;
+            border-color: #e5e7eb;
+            border-left-color: #059669;
+            background: #fff;
             color: #047857;
         }
 
         .scan-alert.is-error {
-            border-color: #fecaca;
-            background: #fef2f2;
+            border-color: #e5e7eb;
+            border-left-color: #dc2626;
+            background: #fff;
             color: #991b1b;
         }
 
@@ -475,22 +486,20 @@
             width: 52px;
             height: 52px;
             border-radius: 999px;
-            border: 1px solid #a7f3d0;
-            background: #ecfdf5;
-            color: #047857;
+            border: 0;
+            background: #059669;
+            color: #fff;
             font-size: 24px;
         }
 
         .scan-result-card.is-warning .result-icon {
-            border-color: #fed7aa;
-            background: #fff7ed;
-            color: #c2410c;
+            background: #e85d04;
+            color: #fff;
         }
 
         .scan-result-card.is-error .result-icon {
-            border-color: #fecaca;
-            background: #fef2f2;
-            color: #b91c1c;
+            background: #dc2626;
+            color: #fff;
         }
 
         .scan-result-card h3 {
@@ -605,7 +614,8 @@
             width: 54px;
             height: 34px;
             border-radius: 999px;
-            background: #fff7ed;
+            background: #fff;
+            border: 1px solid #e5e7eb;
             color: #e85d04;
             font-size: 12px;
             font-weight: 850;
@@ -631,6 +641,78 @@
             color: #667085;
             font-size: 14px;
             text-align: center;
+        }
+
+        .scanner-toast {
+            position: fixed;
+            top: max(14px, env(safe-area-inset-top));
+            left: 50%;
+            z-index: 50;
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+            width: min(calc(100vw - 24px), 420px);
+            padding: 12px 14px;
+            border: 1px solid #d0d5dd;
+            border-left: 5px solid #059669;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+            opacity: 0;
+            transform: translate(-50%, -16px);
+            transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        .scanner-toast.is-open {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        .scanner-toast.is-warning {
+            border-left-color: #e85d04;
+        }
+
+        .scanner-toast.is-error {
+            border-left-color: #dc2626;
+        }
+
+        .scanner-toast-icon {
+            display: grid;
+            place-items: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 999px;
+            background: #059669;
+            color: #fff;
+            font-size: 18px;
+        }
+
+        .scanner-toast.is-warning .scanner-toast-icon {
+            background: #e85d04;
+        }
+
+        .scanner-toast.is-error .scanner-toast-icon {
+            background: #dc2626;
+        }
+
+        .scanner-toast strong,
+        .scanner-toast span {
+            display: block;
+        }
+
+        .scanner-toast strong {
+            color: #111827;
+            font-size: 15px;
+            font-weight: 850;
+            line-height: 1.25;
+        }
+
+        .scanner-toast span {
+            margin-top: 2px;
+            color: #667085;
+            font-size: 13px;
+            line-height: 1.45;
         }
 
         @media (max-width: 420px) {
@@ -717,6 +799,10 @@
             var quickInput = document.getElementById('quickNim');
             var recentLogs = document.getElementById('recentMobileLogs');
             var lastSync = document.getElementById('lastSync');
+            var scannerToast = document.getElementById('scannerToast');
+            var scannerToastIcon = document.getElementById('scannerToastIcon');
+            var scannerToastTitle = document.getElementById('scannerToastTitle');
+            var scannerToastMessage = document.getElementById('scannerToastMessage');
             var numberFormat = new Intl.NumberFormat('id-ID');
             var livePayload = @json($livePayload);
             var scanner = null;
@@ -724,6 +810,7 @@
             var busy = false;
             var lastCode = '';
             var lastCodeAt = 0;
+            var toastTimer = null;
 
             function escapeHtml(value) {
                 return String(value || '').replace(/[&<>"']/g, function (char) {
@@ -736,6 +823,30 @@
 
                 statusBox.className = 'scan-alert' + (type ? ' is-' + type : '');
                 statusBox.textContent = message;
+            }
+
+            function showToast(type, title, message) {
+                if (!scannerToast) return;
+
+                window.clearTimeout(toastTimer);
+                scannerToast.hidden = false;
+                scannerToast.className = 'scanner-toast is-' + type;
+                scannerToastIcon.innerHTML = type === 'error'
+                    ? '<i class="fa fa-times"></i>'
+                    : (type === 'warning' ? '<i class="fa fa-exclamation"></i>' : '<i class="fa fa-check"></i>');
+                scannerToastTitle.textContent = title;
+                scannerToastMessage.textContent = message;
+
+                window.requestAnimationFrame(function () {
+                    scannerToast.classList.add('is-open');
+                });
+
+                toastTimer = window.setTimeout(function () {
+                    scannerToast.classList.remove('is-open');
+                    window.setTimeout(function () {
+                        scannerToast.hidden = true;
+                    }, 220);
+                }, type === 'error' ? 4200 : 3000);
             }
 
             function setResult(type, title, message, participant) {
@@ -823,6 +934,11 @@
                     if (data.ok) {
                         var isDuplicate = data.status === 'duplicate';
                         setStatus(isDuplicate ? '' : 'success', data.message);
+                        showToast(
+                            isDuplicate ? 'warning' : 'success',
+                            isDuplicate ? 'Sudah check-in' : 'Check-in berhasil',
+                            data.participant ? data.participant.name : data.message
+                        );
                         setResult(
                             isDuplicate ? 'warning' : 'success',
                             isDuplicate ? 'Sudah check-in' : 'Check-in berhasil',
@@ -833,6 +949,7 @@
                         if (navigator.vibrate) navigator.vibrate(isDuplicate ? [80, 60, 80] : 100);
                     } else {
                         setStatus('error', data.message || 'Data tidak ditemukan.');
+                        showToast('error', 'Data tidak ditemukan', data.message || 'QR atau NIM tidak cocok.');
                         setResult('error', 'Data tidak ditemukan', data.message || 'QR atau NIM tidak cocok.', null);
                         if (navigator.vibrate) navigator.vibrate([60, 50, 60]);
                     }
@@ -841,6 +958,7 @@
                     if (quickInput) quickInput.value = '';
                 } catch (error) {
                     setStatus('error', error.message || 'Check-in gagal diproses.');
+                    showToast('error', 'Check-in gagal', error.message || 'Coba ulangi sekali lagi.');
                     setResult('error', 'Check-in gagal', error.message || 'Coba ulangi sekali lagi.', null);
                 } finally {
                     busy = false;
@@ -873,6 +991,7 @@
 
                 if (!window.Html5Qrcode) {
                     setStatus('error', 'Scanner kamera tidak tersedia. Gunakan input NIM manual.');
+                    showToast('error', 'Kamera tidak tersedia', 'Gunakan input NIM manual untuk check-in.');
                     return;
                 }
 
@@ -910,6 +1029,7 @@
                     setStatus('success', 'Kamera aktif. Posisikan QR di tengah layar.');
                 } catch (error) {
                     setStatus('error', 'Kamera belum bisa dibuka. Izinkan akses kamera atau gunakan input NIM manual.');
+                    showToast('error', 'Kamera belum terbuka', 'Izinkan akses kamera atau gunakan input NIM manual.');
                     startButton.disabled = false;
                     stopButton.disabled = true;
                 }
