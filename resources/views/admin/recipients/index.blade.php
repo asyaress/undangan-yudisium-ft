@@ -1,7 +1,7 @@
 @extends('layouts.dashboard')
 
 @section('title', $category->title)
-@section('breadcrumb_parent', 'Undangan Private')
+@section('breadcrumb_parent', 'Penerima Undangan')
 @section('breadcrumb_active', ($selectedPeriod?->name ?? 'Event').' - '.$category->title)
 
 @section('page_actions')
@@ -98,9 +98,11 @@
     <div class="col-lg-2 col-md-4">
         <div class="card number-chart"><div class="card-body py-3"><span class="text-uppercase">Berhalangan</span><h4 class="mb-0 mt-2">{{ number_format($stats['declined']) }}</h4></div></div>
     </div>
+    @if ($category->usesPrivateAccess())
     <div class="col-lg-2 col-md-4">
         <div class="card number-chart"><div class="card-body py-3"><span class="text-uppercase">Diwakilkan</span><h4 class="mb-0 mt-2">{{ number_format($stats['represented']) }}</h4></div></div>
     </div>
+    @endif
     <div class="col-lg-2 col-md-4">
         <div class="card number-chart"><div class="card-body py-3"><span class="text-uppercase">Belum Konfirmasi</span><h4 class="mb-0 mt-2">{{ number_format($stats['pending']) }}</h4></div></div>
     </div>
@@ -142,7 +144,9 @@
                             <option value="">Semua</option>
                             <option value="attending" @selected($rsvpFilter === 'attending')>Hadir</option>
                             <option value="declined" @selected($rsvpFilter === 'declined')>Berhalangan</option>
+                            @if ($category->usesPrivateAccess())
                             <option value="represented" @selected($rsvpFilter === 'represented')>Diwakilkan</option>
+                            @endif
                             <option value="pending" @selected($rsvpFilter === 'pending')>Belum</option>
                         </select>
                     </div>
@@ -163,7 +167,7 @@
                             <div class="form-group mb-0">
                                 <label>Import Excel</label>
                                 <input class="form-control" name="file" type="file" accept=".xlsx" required>
-                                <small class="text-muted">Gunakan template Excel penerima private, lalu import file .xlsx.</small>
+                                <small class="text-muted">Gunakan template Excel kategori ini, lalu import file .xlsx.</small>
                             </div>
                             <button class="btn btn-outline-primary" type="submit">
                                 <i class="fa fa-upload"></i> Import Penerima
@@ -185,7 +189,7 @@
             </div>
             <div class="card-body py-3">
                 <div class="form-group">
-                    <label>Link Massal</label>
+                    <label>{{ $category->usesPrivateAccess() ? 'Link Massal' : 'Link Kategori' }}</label>
                     <div class="input-group">
                         <textarea id="bulkRecipientLinks" class="form-control" rows="3" readonly>{{ $bulkLinks }}</textarea>
                         <div class="input-group-append">
@@ -215,6 +219,10 @@
                             <tr>
                                 <th style="width:42px;"><input type="checkbox" data-check-all="recipient"></th>
                                 <th>Penerima</th>
+                                @if ($category->usesNipAccess())
+                                    <th>NIP</th>
+                                @endif
+                                <th>Jabatan</th>
                                 <th>Catatan</th>
                                 <th>Konfirmasi</th>
                                 <th>Link</th>
@@ -225,7 +233,8 @@
                             @foreach ($recipients as $recipient)
                                 @php
                                     $linkId = 'link-recipient-'.$recipient->id;
-                                    $inviteUrl = route('home', ['event' => $recipient->period?->slug, 'to' => $category->slug, 'ref' => $recipient->token]);
+                                    $inviteUrl = route('home', ['event' => $recipient->period?->slug, 'to' => $category->slug])
+                                        .($category->usesPrivateAccess() ? '&ref='.$recipient->token : '');
                                 @endphp
                                 <tr>
                                     <td><input type="checkbox" name="ids[]" value="{{ $recipient->id }}" form="recipientBulkDeleteForm" data-check-item="recipient"></td>
@@ -233,6 +242,10 @@
                                         <div class="recipient-title">{{ $recipient->name }}</div>
                                         <div class="recipient-muted">{{ $recipient->invitation_name }}</div>
                                     </td>
+                                    @if ($category->usesNipAccess())
+                                        <td>{{ $recipient->identifier ?: '-' }}</td>
+                                    @endif
+                                    <td>{{ $recipient->position ?: '-' }}</td>
                                     <td>{{ $recipient->context_note ?: '-' }}</td>
                                     <td>
                                         @if ($recipient->rsvp_status === 'attending')<span class="badge badge-success">Hadir</span>

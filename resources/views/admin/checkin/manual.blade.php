@@ -4,6 +4,12 @@
 @section('breadcrumb_parent', 'Operasional')
 @section('breadcrumb_active', 'Check-in Peserta')
 
+@section('page_actions')
+    <a class="btn btn-primary" href="{{ route('admin.checkin.scanner.index', ['period_id' => $period?->id]) }}">
+        <i class="fa fa-qrcode"></i> Scan via HP
+    </a>
+@endsection
+
 @section('content')
 @include('layouts.partials.block-header')
 

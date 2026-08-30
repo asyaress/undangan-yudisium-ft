@@ -193,7 +193,7 @@ class MonitoringController extends Controller
 
         return InvitationCategory::query()
             ->when($filters['period_id'], fn ($query) => $query->where('period_id', $filters['period_id']))
-            ->where('access_mode', InvitationCategory::ACCESS_PRIVATE)
+            ->whereIn('access_mode', $this->recipientAccessModes())
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
@@ -204,7 +204,7 @@ class MonitoringController extends Controller
         return InvitationRecipient::query()
             ->with(['period', 'category'])
             ->when($filters['period_id'], fn ($query) => $query->where('period_id', $filters['period_id']))
-            ->whereHas('category', fn ($query) => $query->where('access_mode', InvitationCategory::ACCESS_PRIVATE))
+            ->whereHas('category', fn ($query) => $query->whereIn('access_mode', $this->recipientAccessModes()))
             ->orderBy('name')
             ->get()
             ->map(fn (InvitationRecipient $recipient) => [
@@ -345,6 +345,15 @@ class MonitoringController extends Controller
             $row['rsvp_label'],
             $row['responded_at_label'],
             $row['note'],
+        ];
+    }
+
+    private function recipientAccessModes(): array
+    {
+        return [
+            InvitationCategory::ACCESS_PRIVATE,
+            InvitationCategory::ACCESS_NIP,
+            InvitationCategory::ACCESS_NAME,
         ];
     }
 }

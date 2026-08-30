@@ -1524,11 +1524,34 @@
       margin-top: 14px;
     }
 
+    [data-delegate-fields],
+    [data-conditional-note-field],
+    [data-signature-field] {
+      overflow: hidden;
+      opacity: 0;
+      max-height: 0;
+      transform: translateY(-6px);
+      transition: opacity 220ms var(--ease-out), max-height 260ms var(--ease-out), transform 260ms var(--ease-out);
+    }
+
+    [data-conditional-note-field].is-open {
+      opacity: 1;
+      max-height: 190px;
+      transform: translateY(0);
+    }
+
+    [data-delegate-fields].is-open {
+      opacity: 1;
+      max-height: 170px;
+      transform: translateY(0);
+    }
+
     .invite-form .field[hidden],
     #participantNoteField[hidden],
     #recipientNoteField[hidden],
     [data-delegate-fields][hidden],
-    [data-conditional-note-field][hidden] {
+    [data-conditional-note-field][hidden],
+    [data-signature-field][hidden] {
       display: none !important;
     }
 
@@ -1758,6 +1781,88 @@
       resize: vertical;
     }
 
+    .signature-field.is-open {
+      opacity: 1;
+      max-height: 360px;
+      transform: translateY(0);
+    }
+
+    .signature-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .signature-clear {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--primary-deep);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 800;
+      padding: 6px 12px;
+      transition: border-color 180ms var(--ease-out), color 180ms var(--ease-out);
+    }
+
+    .signature-clear:hover,
+    .signature-clear:focus-visible {
+      border-color: rgba(245, 83, 13, 0.42);
+      color: var(--primary);
+      outline: 0;
+    }
+
+    .signature-pad {
+      position: relative;
+      min-height: 176px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .signature-pad canvas {
+      display: block;
+      width: 100%;
+      height: 176px;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .signature-placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: rgba(102, 112, 133, 0.52);
+      font-size: 0.9rem;
+      pointer-events: none;
+      transition: opacity 180ms var(--ease-out);
+    }
+
+    .signature-field.is-drawn .signature-placeholder {
+      opacity: 0;
+    }
+
+    .signature-help,
+    .signature-error {
+      margin: 0;
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    .signature-help {
+      color: var(--muted);
+    }
+
+    .signature-error {
+      color: var(--bad);
+      font-weight: 800;
+    }
+
     .field input:focus,
     .field textarea:focus {
       outline: none;
@@ -1807,6 +1912,12 @@
       .radio-option {
         min-height: 54px;
         padding: 10px 8px;
+      }
+
+      .signature-pad,
+      .signature-pad canvas {
+        height: 154px;
+        min-height: 154px;
       }
 
       .archive-grid,

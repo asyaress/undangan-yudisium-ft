@@ -3,11 +3,13 @@
     $pageTitle = $isEdit ? 'Edit Penerima' : 'Tambah Penerima';
     $recipientName = old('name', $recipient->name);
     $salutation = old('salutation', $recipient->salutation);
+    $identifier = old('identifier', $recipient->identifier);
+    $position = old('position', $recipient->position);
     $contextNote = old('context_note', $recipient->context_note);
     $invitationName = trim(collect([$salutation, $recipientName])->filter()->implode(' ')) ?: 'Nama Penerima';
     $tokenPreview = $recipient->token ?: 'TOKEN_OTOMATIS';
     $invitationUrl = $selectedPeriod
-        ? route('home', ['event' => $selectedPeriod->slug, 'to' => $category->slug, 'ref' => $tokenPreview])
+        ? route('home', ['event' => $selectedPeriod->slug, 'to' => $category->slug]).($category->usesPrivateAccess() ? '&ref='.$tokenPreview : '')
         : '#';
     $eventPreviewData = [
         'date' => $selectedPeriod?->event_date?->format('Y-m-d'),
@@ -29,7 +31,7 @@
 @extends('layouts.dashboard')
 
 @section('title', $pageTitle)
-@section('breadcrumb_parent', 'Undangan Private')
+@section('breadcrumb_parent', 'Penerima Undangan')
 @section('breadcrumb_active', $category->title.' - '.$pageTitle)
 
 @section('page_actions')
@@ -278,13 +280,27 @@
                         <input class="form-control" value="{{ $selectedPeriod?->name }}" readonly>
                     </div>
                     <div class="form-group">
-                        <label>Kategori Private</label>
+                        <label>Kategori Undangan</label>
                         <input class="form-control" value="{{ $category->title }}" readonly>
-                        <span class="context-hint">Link personal memakai token otomatis. Setelah nama penerima tersimpan, link final langsung muncul di bawah.</span>
+                        <span class="context-hint">
+                            @if ($category->usesPrivateAccess())
+                                Link personal memakai token otomatis. Setelah nama penerima tersimpan, link final langsung muncul di bawah.
+                            @elseif ($category->usesNipAccess())
+                                Link kategori dibagikan ke penerima. Penerima membuka undangan dengan NIP yang terdaftar.
+                            @else
+                                Link kategori dibagikan ke penerima. Penerima membuka undangan dengan nama yang terdaftar.
+                            @endif
+                        </span>
                     </div>
 
                     <h3 class="section-title">Data Penerima</h3>
                     <div class="row">
+                        @if ($category->usesNipAccess())
+                        <div class="col-md-12 form-group">
+                            <label>NIP</label>
+                            <input class="form-control" name="identifier" value="{{ $identifier }}" placeholder="NIP penerima" inputmode="numeric" required>
+                        </div>
+                        @endif
                         <div class="col-md-4 form-group">
                             <label>Sapaan</label>
                             <select class="form-control" name="salutation">
@@ -298,6 +314,10 @@
                             <label>Nama</label>
                             <input class="form-control" name="name" value="{{ $recipientName }}" placeholder="Nama penerima" required>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Jabatan</label>
+                        <input class="form-control" name="position" value="{{ $position }}" placeholder="Contoh: Tenaga Kependidikan / Satpam / Cleaning Service">
                     </div>
                     <div class="form-group">
                         <label>Catatan</label>
@@ -594,7 +614,7 @@
                     '__INVITATION_TEXT__': escapeHtml(categoryData.invitation_text || 'Dengan hormat, kami mengundang Bapak/Ibu/Saudara(i) untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.'),
                     '__CLOSING_TEXT__': escapeHtml(categoryData.closing_text || 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.'),
                     '__INVITATION_NAME__': escapeHtml(name),
-                    '__CONTEXT_NOTE__': escapeHtml(field('context_note') || 'Tidak ada catatan khusus.'),
+                    '__CONTEXT_NOTE__': escapeHtml(field('position') || field('context_note') || 'Tidak ada catatan khusus.'),
                     '__EVENT_DATE_LABEL__': escapeHtml(formatDate(eventData.date, 'long')),
                     '__EVENT_DATE_SHORT__': escapeHtml(formatDate(eventData.date, 'short')),
                     '__EVENT_TIME__': escapeHtml(eventData.time || '09.00 s/d Selesai'),

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\InvitationCategory;
 use RuntimeException;
 use ZipArchive;
 
@@ -16,11 +17,17 @@ class ExcelTemplateExporter
         );
     }
 
-    public function privateRecipientTemplate(string $categoryTitle): string
+    public function privateRecipientTemplate(InvitationCategory $category): string
     {
+        $headers = match (true) {
+            $category->usesNipAccess() => ['sapaan', 'nama', 'nip', 'jabatan', 'catatan'],
+            $category->usesNameAccess() => ['nama', 'jabatan', 'catatan'],
+            default => ['sapaan', 'nama', 'jabatan', 'catatan'],
+        };
+
         return $this->buildWorkbook(
-            'Template '.$categoryTitle,
-            ['sapaan', 'nama', 'catatan']
+            'Template '.$category->title,
+            $headers
         );
     }
 

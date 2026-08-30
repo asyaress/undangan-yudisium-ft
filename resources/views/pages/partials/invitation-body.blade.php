@@ -1,4 +1,12 @@
-﻿        @unless ($isStudentCategory && ! $participant)
+        @php
+          $isRecipientLookupCategory = $isRecipientLookupCategory ?? false;
+          $lookupNeedsRecipient = $isRecipientLookupCategory && ! $recipient;
+          $recipientLookupLabel = $selectedCategory?->usesNipAccess() ? 'NIP' : 'Nama';
+          $recipientLookupPlaceholder = $selectedCategory?->usesNipAccess() ? 'Contoh: 198001012010011001' : 'Tulis nama lengkap';
+          $recipientAllowsRepresentative = $selectedCategory?->usesPrivateAccess() ?? false;
+          $recipientUsesSignature = ($selectedCategory?->usesPrivateAccess() ?? false) || ($selectedCategory?->usesNipAccess() ?? false);
+        @endphp
+        @unless (($isStudentCategory && ! $participant) || $lookupNeedsRecipient)
         <div class="invitation-details-section card--full">
         <div class="details-divider" id="invitationDetails">Detail Undangan</div>
 
@@ -112,7 +120,7 @@
         </div>
         @endunless
 
-        @if ($requiresRsvp || ($isStudentCategory && ! $participant))
+        @if ($requiresRsvp || ($isStudentCategory && ! $participant) || $lookupNeedsRecipient)
         <article class="panel rsvp-card card--full watermark-card {{ $rsvpStatus === 'pending' && ! $rsvpClosed ? 'is-pulse' : '' }}" id="rsvpSection">
           <div class="rsvp-card-head">
             <div class="rsvp-badge">✓</div>
@@ -121,6 +129,8 @@
               <p>
                 @if ($isStudentCategory)
                   Masukkan NIM terlebih dahulu. Setelah cocok dengan data panitia, undangan dan formulir konfirmasi akan terbuka.
+                @elseif ($lookupNeedsRecipient)
+                  Masukkan {{ $recipientLookupLabel }} Anda. Setelah cocok dengan data panitia, undangan dan formulir konfirmasi akan terbuka.
                 @else
                   Silakan mengisi konfirmasi kehadiran melalui formulir berikut.
                 @endif
@@ -131,13 +141,13 @@
             </div>
           </div>
 
-          @if ($isStudentCategory)
+          @if ($isStudentCategory || $lookupNeedsRecipient)
             <div class="rsvp-steps">
-              <div class="rsvp-step {{ ! $participant ? 'is-active' : '' }}">
+              <div class="rsvp-step {{ ($isStudentCategory && ! $participant) || $lookupNeedsRecipient ? 'is-active' : '' }}">
                 <span class="rsvp-step-num">1</span>
-                <span>Masukkan NIM</span>
+                <span>Masukkan {{ $isStudentCategory ? 'NIM' : $recipientLookupLabel }}</span>
               </div>
-              <div class="rsvp-step {{ $participant ? 'is-active' : '' }}">
+              <div class="rsvp-step {{ ($isStudentCategory && $participant) || ($isRecipientLookupCategory && $recipient) ? 'is-active' : '' }}">
                 <span class="rsvp-step-num">2</span>
                 <span>Buka undangan dan isi konfirmasi</span>
               </div>
@@ -185,6 +195,44 @@
                 <p class="field-warning" id="nimFilterNotice" hidden></p>
                 @error('nim')
                   <p class="field-error" id="nimError">{{ $message }}</p>
+                @enderror
+              </div>
+              <div class="action-row">
+                <button class="btn" type="submit">Buka Undangan</button>
+              </div>
+            </form>
+          @endif
+
+          @if ($lookupNeedsRecipient)
+            <form method="post" action="{{ route('undangan.verify-recipient') }}" class="invite-form" id="recipientLookupForm">
+              @csrf
+              <input type="hidden" name="event_id" value="{{ $activeEvent->id }}">
+              <input type="hidden" name="category_slug" value="{{ $selectedCategory?->slug }}">
+              <div class="field">
+                <label for="lookup_value">{{ $recipientLookupLabel }} Penerima</label>
+                <input
+                  id="lookup_value"
+                  name="lookup_value"
+                  type="text"
+                  value="{{ old('lookup_value') }}"
+                  placeholder="{{ $recipientLookupPlaceholder }}"
+                  @if ($selectedCategory?->usesNipAccess())
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    maxlength="30"
+                    data-nim-only
+                    data-number-label="NIP"
+                    data-warning-target="recipientLookupNotice"
+                  @else
+                    maxlength="255"
+                  @endif
+                  autocomplete="off"
+                  aria-describedby="recipientLookupHelp recipientLookupNotice{{ $errors->has('lookup_value') ? ' recipientLookupError' : '' }}"
+                  @error('lookup_value') aria-invalid="true" class="is-invalid" @enderror>
+                <p class="form-hint" id="recipientLookupHelp">Masukkan {{ strtolower($recipientLookupLabel) }} Anda.</p>
+                <p class="field-warning" id="recipientLookupNotice" hidden></p>
+                @error('lookup_value')
+                  <p class="field-error" id="recipientLookupError">{{ $message }}</p>
                 @enderror
               </div>
               <div class="action-row">
@@ -307,14 +355,14 @@
               <input type="hidden" name="token" value="{{ $recipient->token }}">
               <div class="pill-row">
                 <span class="pill">{{ $recipient->invitation_name }}</span>
-                <span class="pill">{{ $recipient->category?->title }}</span>
+                <span class="pill">{{ $recipient->position ?: ($recipient->context_note ?: $recipient->category?->title) }}</span>
                 <span class="pill {{ $rsvpStatus === 'attending' ? 'good' : ($rsvpStatus === 'declined' ? 'bad' : 'warn') }}">
                   {{ match ($rsvpStatus) { 'attending' => 'Sudah konfirmasi hadir', 'declined' => 'Berhalangan hadir', 'represented' => 'Diwakilkan', default => 'Belum konfirmasi' } }}
                 </span>
               </div>
               <div class="field">
                 <label>Status Kehadiran</label>
-                <div class="radio-grid">
+                <div class="radio-grid {{ $recipientAllowsRepresentative ? '' : 'two-options' }}">
                   <label class="radio-option">
                     <input type="radio" name="attendance" value="attending" @checked(old('attendance', $recipient->rsvp_status) === 'attending') required>
                     <span class="radio-mark" aria-hidden="true"></span>
@@ -325,11 +373,13 @@
                     <span class="radio-mark" aria-hidden="true"></span>
                     <span>Berhalangan Hadir</span>
                   </label>
-                  <label class="radio-option">
-                    <input type="radio" name="attendance" value="represented" @checked(old('attendance', $recipient->rsvp_status) === 'represented') required>
-                    <span class="radio-mark" aria-hidden="true"></span>
-                    <span>Diwakilkan</span>
-                  </label>
+                  @if ($recipientAllowsRepresentative)
+                    <label class="radio-option">
+                      <input type="radio" name="attendance" value="represented" @checked(old('attendance', $recipient->rsvp_status) === 'represented') required>
+                      <span class="radio-mark" aria-hidden="true"></span>
+                      <span>Diwakilkan</span>
+                    </label>
+                  @endif
                 </div>
               </div>
               <div class="field" id="recipientNoteField" data-conditional-note-field hidden>
@@ -341,12 +391,28 @@
                 <input name="representative_name" value="{{ old('representative_name') }}" placeholder="Nama lengkap perwakilan">
                 <input name="representative_position" value="{{ old('representative_position') }}" placeholder="Jabatan perwakilan">
               </div>
+              @if ($recipientUsesSignature)
+                <div class="field signature-field" id="recipientSignatureField" data-signature-field hidden>
+                  <div class="signature-head">
+                    <label for="recipientSignatureCanvas" data-signature-label>Tanda tangan</label>
+                    <button type="button" class="signature-clear" data-signature-clear>Hapus</button>
+                  </div>
+                  <div class="signature-pad">
+                    <canvas id="recipientSignatureCanvas" data-signature-canvas aria-label="Area tanda tangan"></canvas>
+                    <span class="signature-placeholder" data-signature-placeholder>Tulis di sini</span>
+                  </div>
+                  <input type="hidden" name="rsvp_signature" data-signature-input>
+                  <input type="hidden" name="signature_drawn" value="0" data-signature-drawn>
+                  <p class="signature-help" data-signature-help>Bubuhkan tanda tangan sebagai konfirmasi kehadiran.</p>
+                  <p class="signature-error" data-signature-error hidden>Mohon isi tanda tangan terlebih dahulu.</p>
+                </div>
+              @endif
               <div class="action-row">
                 <button class="btn" type="submit" @disabled($rsvpClosed)>Simpan Konfirmasi</button>
               </div>
             </form>
             @endif
-          @elseif (! $isStudentCategory)
+          @elseif (! $isStudentCategory && ! $lookupNeedsRecipient)
             <div class="empty-note">
               Link undangan belum valid. Pastikan Anda membuka link resmi yang dibagikan panitia.
             </div>

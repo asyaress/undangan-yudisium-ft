@@ -219,7 +219,8 @@
 
       const showNumericWarning = () => {
         if (!warning) return;
-        warning.textContent = "Masukkan NIM dalam format angka.";
+        const label = input.dataset.numberLabel || "NIM";
+        warning.textContent = `Masukkan ${label} dalam format angka.`;
         warning.hidden = false;
         window.clearTimeout(warningTimer);
         warningTimer = window.setTimeout(() => {
@@ -256,15 +257,231 @@
       const noteLabel = document.getElementById(labelId);
       const delegateField = document.getElementById(delegateFieldId);
       const delegateInputs = delegateField ? Array.from(delegateField.querySelectorAll("input")) : [];
+      const signatureField = form?.querySelector("[data-signature-field]");
+      const signatureCanvas = signatureField?.querySelector("[data-signature-canvas]");
+      const signatureInput = signatureField?.querySelector("[data-signature-input]");
+      const signatureDrawnInput = signatureField?.querySelector("[data-signature-drawn]");
+      const signatureLabel = signatureField?.querySelector("[data-signature-label]");
+      const signatureHelp = signatureField?.querySelector("[data-signature-help]");
+      const signatureError = signatureField?.querySelector("[data-signature-error]");
+      const signatureClear = signatureField?.querySelector("[data-signature-clear]");
+      let signatureContext = null;
+      let signatureMode = "";
+      let hasSignature = false;
+      let isDrawing = false;
+      let lastPoint = null;
       if (!form || !noteField || !note || !noteLabel) return;
+
+      const showConditionalField = (field) => {
+        if (!field) return;
+
+        window.clearTimeout(field._inviteHideTimer);
+        field.hidden = false;
+        field.style.display = "";
+
+        window.requestAnimationFrame(() => {
+          field.classList.add("is-open");
+        });
+      };
+
+      const hideConditionalField = (field) => {
+        if (!field) return;
+
+        window.clearTimeout(field._inviteHideTimer);
+        field.classList.remove("is-open");
+        field._inviteHideTimer = window.setTimeout(() => {
+          if (!field.classList.contains("is-open")) {
+            field.hidden = true;
+            field.style.display = "none";
+          }
+        }, 270);
+      };
+
+      const clearSignature = () => {
+        if (!signatureCanvas || !signatureContext || !signatureInput || !signatureDrawnInput || !signatureField) return;
+
+        signatureContext.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+        signatureInput.value = "";
+        signatureDrawnInput.value = "0";
+        hasSignature = false;
+        lastPoint = null;
+        signatureField.classList.remove("is-drawn");
+
+        if (signatureError) {
+          signatureError.hidden = true;
+        }
+      };
+
+      const resizeSignatureCanvas = () => {
+        if (!signatureCanvas) return;
+
+        const rect = signatureCanvas.getBoundingClientRect();
+        const ratio = window.devicePixelRatio || 1;
+        const width = Math.max(Math.round(rect.width), 320);
+        const height = Math.max(Math.round(rect.height), 150);
+        const previousSignature = hasSignature && signatureInput?.value ? signatureInput.value : "";
+
+        signatureCanvas.width = Math.round(width * ratio);
+        signatureCanvas.height = Math.round(height * ratio);
+        signatureContext = signatureCanvas.getContext("2d");
+        signatureContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+        signatureContext.lineCap = "round";
+        signatureContext.lineJoin = "round";
+        signatureContext.lineWidth = 2.4;
+        signatureContext.strokeStyle = "#111827";
+
+        if (previousSignature) {
+          const image = new Image();
+          image.onload = () => {
+            signatureContext.drawImage(image, 0, 0, width, height);
+          };
+          image.src = previousSignature;
+        }
+      };
+
+      const showSignatureField = (mode) => {
+        if (!signatureField) return;
+
+        if (mode !== signatureMode) {
+          clearSignature();
+          signatureMode = mode;
+        }
+
+        if (signatureLabel) {
+          signatureLabel.textContent = mode === "represented" ? "Paraf perwakilan" : "Tanda tangan";
+        }
+
+        if (signatureHelp) {
+          signatureHelp.textContent = mode === "represented"
+            ? "Perwakilan membubuhkan paraf sebagai bukti konfirmasi."
+            : "Bubuhkan tanda tangan sebagai konfirmasi kehadiran.";
+        }
+
+        if (signatureError) {
+          signatureError.textContent = mode === "represented"
+            ? "Mohon isi paraf perwakilan terlebih dahulu."
+            : "Mohon isi tanda tangan terlebih dahulu.";
+          signatureError.hidden = true;
+        }
+
+        showConditionalField(signatureField);
+        window.requestAnimationFrame(() => {
+          resizeSignatureCanvas();
+        });
+      };
+
+      const hideSignatureField = () => {
+        if (!signatureField) return;
+
+        clearSignature();
+        signatureMode = "";
+        hideConditionalField(signatureField);
+      };
+
+      const getSignaturePoint = (event) => {
+        if (!signatureCanvas) return null;
+
+        const source = event.touches?.[0] || event.changedTouches?.[0] || event;
+        const rect = signatureCanvas.getBoundingClientRect();
+
+        return {
+          x: source.clientX - rect.left,
+          y: source.clientY - rect.top,
+        };
+      };
+
+      const updateSignatureValue = () => {
+        if (!signatureCanvas || !signatureInput || !signatureDrawnInput || !signatureField) return;
+
+        signatureInput.value = signatureCanvas.toDataURL("image/png");
+        signatureDrawnInput.value = "1";
+        signatureField.classList.add("is-drawn");
+        hasSignature = true;
+
+        if (signatureError) {
+          signatureError.hidden = true;
+        }
+      };
+
+      const startSignature = (event) => {
+        if (!signatureCanvas || !signatureContext || signatureField?.hidden) return;
+
+        event.preventDefault();
+        const point = getSignaturePoint(event);
+        if (!point) return;
+
+        isDrawing = true;
+        lastPoint = point;
+        signatureContext.beginPath();
+        signatureContext.moveTo(point.x, point.y);
+
+        if (event.pointerId !== undefined && signatureCanvas.setPointerCapture) {
+          signatureCanvas.setPointerCapture(event.pointerId);
+        }
+      };
+
+      const moveSignature = (event) => {
+        if (!isDrawing || !signatureContext) return;
+
+        event.preventDefault();
+        const point = getSignaturePoint(event);
+        if (!point) return;
+
+        signatureContext.lineTo(point.x, point.y);
+        signatureContext.stroke();
+        lastPoint = point;
+        updateSignatureValue();
+      };
+
+      const endSignature = (event) => {
+        if (!isDrawing || !signatureContext) return;
+
+        event.preventDefault();
+
+        if (!hasSignature && lastPoint) {
+          signatureContext.beginPath();
+          signatureContext.arc(lastPoint.x, lastPoint.y, 1.7, 0, Math.PI * 2);
+          signatureContext.fillStyle = "#111827";
+          signatureContext.fill();
+          updateSignatureValue();
+        }
+
+        isDrawing = false;
+        signatureContext.closePath();
+      };
+
+      if (signatureCanvas) {
+        resizeSignatureCanvas();
+        signatureClear?.addEventListener("click", clearSignature);
+        window.addEventListener("resize", resizeSignatureCanvas);
+
+        if (window.PointerEvent) {
+          signatureCanvas.addEventListener("pointerdown", startSignature);
+          signatureCanvas.addEventListener("pointermove", moveSignature);
+          window.addEventListener("pointerup", endSignature);
+          window.addEventListener("pointercancel", endSignature);
+        } else {
+          signatureCanvas.addEventListener("mousedown", startSignature);
+          signatureCanvas.addEventListener("mousemove", moveSignature);
+          window.addEventListener("mouseup", endSignature);
+          signatureCanvas.addEventListener("touchstart", startSignature, { passive: false });
+          signatureCanvas.addEventListener("touchmove", moveSignature, { passive: false });
+          window.addEventListener("touchend", endSignature, { passive: false });
+          window.addEventListener("touchcancel", endSignature, { passive: false });
+        }
+      }
 
       const attendanceInputs = Array.from(form.querySelectorAll("input[name='attendance']"));
       const syncNoteHint = () => {
         const selectedAttendance = attendanceInputs.find((input) => input.checked)?.value;
         const isDeclined = selectedAttendance === "declined";
         const isRepresented = selectedAttendance === "represented";
-        noteField.hidden = !isDeclined;
-        noteField.style.display = isDeclined ? "" : "none";
+        const needsSignature = selectedAttendance === "attending" || isRepresented;
+        if (isDeclined) {
+          showConditionalField(noteField);
+        } else {
+          hideConditionalField(noteField);
+        }
         note.required = isDeclined;
         noteLabel.textContent = "Catatan berhalangan";
         note.placeholder = note.dataset.declinedPlaceholder || "Tuliskan alasan berhalangan hadir secara singkat.";
@@ -274,8 +491,12 @@
         }
 
         if (delegateField) {
-          delegateField.hidden = !isRepresented;
-          delegateField.style.display = isRepresented ? "" : "none";
+          if (isRepresented) {
+            showConditionalField(delegateField);
+          } else {
+            hideConditionalField(delegateField);
+          }
+
           delegateInputs.forEach((input) => {
             input.required = isRepresented;
 
@@ -284,10 +505,33 @@
             }
           });
         }
+
+        if (needsSignature) {
+          showSignatureField(selectedAttendance);
+        } else {
+          hideSignatureField();
+        }
       };
 
       attendanceInputs.forEach((input) => {
         input.addEventListener("change", syncNoteHint);
+      });
+      form.addEventListener("submit", (event) => {
+        const selectedAttendance = attendanceInputs.find((input) => input.checked)?.value;
+        const needsSignature = selectedAttendance === "attending" || selectedAttendance === "represented";
+
+        if (!needsSignature || !signatureField || !signatureInput) return;
+
+        if (!hasSignature || signatureInput.value === "") {
+          event.preventDefault();
+          showSignatureField(selectedAttendance);
+
+          if (signatureError) {
+            signatureError.hidden = false;
+          }
+
+          signatureField.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
       });
       syncNoteHint();
     };

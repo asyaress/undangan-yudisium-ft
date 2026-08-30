@@ -42,7 +42,7 @@ class AdminInvitationPlaygroundController extends Controller
         $recipient = null;
         $participant = null;
 
-        if ($category->usesPrivateAccess()) {
+        if ($category->usesRecipientDataAccess()) {
             $recipient = InvitationRecipient::query()
                 ->where('period_id', $period->id)
                 ->where('category_id', $category->id)
@@ -62,13 +62,13 @@ class AdminInvitationPlaygroundController extends Controller
 
         }
 
-        $recipientOptions = $category->usesPrivateAccess()
+        $recipientOptions = $category->usesRecipientDataAccess()
             ? InvitationRecipient::query()
                 ->where('period_id', $period->id)
                 ->where('category_id', $category->id)
                 ->orderBy('name')
                 ->limit(60)
-                ->get(['id', 'name', 'salutation'])
+                ->get(['id', 'name', 'salutation', 'identifier', 'position'])
             : collect();
 
         $participantOptions = $category->usesNimAccess()

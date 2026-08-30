@@ -251,6 +251,16 @@ class CheckinController extends Controller
         ]);
     }
 
+    public function scannerIndex(Request $request): View
+    {
+        $event = $this->adminEvent($request);
+
+        return view('admin.checkin.scanner', [
+            'period' => $event,
+            'livePayload' => $this->manualLivePayload($event),
+        ]);
+    }
+
     public function manualSearch(Request $request): View
     {
         $data = $request->validate([

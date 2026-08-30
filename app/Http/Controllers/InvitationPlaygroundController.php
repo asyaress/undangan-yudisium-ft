@@ -41,7 +41,7 @@ class InvitationPlaygroundController extends Controller
         $participant = null;
         $ref = $request->string('ref')->toString();
 
-        if ($category->usesPrivateAccess()) {
+        if ($category->usesRecipientDataAccess()) {
             abort_if($ref === '', 404);
 
             $recipient = InvitationRecipient::query()

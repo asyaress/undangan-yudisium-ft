@@ -13,6 +13,14 @@
           return 'Kategori private. Undangan perlu link personal dengan token unik dari dashboard admin.';
       }
 
+      if ($category->usesNipAccess()) {
+          return 'Kategori semi private. Penerima akan diminta memasukkan NIP sebelum undangan dan konfirmasi terbuka.';
+      }
+
+      if ($category->usesNameAccess()) {
+          return 'Kategori semi private. Penerima akan diminta memasukkan nama sebelum undangan dan konfirmasi terbuka.';
+      }
+
       return 'Kategori umum. Undangan bisa dibuka langsung tanpa NIM, token, atau verifikasi tambahan.';
   };
 @endphp
@@ -30,6 +38,7 @@
           @php
             $categoryUrl = route('home', ['event' => $activeEvent?->slug, 'to' => $category->slug]);
             $displayUrl = $categoryUrl.($category->usesPrivateAccess() ? '&ref=TOKEN_UNIK' : '');
+            $isGuardedCategory = $category->usesPrivateAccess() || $category->usesRecipientLookupAccess();
           @endphp
           <option
             value="{{ $category->slug }}"
@@ -41,7 +50,7 @@
             data-url="{{ $categoryUrl }}"
             data-display-url="{{ $displayUrl }}"
             data-link-label="{{ $category->usesPrivateAccess() ? 'Format link private' : 'Link undangan' }}"
-            data-access-kind="{{ $category->usesPrivateAccess() ? 'private' : 'open' }}"
+            data-access-kind="{{ $isGuardedCategory ? 'private' : 'open' }}"
             data-rsvp-enabled="{{ $category->requiresRsvp() ? '1' : '0' }}">
             {{ $category->title }}
           </option>
@@ -57,7 +66,7 @@
       <p data-category-recipient>{{ $firstCategory?->recipient_label }}</p>
     </div>
     <div class="pill-row">
-      <span class="pill {{ $firstCategory?->usesPrivateAccess() ? 'warn' : 'good' }}" data-category-access>
+      <span class="pill {{ ($firstCategory?->usesPrivateAccess() || $firstCategory?->usesRecipientLookupAccess()) ? 'warn' : 'good' }}" data-category-access>
         {{ $firstCategory?->access_mode_label }}
       </span>
       <span class="pill {{ $firstCategory?->requiresRsvp() ? 'warn' : '' }}" data-category-rsvp>

@@ -141,7 +141,7 @@ class AdminController extends Controller
             'cover_text' => ['required', 'string'],
             'invitation_text' => ['required', 'string'],
             'closing_text' => ['nullable', 'string'],
-            'access_mode' => ['required', 'in:nim,private,public'],
+            'access_mode' => ['required', 'in:nim,private,nip,name,public'],
             'rsvp_enabled' => ['nullable', 'boolean'],
         ]);
 

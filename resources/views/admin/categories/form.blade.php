@@ -300,6 +300,8 @@
                                 <select class="form-control" name="access_mode" required>
                                     <option value="nim" @selected(old('access_mode', $category->access_mode) === 'nim')>Verifikasi NIM mahasiswa</option>
                                     <option value="private" @selected(old('access_mode', $category->access_mode ?: 'private') === 'private')>Private dengan token</option>
+                                    <option value="nip" @selected(old('access_mode', $category->access_mode) === 'nip')>Semi private - cari NIP</option>
+                                    <option value="name" @selected(old('access_mode', $category->access_mode) === 'name')>Semi private - cari nama</option>
                                     <option value="public" @selected(old('access_mode', $category->access_mode) === 'public')>Umum tanpa token</option>
                                 </select>
                             </div>
@@ -630,6 +632,14 @@
                     return 'Kategori umum bisa dibuka langsung tanpa token atau verifikasi.';
                 }
 
+                if (mode === 'nip') {
+                    return 'Penerima membuka undangan dengan memasukkan NIP yang terdaftar.';
+                }
+
+                if (mode === 'name') {
+                    return 'Penerima membuka undangan dengan memasukkan nama yang terdaftar.';
+                }
+
                 return 'Kategori private memakai link personal dengan token unik dari dashboard admin.';
             }
 
@@ -640,6 +650,14 @@
 
                 if (mode === 'private') {
                     return 'Penerima private dapat mengisi konfirmasi melalui link personal yang dibagikan panitia.';
+                }
+
+                if (mode === 'nip') {
+                    return 'Masukkan NIP terlebih dahulu. Setelah cocok dengan data panitia, undangan dan formulir konfirmasi akan terbuka.';
+                }
+
+                if (mode === 'name') {
+                    return 'Masukkan nama terlebih dahulu. Setelah cocok dengan data panitia, undangan dan formulir konfirmasi akan terbuka.';
                 }
 
                 return 'Tamu dapat mengisi konfirmasi kehadiran langsung dari halaman undangan.';

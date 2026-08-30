@@ -13,6 +13,10 @@ class InvitationCategory extends Model
 
     public const ACCESS_PRIVATE = 'private';
 
+    public const ACCESS_NIP = 'nip';
+
+    public const ACCESS_NAME = 'name';
+
     public const ACCESS_PUBLIC = 'public';
 
     protected $fillable = [
@@ -55,6 +59,26 @@ class InvitationCategory extends Model
         return $this->access_mode === self::ACCESS_PRIVATE;
     }
 
+    public function usesNipAccess(): bool
+    {
+        return $this->access_mode === self::ACCESS_NIP;
+    }
+
+    public function usesNameAccess(): bool
+    {
+        return $this->access_mode === self::ACCESS_NAME;
+    }
+
+    public function usesRecipientLookupAccess(): bool
+    {
+        return in_array($this->access_mode, [self::ACCESS_NIP, self::ACCESS_NAME], true);
+    }
+
+    public function usesRecipientDataAccess(): bool
+    {
+        return $this->usesPrivateAccess() || $this->usesRecipientLookupAccess();
+    }
+
     public function usesPublicAccess(): bool
     {
         return $this->access_mode === self::ACCESS_PUBLIC;
@@ -69,6 +93,8 @@ class InvitationCategory extends Model
     {
         return match ($this->access_mode) {
             self::ACCESS_NIM => 'Verifikasi NIM',
+            self::ACCESS_NIP => 'Verifikasi NIP',
+            self::ACCESS_NAME => 'Verifikasi Nama',
             self::ACCESS_PUBLIC => 'Umum (tanpa token)',
             default => 'Private (token)',
         };

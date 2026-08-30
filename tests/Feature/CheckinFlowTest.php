@@ -241,6 +241,21 @@ class CheckinFlowTest extends TestCase
         ]);
     }
 
+    public function test_admin_mobile_scanner_page_loads(): void
+    {
+        [$event] = $this->eventAndParticipant();
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
+            ->get(route('admin.checkin.scanner.index', ['period_id' => $event->id]))
+            ->assertOk()
+            ->assertSee('Scan QR Check-in')
+            ->assertDontSee('navbar-brand', false)
+            ->assertDontSee('left-sidebar', false)
+            ->assertSee(route('admin.checkin.manual.scan'), false)
+            ->assertSee('vendor/html5-qrcode/html5-qrcode.min.js', false);
+    }
+
     public function test_admin_scanner_accepts_manual_nim_and_live_payload(): void
     {
         [$event, $participant] = $this->eventAndParticipant();

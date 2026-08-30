@@ -66,6 +66,8 @@ class InvitationResponseController extends Controller
             'note' => ['nullable', 'required_if:attendance,declined', 'string', 'max:1000'],
             'representative_name' => ['nullable', 'required_if:attendance,represented', 'string', 'max:255'],
             'representative_position' => ['nullable', 'required_if:attendance,represented', 'string', 'max:255'],
+            'rsvp_signature' => ['nullable', 'string', 'max:600000'],
+            'signature_drawn' => ['nullable', 'string', 'max:5'],
             'return_to' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -86,7 +88,32 @@ class InvitationResponseController extends Controller
             return back()->with('error', 'Konfirmasi kehadiran ditutup. Batas konfirmasi sudah berakhir.');
         }
 
-        $recipient->submitRsvp($data['attendance'], $this->rsvpNote($data));
+        $allowsRepresentative = $recipient->category?->usesPrivateAccess() ?? false;
+        if ($data['attendance'] === 'represented' && ! $allowsRepresentative) {
+            return back()
+                ->withInput($request->except(['rsvp_signature', 'signature_drawn']))
+                ->with('error', 'Konfirmasi diwakilkan tidak tersedia untuk kategori undangan ini.');
+        }
+
+        $requiresSignature = match (true) {
+            $recipient->category?->usesPrivateAccess() => in_array($data['attendance'], ['attending', 'represented'], true),
+            $recipient->category?->usesNipAccess() => $data['attendance'] === 'attending',
+            default => false,
+        };
+
+        if ($requiresSignature && (! $request->boolean('signature_drawn') || ! $this->validSignatureData($data['rsvp_signature'] ?? null))) {
+            $signatureLabel = $data['attendance'] === 'represented' ? 'paraf perwakilan' : 'tanda tangan';
+
+            return back()
+                ->withInput($request->except(['rsvp_signature', 'signature_drawn']))
+                ->with('error', 'Mohon isi '.$signatureLabel.' terlebih dahulu.');
+        }
+
+        $recipient->submitRsvp(
+            $data['attendance'],
+            $this->rsvpNote($data),
+            $requiresSignature ? $data['rsvp_signature'] : null
+        );
 
         $defaultReturnTo = route('home', [
                 'event' => $recipient->period?->slug,
@@ -122,6 +149,22 @@ class InvitationResponseController extends Controller
             'represented' => 'Konfirmasi diwakilkan berhasil disimpan.',
             default => 'Konfirmasi berhalangan hadir berhasil disimpan.',
         };
+    }
+
+    private function validSignatureData(?string $signature): bool
+    {
+        if (! is_string($signature) || ! str_starts_with($signature, 'data:image/png;base64,')) {
+            return false;
+        }
+
+        $payload = substr($signature, strlen('data:image/png;base64,'));
+        if ($payload === '') {
+            return false;
+        }
+
+        $decoded = base64_decode($payload, true);
+
+        return is_string($decoded) && strlen($decoded) > 100;
     }
 
     private function safeReturnTo(Request $request, string $fallback): string

@@ -9,6 +9,7 @@
     $isStudentCategory = $isStudentCategory ?? false;
     $isPublicCategory = $isPublicCategory ?? false;
     $isPrivateCategory = $isPrivateCategory ?? false;
+    $isRecipientLookupCategory = $isRecipientLookupCategory ?? false;
     $requiresRsvp = $requiresRsvp ?? false;
     $rsvpClosed = $rsvpClosed ?? false;
     $rsvpDeadlineLabel = $rsvpDeadlineLabel ?? null;
@@ -57,6 +58,11 @@
             $rsvpTutorialSteps = [
                 'Masukkan NIM yang terdaftar. Setelah cocok, undangan dan formulir konfirmasi akan terbuka.',
             ];
+        } elseif ($isRecipientLookupCategory && ! $recipient) {
+            $lookupLabel = $selectedCategory?->usesNipAccess() ? 'NIP' : 'nama';
+            $rsvpTutorialSteps = [
+                'Masukkan '.$lookupLabel.' yang terdaftar. Setelah cocok, undangan dan formulir konfirmasi akan terbuka.',
+            ];
         } else {
             $rsvpTutorialSteps = [
                 'Undangan resmi telah dibuka untuk '.$tutorialGreeting.'.',
@@ -77,6 +83,7 @@
         || session()->has('error')
         || $errors->any()
         || old('nim')
+        || old('lookup_value')
     );
     if ($autoOpenInvitation) {
         $bodyClasses = trim($bodyClasses.' opened invitation-postback');

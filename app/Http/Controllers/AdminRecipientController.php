@@ -38,6 +38,8 @@ class AdminRecipientController extends Controller
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('name', 'like', "%{$search}%")
+                        ->orWhere('identifier', 'like', "%{$search}%")
+                        ->orWhere('position', 'like', "%{$search}%")
                         ->orWhere('context_note', 'like', "%{$search}%");
                 });
             })
@@ -67,18 +69,20 @@ class AdminRecipientController extends Controller
         ];
 
         $selectedPeriod = YudisiumPeriod::query()->find($periodId);
-        $bulkLinks = InvitationRecipient::query()
-            ->with('period')
-            ->where('category_id', $category->id)
-            ->when($periodId, fn ($query) => $query->where('period_id', $periodId))
-            ->orderBy('name')
-            ->get()
-            ->map(fn (InvitationRecipient $recipient) => $recipient->invitation_name.' - '.route('home', [
-                'event' => $recipient->period?->slug,
-                'to' => $category->slug,
-                'ref' => $recipient->token,
-            ]))
-            ->implode("\n");
+        $bulkLinks = $category->usesPrivateAccess()
+            ? InvitationRecipient::query()
+                ->with('period')
+                ->where('category_id', $category->id)
+                ->when($periodId, fn ($query) => $query->where('period_id', $periodId))
+                ->orderBy('name')
+                ->get()
+                ->map(fn (InvitationRecipient $recipient) => $recipient->invitation_name.' - '.route('home', [
+                    'event' => $recipient->period?->slug,
+                    'to' => $category->slug,
+                    'ref' => $recipient->token,
+                ]))
+                ->implode("\n")
+            : ($selectedPeriod ? route('home', ['event' => $selectedPeriod->slug, 'to' => $category->slug]) : '');
 
         return view('admin.recipients.index', compact('category', 'recipients', 'periodId', 'search', 'rsvpFilter', 'stats', 'selectedPeriod', 'bulkLinks'));
     }
@@ -95,6 +99,8 @@ class AdminRecipientController extends Controller
             'category_id' => $category->id,
             'salutation' => null,
             'name' => '',
+            'identifier' => '',
+            'position' => '',
             'context_note' => '',
         ]);
 
@@ -134,7 +140,7 @@ class AdminRecipientController extends Controller
         $category = $this->resolvePrivateCategory($categorySlug, $periodId);
 
         return response()
-            ->download($exporter->privateRecipientTemplate($category->title), 'template-import-'.$category->slug.'.xlsx', [
+            ->download($exporter->privateRecipientTemplate($category), 'template-import-'.$category->slug.'.xlsx', [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             ])
             ->deleteFileAfterSend(true);
@@ -163,6 +169,8 @@ class AdminRecipientController extends Controller
         $saved = 0;
         $failed = 0;
         $errors = [];
+        $seenIdentifiers = [];
+        $seenNames = [];
 
         foreach ($rows as $index => $row) {
             $rowNumber = $index + 2;
@@ -173,6 +181,56 @@ class AdminRecipientController extends Controller
                 $errors[] = 'Baris '.$rowNumber.': nama penerima wajib diisi.';
 
                 continue;
+            }
+
+            if ($category->usesNipAccess() && ! $record['identifier']) {
+                $failed++;
+                $errors[] = 'Baris '.$rowNumber.': NIP wajib diisi untuk kategori ini.';
+
+                continue;
+            }
+
+            if ($category->usesNipAccess()) {
+                if (! preg_match('/^[0-9]+$/', $record['identifier'])) {
+                    $failed++;
+                    $errors[] = 'Baris '.$rowNumber.': NIP harus diisi dengan angka.';
+
+                    continue;
+                }
+
+                $identifierExists = InvitationRecipient::query()
+                    ->where('period_id', $data['period_id'])
+                    ->where('category_id', $category->id)
+                    ->where('identifier', $record['identifier'])
+                    ->exists();
+
+                if (isset($seenIdentifiers[$record['identifier']]) || $identifierExists) {
+                    $failed++;
+                    $errors[] = 'Baris '.$rowNumber.': NIP sudah terdaftar pada kategori ini.';
+
+                    continue;
+                }
+
+                $seenIdentifiers[$record['identifier']] = true;
+            }
+
+            if ($category->usesNameAccess()) {
+                $nameKey = Str::lower($record['name']);
+
+                $nameExists = InvitationRecipient::query()
+                    ->where('period_id', $data['period_id'])
+                    ->where('category_id', $category->id)
+                    ->whereRaw('LOWER(name) = ?', [$nameKey])
+                    ->exists();
+
+                if (isset($seenNames[$nameKey]) || $nameExists) {
+                    $failed++;
+                    $errors[] = 'Baris '.$rowNumber.': nama sudah terdaftar pada kategori ini.';
+
+                    continue;
+                }
+
+                $seenNames[$nameKey] = true;
             }
 
             InvitationRecipient::create([
@@ -211,7 +269,7 @@ class AdminRecipientController extends Controller
 
     public function update(Request $request, InvitationRecipient $recipient): RedirectResponse|JsonResponse
     {
-        $data = $this->validateData($request);
+        $data = $this->validateData($request, $recipient);
 
         $recipient->update($data);
 
@@ -270,20 +328,22 @@ class AdminRecipientController extends Controller
             ->with('success', "{$deleted} penerima berhasil dihapus.");
     }
 
-    private function validateData(Request $request): array
+    private function validateData(Request $request, ?InvitationRecipient $recipient = null): array
     {
         $data = $request->validate([
             'period_id' => ['required', 'integer', 'exists:yudisium_periods,id'],
             'category_id' => ['required', 'integer', 'exists:invitation_categories,id'],
             'salutation' => ['nullable', Rule::in($this->salutationOptions())],
             'name' => ['required', 'string', 'max:255'],
+            'identifier' => ['nullable', 'string', 'max:50'],
+            'position' => ['nullable', 'string', 'max:255'],
             'context_note' => ['nullable', 'string', 'max:255'],
         ]);
 
         $category = InvitationCategory::query()->find($data['category_id']);
-        if (! $category?->usesPrivateAccess()) {
+        if (! $category?->usesRecipientDataAccess()) {
             throw ValidationException::withMessages([
-                'category_id' => 'Penerima hanya dapat ditambahkan pada kategori dengan mode akses private.',
+                'category_id' => 'Penerima hanya dapat ditambahkan pada kategori private atau semi private.',
             ]);
         }
 
@@ -293,8 +353,39 @@ class AdminRecipientController extends Controller
             ]);
         }
 
+        if ($category->usesNipAccess() && trim((string) ($data['identifier'] ?? '')) === '') {
+            throw ValidationException::withMessages([
+                'identifier' => 'NIP wajib diisi untuk kategori ini.',
+            ]);
+        }
+
+        if ($category->usesNipAccess() && ! preg_match('/^[0-9]+$/', trim((string) $data['identifier']))) {
+            throw ValidationException::withMessages([
+                'identifier' => 'NIP harus diisi dengan angka.',
+            ]);
+        }
+
+        $duplicateQuery = InvitationRecipient::query()
+            ->where('period_id', $data['period_id'])
+            ->where('category_id', $category->id)
+            ->when($recipient?->exists, fn ($query) => $query->whereKeyNot($recipient->id));
+
+        if ($category->usesNipAccess() && (clone $duplicateQuery)->where('identifier', trim((string) $data['identifier']))->exists()) {
+            throw ValidationException::withMessages([
+                'identifier' => 'NIP ini sudah terdaftar pada kategori yang sama.',
+            ]);
+        }
+
+        if ($category->usesNameAccess() && (clone $duplicateQuery)->whereRaw('LOWER(name) = ?', [Str::lower($data['name'])])->exists()) {
+            throw ValidationException::withMessages([
+                'name' => 'Nama ini sudah terdaftar pada kategori yang sama.',
+            ]);
+        }
+
         $data['display_name'] = $data['name'];
         $data['salutation'] = $data['salutation'] ?: null;
+        $data['identifier'] = trim((string) ($data['identifier'] ?? '')) ?: null;
+        $data['position'] = trim((string) ($data['position'] ?? '')) ?: null;
         $data['email'] = null;
         $data['phone'] = null;
 
@@ -307,8 +398,7 @@ class AdminRecipientController extends Controller
         $url = route('home', [
             'event' => $recipient->period?->slug,
             'to' => $recipient->category?->slug,
-            'ref' => $recipient->token,
-        ]);
+        ]).($recipient->category?->usesPrivateAccess() ? '&ref='.$recipient->token : '');
 
         return [
             'id' => $recipient->id,
@@ -342,7 +432,11 @@ class AdminRecipientController extends Controller
         return InvitationCategory::query()
             ->where('period_id', $periodId)
             ->where('slug', $categorySlug)
-            ->where('access_mode', InvitationCategory::ACCESS_PRIVATE)
+            ->whereIn('access_mode', [
+                InvitationCategory::ACCESS_PRIVATE,
+                InvitationCategory::ACCESS_NIP,
+                InvitationCategory::ACCESS_NAME,
+            ])
             ->firstOrFail();
     }
 
@@ -362,6 +456,8 @@ class AdminRecipientController extends Controller
             'display_name' => $name,
             'email' => null,
             'phone' => null,
+            'identifier' => $this->pick($combined, ['nip', 'identifier', 'kode', 'nomor_induk']),
+            'position' => $this->pick($combined, ['jabatan', 'position']),
             'context_note' => $this->pick($combined, ['catatan', 'context_note', 'keterangan']),
         ];
     }

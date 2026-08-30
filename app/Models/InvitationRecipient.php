@@ -20,9 +20,12 @@ class InvitationRecipient extends Model
         'email',
         'phone',
         'context_note',
+        'identifier',
+        'position',
         'token',
         'rsvp_status',
         'rsvp_note',
+        'rsvp_signature',
         'responded_at',
     ];
 
@@ -61,11 +64,12 @@ class InvitationRecipient extends Model
         return $this->belongsTo(YudisiumParticipant::class, 'participant_id');
     }
 
-    public function submitRsvp(string $status, ?string $note = null): void
+    public function submitRsvp(string $status, ?string $note = null, ?string $signature = null): void
     {
         $this->forceFill([
             'rsvp_status' => $status,
             'rsvp_note' => $note,
+            'rsvp_signature' => $signature,
             'responded_at' => now(),
         ])->save();
     }

@@ -19,6 +19,7 @@ Route::get('/', [InvitationController::class, 'show'])->name('home');
 Route::get('/undangan/{slug?}', [InvitationController::class, 'show'])->name('undangan.show');
 Route::get('/playground-undangan', InvitationPlaygroundController::class)->name('undangan.playground');
 Route::post('/undangan/verify-nim', [InvitationController::class, 'verifyNim'])->name('undangan.verify-nim');
+Route::post('/undangan/verify-recipient', [InvitationController::class, 'verifyRecipient'])->name('undangan.verify-recipient');
 Route::post('/undangan/confirm-student', [InvitationController::class, 'confirmStudent'])->name('undangan.confirm-student');
 Route::post('/undangan/clear-student', [InvitationController::class, 'clearStudent'])->name('undangan.clear-student');
 
@@ -55,6 +56,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/study-programs', [AdminStudyProgramController::class, 'index'])->name('study-programs.index');
         Route::post('/study-programs', [AdminStudyProgramController::class, 'store'])->name('study-programs.store');
         Route::put('/study-programs/{studyProgram}', [AdminStudyProgramController::class, 'update'])->name('study-programs.update');
+        Route::get('/checkin/scanner', [CheckinController::class, 'scannerIndex'])->name('checkin.scanner.index');
         Route::get('/checkin/manual', [CheckinController::class, 'manualIndex'])->name('checkin.manual.index');
         Route::post('/checkin/manual/search', [CheckinController::class, 'manualSearch'])->name('checkin.manual.search');
         Route::post('/checkin/manual/confirm', [CheckinController::class, 'manualConfirm'])->name('checkin.manual.confirm');

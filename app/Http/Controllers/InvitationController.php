@@ -8,6 +8,7 @@ use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class InvitationController extends Controller
@@ -72,6 +73,11 @@ class InvitationController extends Controller
                 if (! $recipient) {
                     abort(404);
                 }
+            } elseif ($selectedCategory->usesRecipientLookupAccess()) {
+                [$recipient, $lookupError] = $this->resolveRecipient($request, $event, $selectedCategory);
+                if ($request->filled('ref') && ! $recipient) {
+                    abort(404);
+                }
             }
         }
 
@@ -80,8 +86,11 @@ class InvitationController extends Controller
             $studentIdentityConfirmed = true;
         }
 
-        $shouldUseFormalInvitation = ! $selectedCategory->usesNimAccess()
-            || ($participant && $studentIdentityConfirmed);
+        $shouldUseFormalInvitation = match (true) {
+            $selectedCategory->usesNimAccess() => (bool) ($participant && $studentIdentityConfirmed),
+            $selectedCategory->usesRecipientLookupAccess() => (bool) $recipient,
+            default => true,
+        };
 
         if ($shouldUseFormalInvitation) {
             return $this->formalInvitationView(
@@ -107,6 +116,7 @@ class InvitationController extends Controller
             'isStudentCategory' => $selectedCategory?->usesNimAccess() ?? false,
             'isPublicCategory' => $selectedCategory?->usesPublicAccess() ?? false,
             'isPrivateCategory' => $selectedCategory?->usesPrivateAccess() ?? false,
+            'isRecipientLookupCategory' => $selectedCategory?->usesRecipientLookupAccess() ?? false,
             'requiresRsvp' => $selectedCategory?->requiresRsvp() ?? false,
             'rsvpClosed' => $event->rsvpIsClosed(),
             'rsvpDeadlineLabel' => $event->rsvp_deadline?->locale('id')->translatedFormat('d F Y H:i'),
@@ -159,6 +169,85 @@ class InvitationController extends Controller
                 'ref' => $participant->invitation_token,
             ]))
             ->with('success', 'NIM berhasil diverifikasi. Silakan lanjut membaca undangan dan isi konfirmasi kehadiran.');
+    }
+
+    public function verifyRecipient(Request $request): RedirectResponse
+    {
+        $request->merge([
+            'lookup_value' => preg_replace('/\s+/', ' ', trim((string) $request->input('lookup_value', ''))),
+        ]);
+
+        $data = $request->validate([
+            'event_id' => ['required', 'integer', 'exists:yudisium_periods,id'],
+            'category_slug' => ['required', 'string'],
+            'lookup_value' => ['required', 'string', 'max:255'],
+        ], [
+            'lookup_value.required' => 'Data pencarian wajib diisi terlebih dahulu.',
+            'lookup_value.max' => 'Data pencarian terlalu panjang.',
+        ]);
+
+        $event = YudisiumPeriod::query()
+            ->whereKey($data['event_id'])
+            ->where('is_published', true)
+            ->firstOrFail();
+        $category = InvitationCategory::query()
+            ->where('period_id', $event->id)
+            ->where('slug', $data['category_slug'])
+            ->whereIn('access_mode', [InvitationCategory::ACCESS_NIP, InvitationCategory::ACCESS_NAME])
+            ->firstOrFail();
+
+        $lookupValue = trim($data['lookup_value']);
+
+        if ($category->usesNipAccess() && ! preg_match('/^[0-9]+$/', $lookupValue)) {
+            return redirect()
+                ->to($this->invitationUrl($event, $category))
+                ->withInput(['lookup_value' => $lookupValue])
+                ->with('error', 'Masukkan NIP dengan angka.');
+        }
+
+        $query = InvitationRecipient::query()
+            ->where('period_id', $event->id)
+            ->where('category_id', $category->id);
+
+        if ($category->usesNipAccess()) {
+            $query->where('identifier', $lookupValue);
+        } else {
+            $normalizedName = Str::lower($lookupValue);
+            $query->where(function ($inner) use ($normalizedName) {
+                $inner->whereRaw('LOWER(name) = ?', [$normalizedName])
+                    ->orWhereRaw('LOWER(display_name) = ?', [$normalizedName]);
+            });
+        }
+
+        $matches = $query->limit(2)->get();
+
+        if ($matches->isEmpty()) {
+            $label = $category->usesNipAccess() ? 'NIP' : 'nama';
+
+            return redirect()
+                ->to($this->invitationUrl($event, $category))
+                ->withInput(['lookup_value' => $lookupValue])
+                ->with('error', ucfirst($label).' tidak ditemukan. Periksa kembali data sesuai yang terdaftar di panitia.');
+        }
+
+        if ($matches->count() > 1) {
+            $label = $category->usesNipAccess() ? 'NIP' : 'Nama';
+
+            return redirect()
+                ->to($this->invitationUrl($event, $category))
+                ->withInput(['lookup_value' => $lookupValue])
+                ->with('error', $label.' ditemukan lebih dari satu. Silakan hubungi panitia untuk membuka undangan yang sesuai.');
+        }
+
+        $recipient = $matches->first();
+
+        return redirect()
+            ->to(route('home', [
+                'event' => $event->slug,
+                'to' => $category->slug,
+                'ref' => $recipient->token,
+            ]))
+            ->with('success', 'Data berhasil diverifikasi. Silakan lanjut membaca undangan dan isi konfirmasi kehadiran.');
     }
 
     public function confirmStudent(Request $request): RedirectResponse
@@ -261,6 +350,10 @@ class InvitationController extends Controller
     private function resolveRecipient(Request $request, YudisiumPeriod $event, InvitationCategory $category): array
     {
         if (! $request->filled('ref')) {
+            if ($category->usesRecipientLookupAccess()) {
+                return [null, null];
+            }
+
             return [null, 'Undangan kategori ini bersifat private. Gunakan link personal yang dibagikan panitia.'];
         }
 

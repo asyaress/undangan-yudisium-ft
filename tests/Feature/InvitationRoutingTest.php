@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\InvitationCategory;
+use App\Models\InvitationRecipient;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -151,6 +152,225 @@ class InvitationRoutingTest extends TestCase
             ->assertDontSee('Unduh kartu konfirmasi ini', false);
     }
 
+    public function test_private_recipient_attending_requires_signature(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true);
+        $recipient = $this->recipient($period, $category);
+
+        $this->post(route('rsvp.recipient'), [
+            'recipient_id' => $recipient->id,
+            'token' => $recipient->token,
+            'attendance' => 'attending',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Mohon isi tanda tangan terlebih dahulu.');
+
+        $this->assertSame('pending', $recipient->fresh()->rsvp_status);
+    }
+
+    public function test_private_recipient_attending_saves_signature(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true);
+        $recipient = $this->recipient($period, $category);
+        $signature = $this->signatureData();
+
+        $this->post(route('rsvp.recipient'), [
+            'recipient_id' => $recipient->id,
+            'token' => $recipient->token,
+            'attendance' => 'attending',
+            'rsvp_signature' => $signature,
+            'signature_drawn' => '1',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Konfirmasi hadir berhasil disimpan.');
+
+        $recipient->refresh();
+        $this->assertSame('attending', $recipient->rsvp_status);
+        $this->assertSame($signature, $recipient->rsvp_signature);
+    }
+
+    public function test_private_recipient_represented_requires_representative_paraf(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true);
+        $recipient = $this->recipient($period, $category);
+
+        $this->post(route('rsvp.recipient'), [
+            'recipient_id' => $recipient->id,
+            'token' => $recipient->token,
+            'attendance' => 'represented',
+            'representative_name' => 'Perwakilan Test',
+            'representative_position' => 'Sekretaris',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Mohon isi paraf perwakilan terlebih dahulu.');
+
+        $this->assertSame('pending', $recipient->fresh()->rsvp_status);
+    }
+
+    public function test_private_recipient_represented_saves_representative_paraf(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true);
+        $recipient = $this->recipient($period, $category);
+        $signature = $this->signatureData();
+
+        $this->post(route('rsvp.recipient'), [
+            'recipient_id' => $recipient->id,
+            'token' => $recipient->token,
+            'attendance' => 'represented',
+            'representative_name' => 'Perwakilan Test',
+            'representative_position' => 'Sekretaris',
+            'rsvp_signature' => $signature,
+            'signature_drawn' => '1',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Konfirmasi diwakilkan berhasil disimpan.');
+
+        $recipient->refresh();
+        $this->assertSame('represented', $recipient->rsvp_status);
+        $this->assertSame("Diwakilkan oleh: Perwakilan Test\nJabatan: Sekretaris", $recipient->rsvp_note);
+        $this->assertSame($signature, $recipient->rsvp_signature);
+    }
+
+    public function test_private_recipient_declined_clears_signature(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true);
+        $recipient = $this->recipient($period, $category);
+        $recipient->forceFill(['rsvp_signature' => $this->signatureData()])->save();
+
+        $this->post(route('rsvp.recipient'), [
+            'recipient_id' => $recipient->id,
+            'token' => $recipient->token,
+            'attendance' => 'declined',
+            'note' => 'Ada agenda lain.',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Konfirmasi berhalangan hadir berhasil disimpan.');
+
+        $recipient->refresh();
+        $this->assertSame('declined', $recipient->rsvp_status);
+        $this->assertNull($recipient->rsvp_signature);
+    }
+
+    public function test_nip_lookup_opens_recipient_invitation(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'tendik', InvitationCategory::ACCESS_NIP, true);
+        $recipient = $this->recipient($period, $category, ['identifier' => '198001012010011001', 'position' => 'Tenaga Kependidikan']);
+
+        $this->post(route('undangan.verify-recipient'), [
+            'event_id' => $period->id,
+            'category_slug' => $category->slug,
+            'lookup_value' => $recipient->identifier,
+        ])
+            ->assertRedirect(route('home', [
+                'event' => $period->slug,
+                'to' => $category->slug,
+                'ref' => $recipient->token,
+            ]));
+    }
+
+    public function test_nip_category_without_ref_shows_lookup_gate(): void
+    {
+        $period = $this->period();
+        $this->category($period, 'tendik', InvitationCategory::ACCESS_NIP, true);
+
+        $this->get('/?event='.$period->slug.'&to=tendik')
+            ->assertOk()
+            ->assertSee('NIP Penerima')
+            ->assertDontSee('formalPreviewStage')
+            ->assertDontSee('Link undangan belum valid');
+    }
+
+    public function test_nip_lookup_rejects_non_numeric_value(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'tendik', InvitationCategory::ACCESS_NIP, true);
+
+        $this->post(route('undangan.verify-recipient'), [
+            'event_id' => $period->id,
+            'category_slug' => $category->slug,
+            'lookup_value' => 'NIP-123',
+        ])
+            ->assertRedirect(route('home', ['event' => $period->slug, 'to' => $category->slug]).'#rsvpSection')
+            ->assertSessionHas('error', 'Masukkan NIP dengan angka.');
+    }
+
+    public function test_name_lookup_opens_recipient_invitation(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'satpam', InvitationCategory::ACCESS_NAME, true);
+        $recipient = $this->recipient($period, $category, ['name' => 'Satpam Test', 'position' => 'Satpam']);
+
+        $this->post(route('undangan.verify-recipient'), [
+            'event_id' => $period->id,
+            'category_slug' => $category->slug,
+            'lookup_value' => 'satpam test',
+        ])
+            ->assertRedirect(route('home', [
+                'event' => $period->slug,
+                'to' => $category->slug,
+                'ref' => $recipient->token,
+            ]));
+    }
+
+    public function test_nip_recipient_attending_requires_signature(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'tendik', InvitationCategory::ACCESS_NIP, true);
+        $recipient = $this->recipient($period, $category, ['identifier' => '198001012010011001']);
+
+        $this->post(route('rsvp.recipient'), [
+            'recipient_id' => $recipient->id,
+            'token' => $recipient->token,
+            'attendance' => 'attending',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Mohon isi tanda tangan terlebih dahulu.');
+    }
+
+    public function test_name_lookup_recipient_attending_does_not_require_signature(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'cs', InvitationCategory::ACCESS_NAME, true);
+        $recipient = $this->recipient($period, $category, ['name' => 'Cleaning Service Test', 'position' => 'Cleaning Service']);
+
+        $this->post(route('rsvp.recipient'), [
+            'recipient_id' => $recipient->id,
+            'token' => $recipient->token,
+            'attendance' => 'attending',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Konfirmasi hadir berhasil disimpan.');
+
+        $recipient->refresh();
+        $this->assertSame('attending', $recipient->rsvp_status);
+        $this->assertNull($recipient->rsvp_signature);
+    }
+
+    public function test_lookup_recipient_cannot_submit_represented_status(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'satpam', InvitationCategory::ACCESS_NAME, true);
+        $recipient = $this->recipient($period, $category, ['name' => 'Satpam Test']);
+
+        $this->post(route('rsvp.recipient'), [
+            'recipient_id' => $recipient->id,
+            'token' => $recipient->token,
+            'attendance' => 'represented',
+            'representative_name' => 'Perwakilan',
+            'representative_position' => 'Koordinator',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Konfirmasi diwakilkan tidak tersedia untuk kategori undangan ini.');
+
+        $this->assertSame('pending', $recipient->fresh()->rsvp_status);
+    }
+
     private function period(): YudisiumPeriod
     {
         return YudisiumPeriod::query()->create([
@@ -189,5 +409,21 @@ class InvitationRoutingTest extends TestCase
             'study_program' => 'Teknik Informatika',
             'faculty' => 'Fakultas Teknik',
         ]);
+    }
+
+    private function recipient(YudisiumPeriod $period, InvitationCategory $category, array $attributes = []): InvitationRecipient
+    {
+        return InvitationRecipient::query()->create([
+            'period_id' => $period->id,
+            'category_id' => $category->id,
+            'salutation' => 'Bapak',
+            'name' => 'Pejabat Test',
+            ...$attributes,
+        ]);
+    }
+
+    private function signatureData(): string
+    {
+        return 'data:image/png;base64,'.base64_encode(str_repeat('signature-data', 12));
     }
 }

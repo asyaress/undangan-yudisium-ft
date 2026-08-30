@@ -31,7 +31,9 @@
         'declined' => 'Berhalangan Hadir',
         'represented' => 'Diwakilkan',
     ];
-    $confirmationOptionsText = $participant ? 'hadir atau berhalangan' : 'hadir, berhalangan, atau diwakilkan';
+    $recipientAllowsRepresentative = $category->usesPrivateAccess();
+    $recipientUsesSignature = $category->usesPrivateAccess() || $category->usesNipAccess();
+    $confirmationOptionsText = $participant || ! $recipientAllowsRepresentative ? 'hadir atau berhalangan' : 'hadir, berhalangan, atau diwakilkan';
     $rsvpClosed = $period->rsvpIsClosed();
     $rsvpDeadlineLabel = $period->rsvp_deadline?->locale('id')->translatedFormat('d F Y H:i');
     $rsvpRespondedAt = $participant?->rsvp_responded_at ?? $recipient?->responded_at;
@@ -587,8 +589,98 @@
             border-color: #e85d04;
         }
 
+        .playground-signature-field {
+            overflow: hidden;
+            opacity: 0;
+            max-height: 0;
+            transform: translateY(-6px);
+            transition: opacity 220ms ease, max-height 260ms ease, transform 260ms ease;
+        }
+
+        .playground-signature-field.is-open {
+            opacity: 1;
+            max-height: 350px;
+            transform: translateY(0);
+        }
+
+        .playground-signature-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .playground-signature-clear {
+            appearance: none;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            background: #fff;
+            color: #9a3412;
+            cursor: pointer;
+            font: inherit;
+            font-size: 12px;
+            font-weight: 850;
+            padding: 6px 12px;
+        }
+
+        .playground-signature-clear:hover,
+        .playground-signature-clear:focus-visible {
+            border-color: #e85d04;
+            color: #e85d04;
+            outline: 0;
+        }
+
+        .playground-signature-pad {
+            position: relative;
+            min-height: 160px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .playground-signature-pad canvas {
+            display: block;
+            width: 100%;
+            height: 160px;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        .playground-signature-placeholder {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            color: rgba(102, 112, 133, 0.54);
+            font-size: 13px;
+            pointer-events: none;
+            transition: opacity 180ms ease;
+        }
+
+        .playground-signature-field.is-drawn .playground-signature-placeholder {
+            opacity: 0;
+        }
+
+        .playground-signature-help,
+        .playground-signature-error {
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.55;
+        }
+
+        .playground-signature-help {
+            color: #667085;
+        }
+
+        .playground-signature-error {
+            color: #b91c1c;
+            font-weight: 850;
+        }
+
         [data-playground-note-field],
-        [data-playground-delegate-fields] {
+        [data-playground-delegate-fields],
+        [data-playground-signature-field] {
             overflow: hidden;
             opacity: 0;
             max-height: 0;
@@ -608,8 +700,15 @@
             transform: translateY(0);
         }
 
+        [data-playground-signature-field].is-open {
+            opacity: 1;
+            max-height: 350px;
+            transform: translateY(0);
+        }
+
         [data-playground-note-field][hidden],
-        [data-playground-delegate-fields][hidden] {
+        [data-playground-delegate-fields][hidden],
+        [data-playground-signature-field][hidden] {
             display: none !important;
         }
 
@@ -1433,6 +1532,12 @@
                 grid-template-columns: 1fr;
             }
 
+            .playground-signature-pad,
+            .playground-signature-pad canvas {
+                height: 148px;
+                min-height: 148px;
+            }
+
             .radio-option {
                 min-height: 40px;
                 font-size: 12px;
@@ -1746,7 +1851,9 @@
             <div class="recipient-line letter-reveal" id="letterRecipient">
                 <span>Kepada Yth.</span>
                 <strong class="recipient-focus" id="letterRecipientName">{{ $guestName }}</strong>
-                @if ($recipient?->context_note)
+                @if ($recipient?->position)
+                    <span>{{ $recipient->position }}</span>
+                @elseif ($recipient?->context_note)
                     <span>{{ $recipient->context_note }}</span>
                 @elseif ($participant?->studyProgram)
                     <span>{{ $participant->studyProgram->name }}</span>
@@ -1871,11 +1978,11 @@
                                 <input type="hidden" name="return_to" value="{{ $playgroundReturnUrl }}">
                                 <div class="playground-rsvp-person">
                                     <strong>{{ $recipient->invitation_name }}</strong>
-                                    <span>{{ $recipient->category?->title }}</span>
+                                    <span>{{ $recipient->position ?: ($recipient->context_note ?: $recipient->category?->title) }}</span>
                                 </div>
                                 <div class="playground-field">
                                     <label>Status Kehadiran</label>
-                                    <div class="radio-grid">
+                                    <div class="radio-grid {{ $recipientAllowsRepresentative ? '' : 'two-options' }}">
                                         <label class="radio-option">
                                             <input type="radio" name="attendance" value="attending" @checked(old('attendance', $recipient->rsvp_status) === 'attending') required>
                                             <span class="radio-mark" aria-hidden="true"></span>
@@ -1892,14 +1999,16 @@
                                             </span>
                                             <span>Berhalangan Hadir</span>
                                         </label>
-                                        <label class="radio-option">
-                                            <input type="radio" name="attendance" value="represented" @checked(old('attendance', $recipient->rsvp_status) === 'represented') required>
-                                            <span class="radio-mark" aria-hidden="true"></span>
-                                            <span class="radio-icon" aria-hidden="true">
-                                                <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="4"></circle><path d="M17 8l4 4-4 4M21 12h-7"></path></svg>
-                                            </span>
-                                            <span>Diwakilkan</span>
-                                        </label>
+                                        @if ($recipientAllowsRepresentative)
+                                            <label class="radio-option">
+                                                <input type="radio" name="attendance" value="represented" @checked(old('attendance', $recipient->rsvp_status) === 'represented') required>
+                                                <span class="radio-mark" aria-hidden="true"></span>
+                                                <span class="radio-icon" aria-hidden="true">
+                                                    <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="9.5" cy="7" r="4"></circle><path d="M17 8l4 4-4 4M21 12h-7"></path></svg>
+                                                </span>
+                                                <span>Diwakilkan</span>
+                                            </label>
+                                        @endif
                                     </div>
                                 </div>
                                 <div class="playground-field" data-playground-note-field hidden>
@@ -1916,6 +2025,22 @@
                                         <input class="playground-input" id="playground-recipient-representative-position" name="representative_position" value="{{ old('representative_position') }}" placeholder="Jabatan perwakilan">
                                     </div>
                                 </div>
+                                @if ($recipientUsesSignature)
+                                    <div class="playground-field playground-signature-field" data-playground-signature-field hidden>
+                                        <div class="playground-signature-head">
+                                            <label for="playground-recipient-signature" data-playground-signature-label>Tanda tangan</label>
+                                            <button type="button" class="playground-signature-clear" data-playground-signature-clear>Hapus</button>
+                                        </div>
+                                        <div class="playground-signature-pad">
+                                            <canvas id="playground-recipient-signature" data-playground-signature-canvas aria-label="Area tanda tangan"></canvas>
+                                            <span class="playground-signature-placeholder" data-playground-signature-placeholder>Tulis di sini</span>
+                                        </div>
+                                        <input type="hidden" name="rsvp_signature" data-playground-signature-input>
+                                        <input type="hidden" name="signature_drawn" value="0" data-playground-signature-drawn>
+                                        <p class="playground-signature-help" data-playground-signature-help>Bubuhkan tanda tangan sebagai konfirmasi kehadiran.</p>
+                                        <p class="playground-signature-error" data-playground-signature-error hidden>Mohon isi tanda tangan terlebih dahulu.</p>
+                                    </div>
+                                @endif
                                 <button class="playground-submit" type="submit">Simpan Konfirmasi</button>
                             </form>
                         @elseif (! $rsvpClosed && $participant)
@@ -2521,6 +2646,19 @@
                 var delegateInputs = delegateFields
                     ? Array.prototype.slice.call(delegateFields.querySelectorAll('input'))
                     : [];
+                var signatureField = form.querySelector('[data-playground-signature-field]');
+                var signatureCanvas = signatureField ? signatureField.querySelector('[data-playground-signature-canvas]') : null;
+                var signatureInput = signatureField ? signatureField.querySelector('[data-playground-signature-input]') : null;
+                var signatureDrawnInput = signatureField ? signatureField.querySelector('[data-playground-signature-drawn]') : null;
+                var signatureLabel = signatureField ? signatureField.querySelector('[data-playground-signature-label]') : null;
+                var signatureHelp = signatureField ? signatureField.querySelector('[data-playground-signature-help]') : null;
+                var signatureError = signatureField ? signatureField.querySelector('[data-playground-signature-error]') : null;
+                var signatureClear = signatureField ? signatureField.querySelector('[data-playground-signature-clear]') : null;
+                var signatureContext = null;
+                var signatureMode = '';
+                var hasSignature = false;
+                var isDrawing = false;
+                var lastPoint = null;
 
                 function showConditionalField(field) {
                     if (!field) return;
@@ -2547,6 +2685,180 @@
                     }, 270);
                 }
 
+                function clearSignature() {
+                    if (!signatureCanvas || !signatureContext || !signatureInput || !signatureDrawnInput || !signatureField) return;
+
+                    signatureContext.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+                    signatureInput.value = '';
+                    signatureDrawnInput.value = '0';
+                    hasSignature = false;
+                    lastPoint = null;
+                    signatureField.classList.remove('is-drawn');
+
+                    if (signatureError) {
+                        signatureError.hidden = true;
+                    }
+                }
+
+                function resizeSignatureCanvas() {
+                    if (!signatureCanvas) return;
+
+                    var rect = signatureCanvas.getBoundingClientRect();
+                    var ratio = window.devicePixelRatio || 1;
+                    var width = Math.max(Math.round(rect.width), 320);
+                    var height = Math.max(Math.round(rect.height), 140);
+                    var previousSignature = hasSignature && signatureInput && signatureInput.value ? signatureInput.value : '';
+
+                    signatureCanvas.width = Math.round(width * ratio);
+                    signatureCanvas.height = Math.round(height * ratio);
+                    signatureContext = signatureCanvas.getContext('2d');
+                    signatureContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+                    signatureContext.lineCap = 'round';
+                    signatureContext.lineJoin = 'round';
+                    signatureContext.lineWidth = 2.4;
+                    signatureContext.strokeStyle = '#111827';
+
+                    if (previousSignature) {
+                        var image = new Image();
+                        image.onload = function () {
+                            signatureContext.drawImage(image, 0, 0, width, height);
+                        };
+                        image.src = previousSignature;
+                    }
+                }
+
+                function showSignatureField(mode) {
+                    if (!signatureField) return;
+
+                    if (mode !== signatureMode) {
+                        clearSignature();
+                        signatureMode = mode;
+                    }
+
+                    if (signatureLabel) {
+                        signatureLabel.textContent = mode === 'represented' ? 'Paraf perwakilan' : 'Tanda tangan';
+                    }
+
+                    if (signatureHelp) {
+                        signatureHelp.textContent = mode === 'represented'
+                            ? 'Perwakilan membubuhkan paraf sebagai bukti konfirmasi.'
+                            : 'Bubuhkan tanda tangan sebagai konfirmasi kehadiran.';
+                    }
+
+                    if (signatureError) {
+                        signatureError.textContent = mode === 'represented'
+                            ? 'Mohon isi paraf perwakilan terlebih dahulu.'
+                            : 'Mohon isi tanda tangan terlebih dahulu.';
+                        signatureError.hidden = true;
+                    }
+
+                    showConditionalField(signatureField);
+                    window.requestAnimationFrame(resizeSignatureCanvas);
+                }
+
+                function hideSignatureField() {
+                    if (!signatureField) return;
+
+                    clearSignature();
+                    signatureMode = '';
+                    hideConditionalField(signatureField);
+                }
+
+                function getSignaturePoint(event) {
+                    if (!signatureCanvas) return null;
+
+                    var source = (event.touches && event.touches[0]) || (event.changedTouches && event.changedTouches[0]) || event;
+                    var rect = signatureCanvas.getBoundingClientRect();
+
+                    return {
+                        x: source.clientX - rect.left,
+                        y: source.clientY - rect.top
+                    };
+                }
+
+                function updateSignatureValue() {
+                    if (!signatureCanvas || !signatureInput || !signatureDrawnInput || !signatureField) return;
+
+                    signatureInput.value = signatureCanvas.toDataURL('image/png');
+                    signatureDrawnInput.value = '1';
+                    signatureField.classList.add('is-drawn');
+                    hasSignature = true;
+
+                    if (signatureError) {
+                        signatureError.hidden = true;
+                    }
+                }
+
+                function startSignature(event) {
+                    if (!signatureCanvas || !signatureContext || (signatureField && signatureField.hidden)) return;
+
+                    event.preventDefault();
+                    var point = getSignaturePoint(event);
+                    if (!point) return;
+
+                    isDrawing = true;
+                    lastPoint = point;
+                    signatureContext.beginPath();
+                    signatureContext.moveTo(point.x, point.y);
+
+                    if (event.pointerId !== undefined && signatureCanvas.setPointerCapture) {
+                        signatureCanvas.setPointerCapture(event.pointerId);
+                    }
+                }
+
+                function moveSignature(event) {
+                    if (!isDrawing || !signatureContext) return;
+
+                    event.preventDefault();
+                    var point = getSignaturePoint(event);
+                    if (!point) return;
+
+                    signatureContext.lineTo(point.x, point.y);
+                    signatureContext.stroke();
+                    lastPoint = point;
+                    updateSignatureValue();
+                }
+
+                function endSignature(event) {
+                    if (!isDrawing || !signatureContext) return;
+
+                    event.preventDefault();
+
+                    if (!hasSignature && lastPoint) {
+                        signatureContext.beginPath();
+                        signatureContext.arc(lastPoint.x, lastPoint.y, 1.7, 0, Math.PI * 2);
+                        signatureContext.fillStyle = '#111827';
+                        signatureContext.fill();
+                        updateSignatureValue();
+                    }
+
+                    isDrawing = false;
+                    signatureContext.closePath();
+                }
+
+                if (signatureCanvas) {
+                    resizeSignatureCanvas();
+                    if (signatureClear) {
+                        signatureClear.addEventListener('click', clearSignature);
+                    }
+                    window.addEventListener('resize', resizeSignatureCanvas);
+
+                    if (window.PointerEvent) {
+                        signatureCanvas.addEventListener('pointerdown', startSignature);
+                        signatureCanvas.addEventListener('pointermove', moveSignature);
+                        window.addEventListener('pointerup', endSignature);
+                        window.addEventListener('pointercancel', endSignature);
+                    } else {
+                        signatureCanvas.addEventListener('mousedown', startSignature);
+                        signatureCanvas.addEventListener('mousemove', moveSignature);
+                        window.addEventListener('mouseup', endSignature);
+                        signatureCanvas.addEventListener('touchstart', startSignature, { passive: false });
+                        signatureCanvas.addEventListener('touchmove', moveSignature, { passive: false });
+                        window.addEventListener('touchend', endSignature, { passive: false });
+                        window.addEventListener('touchcancel', endSignature, { passive: false });
+                    }
+                }
+
                 function syncNoteField() {
                     var checked = form.querySelector('input[name="attendance"]:checked');
                     var mode = checked ? checked.value : '';
@@ -2554,6 +2866,7 @@
                     if (!checked) {
                         hideConditionalField(noteField);
                         hideConditionalField(delegateFields);
+                        hideSignatureField();
                         return;
                     }
 
@@ -2589,10 +2902,35 @@
                             }
                         });
                     }
+
+                    if (mode === 'attending' || mode === 'represented') {
+                        showSignatureField(mode);
+                    } else {
+                        hideSignatureField();
+                    }
                 }
 
                 form.querySelectorAll('input[name="attendance"]').forEach(function (input) {
                     input.addEventListener('change', syncNoteField);
+                });
+
+                form.addEventListener('submit', function (event) {
+                    var checked = form.querySelector('input[name="attendance"]:checked');
+                    var mode = checked ? checked.value : '';
+                    var needsSignature = mode === 'attending' || mode === 'represented';
+
+                    if (!needsSignature || !signatureField || !signatureInput) return;
+
+                    if (!hasSignature || signatureInput.value === '') {
+                        event.preventDefault();
+                        showSignatureField(mode);
+
+                        if (signatureError) {
+                            signatureError.hidden = false;
+                        }
+
+                        signatureField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 });
 
                 syncNoteField();

@@ -27,7 +27,11 @@ class AdminLayoutComposer
                 ->orderByDesc('id')
                 ->get(['id', 'name', 'slug', 'is_active']),
             'privateCategories' => InvitationCategory::query()
-                ->where('access_mode', InvitationCategory::ACCESS_PRIVATE)
+                ->whereIn('access_mode', [
+                    InvitationCategory::ACCESS_PRIVATE,
+                    InvitationCategory::ACCESS_NIP,
+                    InvitationCategory::ACCESS_NAME,
+                ])
                 ->whereNotNull('period_id')
                 ->orderBy('sort_order')
                 ->orderBy('id')
