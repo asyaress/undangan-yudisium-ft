@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\InvitationCategory;
-use App\Models\InvitationRecipient;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
+use App\Services\RecipientDirectory;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -43,9 +43,8 @@ class AdminInvitationPlaygroundController extends Controller
         $participant = null;
 
         if ($category->usesRecipientDataAccess()) {
-            $recipient = InvitationRecipient::query()
-                ->where('period_id', $period->id)
-                ->where('category_id', $category->id)
+            $recipient = app(RecipientDirectory::class)
+                ->visibleInCategoryQuery($period->id, $category->id)
                 ->when($request->integer('recipient_id'), fn ($query, $id) => $query->whereKey($id))
                 ->orderBy('name')
                 ->first();
@@ -63,12 +62,11 @@ class AdminInvitationPlaygroundController extends Controller
         }
 
         $recipientOptions = $category->usesRecipientDataAccess()
-            ? InvitationRecipient::query()
-                ->where('period_id', $period->id)
-                ->where('category_id', $category->id)
+            ? app(RecipientDirectory::class)
+                ->visibleInCategoryQuery($period->id, $category->id)
                 ->orderBy('name')
                 ->limit(60)
-                ->get(['id', 'name', 'salutation', 'identifier', 'position'])
+                ->get()
             : collect();
 
         $participantOptions = $category->usesNimAccess()

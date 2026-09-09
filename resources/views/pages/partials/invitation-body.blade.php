@@ -355,7 +355,7 @@
               <input type="hidden" name="token" value="{{ $recipient->token }}">
               <div class="pill-row">
                 <span class="pill">{{ $recipient->invitation_name }}</span>
-                <span class="pill">{{ $recipient->position ?: ($recipient->context_note ?: $recipient->category?->title) }}</span>
+                <span class="pill">{{ $recipient->displayPosition() ?: ($recipient->position ?: ($recipient->context_note ?: $recipient->category?->title)) }}</span>
                 <span class="pill {{ $rsvpStatus === 'attending' ? 'good' : ($rsvpStatus === 'declined' ? 'bad' : 'warn') }}">
                   {{ match ($rsvpStatus) { 'attending' => 'Sudah konfirmasi hadir', 'declined' => 'Berhalangan hadir', 'represented' => 'Diwakilkan', default => 'Belum konfirmasi' } }}
                 </span>

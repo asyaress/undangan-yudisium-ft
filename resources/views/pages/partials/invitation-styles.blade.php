@@ -2,24 +2,29 @@
     :root {
       --bg: #ffffff;
       --bg-2: #fafafa;
-      --surface: #ffffff;
+      --surface: rgba(255, 255, 255, 0.92);
       --surface-strong: #ffffff;
-      --text: #111827;
-      --muted: #6b7280;
-      --line: #e5e7eb;
-      --line-soft: #f3f4f6;
+      --text: #1c1c1e;
+      --muted: #636366;
+      --line: rgba(60, 60, 67, 0.12);
+      --line-soft: rgba(242, 242, 247, 0.92);
       --primary: #F5530D;
       --primary-deep: #D9450B;
       --primary-soft: #FFF3EE;
       --good: #047857;
       --warn: #F5530D;
       --bad: #b91c1c;
-      --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
+      --shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
       --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04);
-      --radius: 16px;
+      --radius: 18px;
       --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
       --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
       --spring: cubic-bezier(0.2, 0.8, 0.2, 1);
+      --press: 100ms ease-out;
+      --glass: rgba(255, 255, 255, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.55);
+      --glass-highlight: rgba(255, 255, 255, 0.88);
+      --glass-blur: blur(22px) saturate(180%);
     }
 
     * {
@@ -31,6 +36,7 @@
     html {
       height: 100%;
       -webkit-text-size-adjust: 100%;
+      font-optical-sizing: auto;
     }
 
     body {
@@ -38,14 +44,19 @@
       min-height: 100%;
       min-height: 100vh;
       min-height: 100dvh;
-      font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-optical-sizing: auto;
       color: var(--text);
       background-color: #f3f4f6;
+      letter-spacing: 0;
+      line-height: 1.5;
       padding: 18px 14px 36px;
       display: grid;
       place-items: start center;
       scroll-behavior: smooth;
       overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
     }
 
     body:not(.opening):not(.opened) {
@@ -92,7 +103,9 @@
       width: 100%;
       height: 100%;
       min-height: 100%;
-      background: #ffffff;
+      background: var(--glass);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
       border-radius: 0;
       border: none;
       box-shadow: none;
@@ -124,9 +137,12 @@
     .cover {
       text-align: center;
       padding: 34px 28px 30px;
-      background: rgba(255, 255, 255, 0.96);
-      border: 1px solid rgba(255, 255, 255, 0.9);
-      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-top-color: var(--glass-highlight);
+      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
       border-radius: 24px;
       transition:
         opacity 740ms var(--spring),
@@ -165,7 +181,7 @@
       inset: 0;
       z-index: 1;
       pointer-events: none;
-      background: rgba(255, 255, 255, 0.48);
+      background: rgba(255, 255, 255, 0.22);
       transition: background 360ms var(--ease-out);
     }
 
@@ -174,7 +190,7 @@
     }
 
     body.opened .bg-video-overlay {
-      background: rgba(255, 255, 255, 0.55);
+      background: rgba(255, 255, 255, 0.58);
     }
 
     main {
@@ -199,9 +215,9 @@
       pointer-events: none;
       z-index: 30;
       opacity: 0;
-      transform: scale(1.04);
-      filter: blur(6px);
-      background: rgba(255, 255, 255, 0.06);
+      transform: scale(1.02);
+      filter: blur(8px);
+      background: rgba(255, 255, 255, 0.12);
       transition:
         opacity 620ms var(--ease-out),
         transform 620ms var(--ease-out),
@@ -209,7 +225,7 @@
     }
 
     .panel {
-      background: var(--surface);
+      background: var(--surface-strong);
       border-radius: var(--radius);
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
@@ -231,7 +247,7 @@
 
     .cover .label {
       font-size: 0.78rem;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--primary);
       margin-bottom: 10px;
@@ -240,7 +256,7 @@
 
     .cover h1 {
       font-size: clamp(1.85rem, 7vw, 2.5rem);
-      line-height: 1.08;
+      line-height: 1.05;
       margin-bottom: 12px;
       font-weight: 800;
       letter-spacing: -0.03em;
@@ -294,23 +310,38 @@
 
     .guest {
       font-weight: 800;
-      margin-bottom: 18px;
+      margin-bottom: 8px;
       font-size: 1.08rem;
       color: var(--text);
       line-height: 1.5;
     }
 
+    .guest-role {
+      margin: 0 auto 18px;
+      max-width: 36ch;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .guest-role:empty {
+      display: none;
+    }
+
     .cover .btn {
       min-width: 220px;
+      min-height: 48px;
       border-radius: 999px;
       background: linear-gradient(135deg, var(--primary), var(--primary-deep));
       color: #fff;
-      box-shadow: 0 12px 28px rgba(245, 83, 13, 0.28);
+      box-shadow: 0 10px 24px rgba(245, 83, 13, 0.26);
     }
 
     .cover .btn:hover {
       background: linear-gradient(135deg, #ff6318, var(--primary-deep));
       color: #fff;
+      transform: none;
     }
 
     .rsvp-tutorial {
@@ -375,10 +406,13 @@
       width: min(620px, 100%);
       margin: 0 auto;
       padding: 20px 20px 18px;
-      border-radius: 16px;
-      background: #fff;
-      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
-      border: 2px solid rgba(245, 83, 13, 0.28);
+      border-radius: 20px;
+      background: var(--glass);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      box-shadow: 0 22px 56px rgba(15, 23, 42, 0.22);
+      border: 1px solid var(--glass-border);
+      border-top-color: var(--glass-highlight);
     }
 
     .rsvp-tutorial-copy {
@@ -485,11 +519,20 @@
       font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
-      padding: 8px 6px;
+      min-height: 44px;
+      min-width: 44px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      touch-action: manipulation;
     }
 
     .rsvp-tutorial-skip:hover {
       color: var(--text);
+    }
+
+    .rsvp-tutorial-skip:active {
+      transform: scale(0.97);
+      transition: transform var(--press);
     }
 
     .rsvp-card.is-tutorial-target,
@@ -704,14 +747,15 @@
     .btn,
     .link-btn {
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 12px 18px;
+      min-height: 44px;
       font: inherit;
       font-weight: 700;
       cursor: pointer;
       background: linear-gradient(135deg, var(--primary), var(--primary-deep));
       color: #fff;
-      transition: transform 200ms var(--spring), background 200ms var(--ease-out), box-shadow 200ms var(--spring);
+      transition: transform var(--press), background 180ms var(--ease-out), box-shadow 180ms var(--spring);
       min-width: 0;
       box-shadow: 0 4px 14px rgba(245, 83, 13, 0.22);
       text-decoration: none;
@@ -719,18 +763,38 @@
       justify-content: center;
       align-items: center;
       gap: 8px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .btn:hover,
     .link-btn:hover {
       background: linear-gradient(135deg, #ff6318, var(--primary-deep));
-      transform: translateY(-1px);
       color: #fff;
     }
 
+    @media (hover: hover) and (pointer: fine) {
+      .btn:hover,
+      .link-btn:hover,
+      .map-btn:hover {
+        transform: translateY(-1px);
+      }
+    }
+
     .btn:active,
-    .link-btn:active {
-      transform: translateY(0);
+    .link-btn:active,
+    .btn.is-pressed,
+    .link-btn.is-pressed {
+      transform: scale(0.97);
+    }
+
+    .btn:focus-visible,
+    .link-btn:focus-visible,
+    .map-btn:focus-visible,
+    .rsvp-tutorial-skip:focus-visible,
+    .signature-clear:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 3px;
     }
 
     .btn:disabled {
@@ -881,7 +945,8 @@
       font-size: 1.5rem;
       color: rgba(28, 28, 30, 0.92);
       font-weight: 800;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
       margin-bottom: 10px;
       text-align: center;
     }
@@ -891,7 +956,8 @@
       color: rgba(28, 28, 30, 0.72);
       font-size: 0.94rem;
       margin-bottom: 16px;
-      line-height: 1.75;
+      line-height: 1.65;
+      letter-spacing: 0;
     }
 
     .mini-brand {
@@ -1018,6 +1084,7 @@
       max-width: 100%;
       margin: 12px auto 0;
       padding: 10px 18px;
+      min-height: 44px;
       border-radius: 999px;
       text-decoration: none;
       background: linear-gradient(135deg, var(--primary), var(--primary-deep));
@@ -1027,11 +1094,17 @@
       border: none;
       box-shadow: 0 4px 12px rgba(245, 83, 13, 0.2);
       text-align: center;
+      touch-action: manipulation;
+      transition: transform var(--press), background 180ms var(--ease-out);
     }
 
     .map-btn:hover {
       background: linear-gradient(135deg, #ff6318, var(--primary-deep));
       color: #fff;
+    }
+
+    .map-btn:active {
+      transform: scale(0.97);
     }
 
     .auth-stack {
@@ -1140,11 +1213,11 @@
       margin-bottom: 8px;
       padding: 6px 10px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.72);
-      color: var(--muted);
+      background: rgba(255, 243, 238, 0.92);
+      color: var(--primary-deep);
       font-size: 0.72rem;
       font-weight: 800;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
@@ -1171,12 +1244,17 @@
 
     .archive-card {
       padding: 18px;
-      border-radius: 14px;
+      border-radius: 16px;
       background: #fff;
       border: 1px solid var(--line);
       box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
       display: grid;
       gap: 12px;
+      transition: transform var(--press);
+    }
+
+    .archive-card:active {
+      transform: scale(0.99);
     }
 
     .archive-card-top {
@@ -1624,7 +1702,12 @@
       font-size: 0.9rem;
       font-weight: 700;
       cursor: pointer;
-      transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out);
+      touch-action: manipulation;
+      transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out), transform var(--press);
+    }
+
+    .radio-option:active {
+      transform: scale(0.97);
     }
 
     .radio-option:has(input:checked) {
@@ -2229,20 +2312,238 @@
       }
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      * {
-        animation: none !important;
-        transition: none !important;
-        scroll-behavior: auto !important;
+    @media (max-width: 344px) {
+      .cover h1 {
+        font-size: clamp(1.4rem, 9vw, 1.85rem);
       }
 
-      .cover > * {
+      .cover .logo-frame {
+        width: min(42vw, 96px);
+      }
+
+      .cover .btn,
+      .invite-form .action-row .btn,
+      .rsvp-card .action-row .btn,
+      .identity-panel .action-row .btn {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .archive-countdown-grid,
+      .archive-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .radio-grid,
+      .radio-grid.two-options {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-height: 520px) and (orientation: landscape) {
+      body:not(.opened) .cover {
+        justify-content: center;
+        padding:
+          max(8px, env(safe-area-inset-top, 0px))
+          max(16px, env(safe-area-inset-right, 0px))
+          max(8px, env(safe-area-inset-bottom, 0px))
+          max(16px, env(safe-area-inset-left, 0px));
+      }
+
+      .cover .label {
+        margin-bottom: 4px;
+      }
+
+      .cover h1 {
+        margin-bottom: 6px;
+        font-size: clamp(1.2rem, 6vh, 1.8rem);
+      }
+
+      .cover .logo-frame {
+        width: min(18vh, 84px);
+        margin: 4px auto 8px;
+        padding: 8px;
+      }
+
+      .cover .meta {
+        margin-bottom: 8px;
+        font-size: 0.82rem;
+        max-width: 46ch;
+      }
+
+      .cover .guest {
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+      }
+
+      .rsvp-tutorial {
+        justify-content: flex-end;
+        padding: 0 10px max(8px, env(safe-area-inset-bottom, 0px));
+      }
+
+      .rsvp-tutorial-card {
+        grid-template-columns: 72px minmax(0, 1fr);
+        padding: 10px 12px;
+      }
+
+      .rsvp-tutorial-copy {
+        grid-column: 2;
+      }
+
+      .rsvp-tutorial-visual {
+        grid-column: 1;
+        grid-row: 1;
+        min-height: 96px;
+      }
+
+      .rsvp-tutorial-visual img {
+        width: 88px;
+        max-height: 110px;
+      }
+
+      body.opened #invitationContent,
+      .invitation {
+        padding-inline: 12px;
+      }
+    }
+
+    @media (min-width: 700px) and (max-width: 1366px) and (min-height: 700px) {
+      .rsvp-tutorial {
+        justify-content: flex-start;
+        padding: 12px 16px 0;
+      }
+
+      .rsvp-tutorial-card {
+        grid-template-columns: minmax(0, 1fr) 128px;
+        gap: 16px;
+        padding: 20px 20px 18px;
+        margin-top: 0;
+      }
+
+      .rsvp-tutorial-copy,
+      .rsvp-tutorial-visual {
+        grid-column: auto;
+        grid-row: auto;
+      }
+
+      .rsvp-tutorial-visual {
+        min-height: 158px;
+      }
+
+      .rsvp-tutorial-visual img {
+        width: min(142px, 100%);
+        max-height: 178px;
+      }
+
+      .details {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .radio-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .radio-grid.two-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .invite-form .action-row .btn,
+      .rsvp-card .action-row .btn,
+      .identity-panel .action-row .btn {
+        font-size: 0.92rem;
+        padding: 12px 16px;
+      }
+    }
+
+    @supports (width: env(viewport-segment-width 0 0)) {
+      @media (horizontal-viewport-segments: 2) {
+        body.opened main {
+          width: min(100%, env(viewport-segment-width 0 0));
+          margin-left: env(viewport-segment-left 0 0);
+          margin-right: auto;
+        }
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .cover,
+      .invitation,
+      .reveal-item,
+      .transition-layer,
+      .bg-video,
+      .rsvp-spotlight,
+      .radio-mark::after,
+      [data-delegate-fields],
+      [data-conditional-note-field],
+      [data-signature-field] {
+        animation: none !important;
+        filter: none !important;
+        transition: opacity 200ms ease;
+        transform: none !important;
+      }
+
+      .cover > *,
+      body.opening .cover,
+      body.opening .invitation,
+      body.opened .invitation,
+      .reveal-item {
         opacity: 1 !important;
         transform: none !important;
+        filter: none !important;
       }
 
       .bg-video {
         display: none;
+      }
+
+      .btn:active,
+      .link-btn:active,
+      .map-btn:active,
+      .radio-option:active,
+      .rsvp-tutorial-skip:active,
+      .archive-card:active {
+        transform: none;
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .cover,
+      body:not(.opened) .cover,
+      .rsvp-tutorial-card {
+        background: #ffffff;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      .bg-video-overlay,
+      body.opened .bg-video-overlay {
+        background: #f3f4f6;
+      }
+    }
+
+    @media (prefers-contrast: more) {
+      .cover,
+      .panel,
+      .rsvp-tutorial-card,
+      .archive-card,
+      .radio-option,
+      .field input,
+      .field textarea {
+        background: #ffffff;
+        border: 2px solid #1c1c1e;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      .muted,
+      .line,
+      .meta,
+      .detail-value {
+        color: #1c1c1e;
       }
     }
 

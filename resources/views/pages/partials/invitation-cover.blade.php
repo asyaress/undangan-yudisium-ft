@@ -8,6 +8,9 @@
         <p class="meta">{{ $coverText }}</p>
         <p class="guest-label">Kepada Yth.</p>
         <p class="guest" id="recipientText">{{ $recipientName }}</p>
+        @if ($isInvitationMode && ($recipient?->displayPosition() ?: $recipient?->position))
+          <p class="guest-role">{{ $recipient->displayPosition() ?: $recipient->position }}</p>
+        @endif
         <button class="btn" id="openInvitation" type="button">Buka Undangan</button>
       </section>
 

@@ -1851,8 +1851,8 @@
             <div class="recipient-line letter-reveal" id="letterRecipient">
                 <span>Kepada Yth.</span>
                 <strong class="recipient-focus" id="letterRecipientName">{{ $guestName }}</strong>
-                @if ($recipient?->position)
-                    <span>{{ $recipient->position }}</span>
+                @if ($recipient?->displayPosition())
+                    <span>{{ $recipient->displayPosition() }}</span>
                 @elseif ($recipient?->context_note)
                     <span>{{ $recipient->context_note }}</span>
                 @elseif ($participant?->studyProgram)
@@ -1978,7 +1978,7 @@
                                 <input type="hidden" name="return_to" value="{{ $playgroundReturnUrl }}">
                                 <div class="playground-rsvp-person">
                                     <strong>{{ $recipient->invitation_name }}</strong>
-                                    <span>{{ $recipient->position ?: ($recipient->context_note ?: $recipient->category?->title) }}</span>
+                                    <span>{{ $recipient->displayPosition() ?: ($recipient->context_note ?: $recipient->category?->title) }}</span>
                                 </div>
                                 <div class="playground-field">
                                     <label>Status Kehadiran</label>

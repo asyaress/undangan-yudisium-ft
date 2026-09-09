@@ -80,7 +80,7 @@ class InvitationResponseController extends Controller
             return back()->with('error', 'Token undangan tidak cocok.');
         }
 
-        if (! $recipient->category?->requiresRsvp()) {
+        if (! $recipient->invitationCategory()?->requiresRsvp()) {
             return back()->with('error', 'Konfirmasi kehadiran tidak tersedia untuk kategori ini.');
         }
 
@@ -88,7 +88,7 @@ class InvitationResponseController extends Controller
             return back()->with('error', 'Konfirmasi kehadiran ditutup. Batas konfirmasi sudah berakhir.');
         }
 
-        $allowsRepresentative = $recipient->category?->usesPrivateAccess() ?? false;
+        $allowsRepresentative = $recipient->invitationCategory()?->usesPrivateAccess() ?? false;
         if ($data['attendance'] === 'represented' && ! $allowsRepresentative) {
             return back()
                 ->withInput($request->except(['rsvp_signature', 'signature_drawn']))
@@ -96,8 +96,8 @@ class InvitationResponseController extends Controller
         }
 
         $requiresSignature = match (true) {
-            $recipient->category?->usesPrivateAccess() => in_array($data['attendance'], ['attending', 'represented'], true),
-            $recipient->category?->usesNipAccess() => $data['attendance'] === 'attending',
+            $recipient->invitationCategory()?->usesPrivateAccess() => in_array($data['attendance'], ['attending', 'represented'], true),
+            $recipient->invitationCategory()?->usesNipAccess() => $data['attendance'] === 'attending',
             default => false,
         };
 
@@ -117,7 +117,7 @@ class InvitationResponseController extends Controller
 
         $defaultReturnTo = route('home', [
                 'event' => $recipient->period?->slug,
-                'to' => $recipient->category?->slug,
+                'to' => $recipient->invitationCategory()?->slug ?: $recipient->category?->slug,
                 'ref' => $recipient->token,
             ]).'#rsvpSection';
 

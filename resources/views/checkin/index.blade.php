@@ -48,17 +48,19 @@
     <style>
         :root {
             --bg: #f4f6f8;
-            --surface: #ffffff;
-            --text: #111827;
-            --muted: #6b7280;
-            --line: #e5e7eb;
+            --surface: rgba(255, 255, 255, 0.92);
+            --text: #1c1c1e;
+            --muted: #636366;
+            --line: rgba(60, 60, 67, 0.12);
             --soft: #f8fafc;
-            --primary: #d9480f;
-            --primary-dark: #d9450b;
+            --primary: #F5530D;
+            --primary-dark: #D9450B;
             --good: #047857;
             --warn: #b45309;
             --bad: #b91c1c;
-            --shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+            --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+            --spring: cubic-bezier(0.32, 0.72, 0, 1);
+            --press: 100ms ease-out;
         }
 
         * {
@@ -69,13 +71,17 @@
         body {
             min-height: 100%;
             margin: 0;
+            font-optical-sizing: auto;
         }
 
         body {
-            font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
             color: var(--text);
             background: var(--bg);
             padding: clamp(14px, 4vw, 28px);
+            letter-spacing: 0;
+            line-height: 1.5;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .shell {
@@ -114,8 +120,8 @@
         .brand h1 {
             margin: 0;
             font-size: clamp(1.5rem, 4.5vw, 1.95rem);
-            line-height: 1.18;
-            letter-spacing: 0;
+            line-height: 1.08;
+            letter-spacing: -0.03em;
             font-weight: 800;
         }
 
@@ -130,7 +136,7 @@
             position: relative;
             overflow: hidden;
             border: 1px solid var(--line);
-            border-radius: 8px;
+            border-radius: 18px;
             background: var(--surface);
             box-shadow: var(--shadow);
             padding: clamp(20px, 4vw, 26px);
@@ -320,7 +326,7 @@
             width: 100%;
             min-height: 50px;
             border: 1px solid var(--line);
-            border-radius: 8px;
+            border-radius: 14px;
             background: #fff;
             color: var(--text);
             font: inherit;
@@ -343,7 +349,7 @@
             width: 100%;
             min-height: 50px;
             border: 0;
-            border-radius: 8px;
+            border-radius: 14px;
             background: var(--primary);
             color: #fff;
             font: inherit;
@@ -354,6 +360,8 @@
             justify-content: center;
             text-decoration: none;
             box-shadow: none;
+            touch-action: manipulation;
+            transition: transform var(--press), background 180ms var(--spring);
         }
 
         .btn:hover {
@@ -361,10 +369,20 @@
             color: #fff;
         }
 
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 3px;
+        }
+
         .btn:disabled {
             opacity: 0.58;
             cursor: not-allowed;
             box-shadow: none;
+            transform: none;
         }
 
         .btn.secondary {
@@ -622,6 +640,21 @@
                 animation: none;
                 -webkit-animation: none;
             }
+
+            .card,
+            .card.is-leaving {
+                animation: none;
+            }
+
+            .btn:active {
+                transform: none;
+            }
+        }
+
+        @media (prefers-reduced-transparency: reduce) {
+            .card {
+                background: #ffffff;
+            }
         }
 
         .footer-note {
@@ -672,6 +705,31 @@
             .brand-mark img {
                 width: 44px;
                 height: 44px;
+            }
+        }
+
+        @media (min-width: 700px) and (min-height: 700px) {
+            body {
+                padding: clamp(20px, 4vw, 36px);
+            }
+
+            .shell {
+                width: min(100%, 720px);
+            }
+        }
+
+        @media (max-height: 520px) and (orientation: landscape) {
+            body {
+                padding: 10px 16px;
+            }
+
+            .shell {
+                min-height: 0;
+                align-content: start;
+            }
+
+            .brand h1 {
+                font-size: 1.35rem;
             }
         }
     </style>

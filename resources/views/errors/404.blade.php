@@ -11,10 +11,11 @@
     :root {
       --primary: #F5530D;
       --primary-deep: #D9450B;
-      --text: #111827;
-      --muted: #6b7280;
-      --line: #e5e7eb;
-      --surface: rgba(255, 255, 255, 0.94);
+      --text: #1c1c1e;
+      --muted: #636366;
+      --line: rgba(60, 60, 67, 0.16);
+      --surface: rgba(255, 255, 255, 0.78);
+      --press: 100ms ease-out;
     }
 
     * {
@@ -26,18 +27,22 @@
     html,
     body {
       min-height: 100%;
+      font-optical-sizing: auto;
     }
 
     body {
       min-height: 100vh;
       min-height: 100dvh;
-      font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
       color: var(--text);
       background: #f3f4f6;
       display: grid;
       place-items: center;
       padding: 18px;
       overflow-x: hidden;
+      letter-spacing: 0;
+      line-height: 1.5;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .bg-video-layer,
@@ -71,9 +76,12 @@
       z-index: 2;
       width: min(100%, 520px);
       padding: 34px 28px 30px;
-      border-radius: 22px;
-      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-top-color: rgba(255, 255, 255, 0.88);
       background: var(--surface);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
       box-shadow: 0 20px 56px rgba(15, 23, 42, 0.12);
       text-align: center;
     }
@@ -115,7 +123,8 @@
 
     h1 {
       font-size: clamp(1.8rem, 5vw, 2.35rem);
-      line-height: 1.1;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
       margin-bottom: 12px;
       font-weight: 800;
     }
@@ -136,8 +145,8 @@
     }
 
     .btn {
-      min-height: 46px;
-      border-radius: 12px;
+      min-height: 44px;
+      border-radius: 14px;
       padding: 12px 18px;
       border: 1px solid transparent;
       background: var(--primary);
@@ -148,6 +157,17 @@
       align-items: center;
       justify-content: center;
       box-shadow: 0 8px 22px rgba(245, 83, 13, 0.18);
+      touch-action: manipulation;
+      transition: transform var(--press), background 180ms ease;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 3px;
     }
 
     .btn.secondary {
@@ -168,6 +188,51 @@
 
       .actions {
         display: grid;
+      }
+    }
+
+    @media (min-width: 700px) and (min-height: 700px) {
+      .not-found-card {
+        width: min(100%, 560px);
+        padding: 40px 36px 34px;
+      }
+    }
+
+    @media (max-height: 520px) and (orientation: landscape) {
+      body {
+        padding: 12px;
+      }
+
+      .not-found-card {
+        padding: 22px 24px 20px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 8px;
+      }
+
+      p {
+        margin-bottom: 14px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btn {
+        transition: background 200ms ease;
+        transform: none !important;
+      }
+
+      .bg-video-layer video {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+      .not-found-card {
+        background: #ffffff;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
       }
     }
   </style>

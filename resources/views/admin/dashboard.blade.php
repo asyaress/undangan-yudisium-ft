@@ -71,6 +71,8 @@
         font-size: 30px;
         font-weight: 800;
         line-height: 1;
+        letter-spacing: -0.04em;
+        font-variant-numeric: tabular-nums;
     }
 
     .stat-card__note {
@@ -341,6 +343,10 @@
         .rate-grid {
             grid-template-columns: 1fr;
         }
+
+        .stat-card .card-body {
+            min-height: 0;
+        }
     }
 
     @media (max-width: 575px) {
@@ -351,6 +357,15 @@
         .chart-total {
             margin-top: 14px;
             text-align: left;
+        }
+
+        .template-chart,
+        .template-chart.is-compact {
+            min-height: 220px;
+        }
+
+        .quick-list a {
+            min-height: 44px;
         }
     }
 </style>

@@ -45,10 +45,12 @@ class InvitationPlaygroundController extends Controller
             abort_if($ref === '', 404);
 
             $recipient = InvitationRecipient::query()
+                ->with(['roles.category', 'category', 'period'])
                 ->where('period_id', $period->id)
-                ->where('category_id', $category->id)
                 ->where('token', $ref)
                 ->firstOrFail();
+
+            abort_unless($recipient->belongsToCategory((int) $category->id), 404);
         }
 
         if ($category->usesNimAccess() && $ref !== '') {

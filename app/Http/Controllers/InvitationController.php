@@ -13,7 +13,7 @@ use Illuminate\View\View;
 
 class InvitationController extends Controller
 {
-    public function show(Request $request, ?string $slug = null): View
+    public function show(Request $request, ?string $slug = null): View|RedirectResponse
     {
         $events = YudisiumPeriod::query()
             ->where('is_published', true)
@@ -78,6 +78,17 @@ class InvitationController extends Controller
                 if ($request->filled('ref') && ! $recipient) {
                     abort(404);
                 }
+            }
+        }
+
+        if ($recipient) {
+            $canonicalCategory = $recipient->invitationCategory();
+            if ($canonicalCategory && $canonicalCategory->slug !== $selectedCategory->slug) {
+                return redirect()->to(route('home', array_filter([
+                    'event' => $event->slug,
+                    'to' => $canonicalCategory->slug,
+                    'ref' => $recipient->token,
+                ])));
             }
         }
 
@@ -207,7 +218,10 @@ class InvitationController extends Controller
 
         $query = InvitationRecipient::query()
             ->where('period_id', $event->id)
-            ->where('category_id', $category->id);
+            ->where(function ($inner) use ($category) {
+                $inner->where('category_id', $category->id)
+                    ->orWhereHas('roles', fn ($roles) => $roles->where('category_id', $category->id));
+            });
 
         if ($category->usesNipAccess()) {
             $query->where('identifier', $lookupValue);
@@ -244,7 +258,7 @@ class InvitationController extends Controller
         return redirect()
             ->to(route('home', [
                 'event' => $event->slug,
-                'to' => $category->slug,
+                'to' => $recipient->invitationCategory()?->slug ?: $category->slug,
                 'ref' => $recipient->token,
             ]))
             ->with('success', 'Data berhasil diverifikasi. Silakan lanjut membaca undangan dan isi konfirmasi kehadiran.');
@@ -358,13 +372,20 @@ class InvitationController extends Controller
         }
 
         $recipient = InvitationRecipient::query()
-            ->with(['period', 'category', 'participant'])
+            ->with(['period', 'category', 'participant', 'roles.category'])
             ->where('period_id', $event->id)
-            ->where('category_id', $category->id)
             ->where('token', $request->string('ref')->toString())
             ->first();
 
-        return [$recipient, $recipient ? null : 'Link undangan private tidak valid atau tidak sesuai kategori.'];
+        if (! $recipient) {
+            return [null, 'Link undangan private tidak valid atau tidak sesuai kategori.'];
+        }
+
+        if (! $recipient->belongsToCategory((int) $category->id)) {
+            return [null, 'Link undangan private tidak valid atau tidak sesuai kategori.'];
+        }
+
+        return [$recipient, null];
     }
 
     private function resolveCategory($categories, string $slug): ?InvitationCategory

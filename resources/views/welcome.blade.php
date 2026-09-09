@@ -209,11 +209,16 @@
         padding: 0 20px;
         border-radius: 14px;
         font-weight: 700;
-        transition: transform 0.25s ease, background-color 0.25s ease, color 0.25s ease;
+        touch-action: manipulation;
+        transition: transform 100ms ease-out, background-color 180ms ease, color 180ms ease;
     }
 
     .invite-btn:hover {
-        transform: translateY(-1px);
+        transform: none;
+    }
+
+    .invite-btn:active {
+        transform: scale(0.97);
     }
 
     .invite-btn--primary {
@@ -564,6 +569,22 @@
         .timeline-item {
             flex-direction: column;
             gap: 8px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .invite-btn {
+            transition: background-color 200ms ease, color 200ms ease;
+            transform: none !important;
+        }
+    }
+
+    @media (prefers-reduced-transparency: reduce) {
+        .invite-card,
+        .invite-btn--secondary {
+            background: #1c1c1e;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
         }
     }
 </style>

@@ -101,6 +101,10 @@
     }
 
     .monitor-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
         border: 1px solid #dfe3ea;
         border-radius: 12px;
         padding: 10px 14px;
@@ -108,6 +112,11 @@
         color: #4b5563;
         font-weight: 700;
         text-decoration: none;
+        touch-action: manipulation;
+    }
+
+    .monitor-tab:active {
+        transform: scale(0.97);
     }
 
     .monitor-tab.active {
@@ -119,7 +128,7 @@
 
     .monitor-stat-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
         gap: 12px;
     }
 
@@ -458,12 +467,27 @@
         .monitor-panel-head,
         .monitor-toolbar,
         .program-section-head {
-            align-items: flex-start;
+            align-items: stretch;
             flex-direction: column;
+        }
+
+        .monitor-tab {
+            flex: 1 1 100%;
+            justify-content: center;
         }
 
         .program-section-meta {
             gap: 8px;
+        }
+
+        #toast-container.toast-top-right {
+            top: 64px;
+            right: 12px;
+            left: 12px;
+        }
+
+        #toast-container > div {
+            width: 100%;
         }
     }
 </style>

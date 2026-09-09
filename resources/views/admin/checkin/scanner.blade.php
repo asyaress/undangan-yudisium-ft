@@ -131,7 +131,8 @@
             padding: max(16px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
             background: #f3f4f6;
             color: #111827;
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+            font-optical-sizing: auto;
             -webkit-font-smoothing: antialiased;
         }
 
@@ -392,7 +393,8 @@
 
         .scan-button.primary:active,
         .quick-nim-row button:active {
-            transform: translateY(1px);
+            transform: scale(0.97);
+            transition: transform 100ms ease-out;
         }
 
         .scan-button.ghost {
@@ -711,6 +713,13 @@
 
             .scan-summary strong {
                 font-size: 18px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .scan-button.primary:active,
+            .quick-nim-row button:active {
+                transform: none;
             }
         }
     </style>

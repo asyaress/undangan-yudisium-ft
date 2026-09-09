@@ -75,15 +75,25 @@ class YudisiumParticipant extends Model
 
     public function markCheckedIn(string $source = 'web'): void
     {
-        if ($this->checked_in_at) {
-            return;
-        }
+        $this->claimCheckin($source);
+    }
 
-        $this->forceFill([
-            'checkin_status' => 'checked_in',
-            'checked_in_at' => now(),
-            'checkin_source' => $source,
-        ])->save();
+    public function claimCheckin(string $source = 'web'): bool
+    {
+        $now = now();
+        $claimed = static::query()
+            ->whereKey($this->id)
+            ->whereNull('checked_in_at')
+            ->update([
+                'checkin_status' => 'checked_in',
+                'checked_in_at' => $now,
+                'checkin_source' => $source,
+                'updated_at' => $now,
+            ]) > 0;
+
+        $this->refresh();
+
+        return $claimed;
     }
 
     public function submitRsvp(

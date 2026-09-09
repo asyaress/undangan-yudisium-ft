@@ -214,47 +214,61 @@ class MonitoringController extends Controller
     private function privateRows(array $filters, bool $withSignatureData = false): Collection
     {
         return InvitationRecipient::query()
-            ->with(['period', 'category'])
+            ->with(['period', 'category', 'roles.category'])
             ->when($filters['period_id'], fn ($query) => $query->where('period_id', $filters['period_id']))
-            ->whereHas('category', fn ($query) => $query->whereIn('access_mode', $this->recipientAccessModes()))
+            ->where(function ($query) {
+                $query->whereHas('category', fn ($category) => $category->whereIn('access_mode', $this->recipientAccessModes()))
+                    ->orWhereHas('roles.category', fn ($category) => $category->whereIn('access_mode', $this->recipientAccessModes()));
+            })
             ->orderBy('name')
             ->get()
-            ->map(function (InvitationRecipient $recipient) use ($withSignatureData) {
+            ->flatMap(function (InvitationRecipient $recipient) use ($withSignatureData) {
                 $hasSignature = $this->decodeSignature($recipient->rsvp_signature) !== null;
-                $row = [
-                    'id' => 'private-'.$recipient->id,
-                    'recipient_id' => $recipient->id,
-                    'event' => $recipient->period?->name ?: '-',
-                    'category' => $recipient->category?->title ?: '-',
-                    'category_key' => $recipient->category?->slug ?: 'private',
-                    'type' => 'Undangan Private',
-                    'sequence_number' => null,
-                    'nim' => $recipient->participant?->nim ?: '',
-                    'name' => $recipient->invitation_name,
-                    'context' => $recipient->context_note ?: '-',
-                    'note' => $recipient->rsvp_note ?: '',
-                    'rsvp_status' => $recipient->rsvp_status ?: 'pending',
-                    'rsvp_label' => $this->rsvpLabel($recipient->rsvp_status ?: 'pending'),
-                    'responded_at' => $recipient->responded_at?->toIso8601String(),
-                    'responded_at_label' => $recipient->responded_at?->format('d/m/Y H:i') ?: '-',
-                    'has_signature' => $hasSignature,
-                    'signature_label' => $this->signatureLabel($recipient->rsvp_status ?: 'pending'),
-                    'signature_url' => $hasSignature ? route('monitoring.private.signature', $recipient) : null,
-                    'checked_in' => false,
-                    'checkin_status' => 'not_applicable',
-                    'checked_in_at' => null,
-                    'checked_in_at_label' => '-',
-                    'updated_marker' => max(
-                        $recipient->responded_at?->timestamp ?? 0,
-                        $recipient->updated_at?->timestamp ?? 0,
-                    ),
-                ];
+                $roles = $recipient->roles->isNotEmpty()
+                    ? $recipient->roles
+                    : collect([(object) [
+                        'category' => $recipient->category,
+                        'position' => $recipient->position,
+                        'show_on_invitation' => true,
+                    ]]);
 
-                if ($withSignatureData) {
-                    $row['signature_data'] = $hasSignature ? $recipient->rsvp_signature : null;
-                }
+                return $roles->map(function ($role) use ($recipient, $hasSignature, $withSignatureData) {
+                    $category = $role->category ?? $recipient->category;
+                    $row = [
+                        'id' => 'private-'.$recipient->id.'-role-'.($role->id ?? ($category?->id.'-'.md5((string) $role->position))),
+                        'recipient_id' => $recipient->id,
+                        'event' => $recipient->period?->name ?: '-',
+                        'category' => $category?->title ?: '-',
+                        'category_key' => $category?->slug ?: 'private',
+                        'type' => 'Undangan Private',
+                        'sequence_number' => null,
+                        'nim' => $recipient->participant?->nim ?: '',
+                        'name' => $recipient->invitation_name,
+                        'context' => $role->position ?: ($recipient->context_note ?: '-'),
+                        'note' => $recipient->rsvp_note ?: '',
+                        'rsvp_status' => $recipient->rsvp_status ?: 'pending',
+                        'rsvp_label' => $this->rsvpLabel($recipient->rsvp_status ?: 'pending'),
+                        'responded_at' => $recipient->responded_at?->toIso8601String(),
+                        'responded_at_label' => $recipient->responded_at?->format('d/m/Y H:i') ?: '-',
+                        'has_signature' => $hasSignature,
+                        'signature_label' => $this->signatureLabel($recipient->rsvp_status ?: 'pending'),
+                        'signature_url' => $hasSignature ? route('monitoring.private.signature', $recipient) : null,
+                        'checked_in' => false,
+                        'checkin_status' => 'not_applicable',
+                        'checked_in_at' => null,
+                        'checked_in_at_label' => '-',
+                        'updated_marker' => max(
+                            $recipient->responded_at?->timestamp ?? 0,
+                            $recipient->updated_at?->timestamp ?? 0,
+                        ),
+                    ];
 
-                return $row;
+                    if ($withSignatureData) {
+                        $row['signature_data'] = $hasSignature ? $recipient->rsvp_signature : null;
+                    }
+
+                    return $row;
+                });
             });
     }
 

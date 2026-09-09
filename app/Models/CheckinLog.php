@@ -22,6 +22,8 @@ class CheckinLog extends Model
         'manual_note',
         'ip_address',
         'user_agent',
+        'client_scan_id',
+        'device_name',
         'attempted_at',
     ];
 

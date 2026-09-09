@@ -44,11 +44,12 @@
         display: grid;
         gap: 6px;
         padding: 18px;
+        min-height: 44px;
         border-radius: 16px;
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.92);
         color: inherit;
-        transition: border-color 0.18s ease, transform 0.18s ease;
+        transition: border-color 0.18s ease, transform 100ms ease-out;
     }
 
     .admin-nav-card:hover,
@@ -56,7 +57,10 @@
         text-decoration: none;
         color: inherit;
         border-color: rgba(217, 119, 6, 0.35);
-        transform: translateY(-1px);
+    }
+
+    .admin-nav-card:active {
+        transform: scale(0.97);
     }
 
     .admin-nav-card strong {
@@ -269,6 +273,13 @@
         .admin-stats,
         .admin-nav-grid {
             grid-template-columns: 1fr;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .admin-nav-card {
+            transition: border-color 200ms ease;
+            transform: none !important;
         }
     }
 </style>

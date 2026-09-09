@@ -7,6 +7,7 @@ use App\Models\InvitationRecipient;
 use App\Models\YudisiumPeriod;
 use App\Services\ExcelParticipantImporter;
 use App\Services\ExcelTemplateExporter;
+use App\Services\RecipientDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,57 +31,35 @@ class AdminRecipientController extends Controller
         $search = trim($request->string('q')->toString());
         $rsvpFilter = trim($request->string('rsvp')->toString());
 
-        $recipients = InvitationRecipient::query()
-            ->with(['period', 'category'])
-            ->where('category_id', $category->id)
-            ->when($periodId, fn ($query) => $query->where('period_id', $periodId))
+        $directory = app(RecipientDirectory::class);
+        $visibleQuery = $directory->visibleInCategoryQuery((int) $periodId, $category->id)
             ->when(in_array($rsvpFilter, ['attending', 'declined', 'represented', 'pending'], true), fn ($query) => $query->where('rsvp_status', $rsvpFilter))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
                     $inner->where('name', 'like', "%{$search}%")
                         ->orWhere('identifier', 'like', "%{$search}%")
                         ->orWhere('position', 'like', "%{$search}%")
-                        ->orWhere('context_note', 'like', "%{$search}%");
+                        ->orWhere('context_note', 'like', "%{$search}%")
+                        ->orWhereHas('roles', fn ($roles) => $roles->where('position', 'like', "%{$search}%"));
                 });
             })
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+
+        $recipients = (clone $visibleQuery)->get();
+        $baseVisible = $directory->visibleInCategoryQuery((int) $periodId, $category->id);
 
         $stats = [
-            'total' => InvitationRecipient::where('category_id', $category->id)
-                ->when($periodId, fn ($q) => $q->where('period_id', $periodId))
-                ->count(),
-            'attending' => InvitationRecipient::where('category_id', $category->id)
-                ->where('rsvp_status', 'attending')
-                ->when($periodId, fn ($q) => $q->where('period_id', $periodId))
-                ->count(),
-            'declined' => InvitationRecipient::where('category_id', $category->id)
-                ->where('rsvp_status', 'declined')
-                ->when($periodId, fn ($q) => $q->where('period_id', $periodId))
-                ->count(),
-            'represented' => InvitationRecipient::where('category_id', $category->id)
-                ->where('rsvp_status', 'represented')
-                ->when($periodId, fn ($q) => $q->where('period_id', $periodId))
-                ->count(),
-            'pending' => InvitationRecipient::where('category_id', $category->id)
-                ->where('rsvp_status', 'pending')
-                ->when($periodId, fn ($q) => $q->where('period_id', $periodId))
-                ->count(),
+            'total' => (clone $baseVisible)->count(),
+            'attending' => (clone $baseVisible)->where('rsvp_status', 'attending')->count(),
+            'declined' => (clone $baseVisible)->where('rsvp_status', 'declined')->count(),
+            'represented' => (clone $baseVisible)->where('rsvp_status', 'represented')->count(),
+            'pending' => (clone $baseVisible)->where('rsvp_status', 'pending')->count(),
         ];
 
         $selectedPeriod = YudisiumPeriod::query()->find($periodId);
         $bulkLinks = $category->usesPrivateAccess()
-            ? InvitationRecipient::query()
-                ->with('period')
-                ->where('category_id', $category->id)
-                ->when($periodId, fn ($query) => $query->where('period_id', $periodId))
-                ->orderBy('name')
-                ->get()
-                ->map(fn (InvitationRecipient $recipient) => $recipient->invitation_name.' - '.route('home', [
-                    'event' => $recipient->period?->slug,
-                    'to' => $category->slug,
-                    'ref' => $recipient->token,
-                ]))
+            ? $recipients
+                ->map(fn (InvitationRecipient $recipient) => $recipient->invitation_name.' - '.$recipient->invitationUrl())
                 ->implode("\n")
             : ($selectedPeriod ? route('home', ['event' => $selectedPeriod->slug, 'to' => $category->slug]) : '');
 
@@ -119,11 +98,11 @@ class AdminRecipientController extends Controller
         $periodId = $request->integer('period_id') ?: $recipient->period_id;
         $category = $this->resolvePrivateCategory($categorySlug, $periodId);
 
-        abort_unless((int) $recipient->category_id === (int) $category->id, 404);
+        abort_unless($recipient->belongsToCategory((int) $category->id), 404);
         abort_unless((int) $recipient->period_id === (int) $periodId, 404);
 
         return view('admin.recipients.form', [
-            'recipient' => $recipient->load(['period', 'category']),
+            'recipient' => $recipient->load(['period', 'category', 'roles.category']),
             'category' => $category,
             'selectedPeriod' => $recipient->period,
             'mode' => 'edit',
@@ -169,8 +148,7 @@ class AdminRecipientController extends Controller
         $saved = 0;
         $failed = 0;
         $errors = [];
-        $seenIdentifiers = [];
-        $seenNames = [];
+        $directory = app(RecipientDirectory::class);
 
         foreach ($rows as $index => $row) {
             $rowNumber = $index + 2;
@@ -190,53 +168,16 @@ class AdminRecipientController extends Controller
                 continue;
             }
 
-            if ($category->usesNipAccess()) {
-                if (! preg_match('/^[0-9]+$/', $record['identifier'])) {
-                    $failed++;
-                    $errors[] = 'Baris '.$rowNumber.': NIP harus diisi dengan angka.';
+            if ($category->usesNipAccess() && ! preg_match('/^[0-9]+$/', $record['identifier'])) {
+                $failed++;
+                $errors[] = 'Baris '.$rowNumber.': NIP harus diisi dengan angka.';
 
-                    continue;
-                }
-
-                $identifierExists = InvitationRecipient::query()
-                    ->where('period_id', $data['period_id'])
-                    ->where('category_id', $category->id)
-                    ->where('identifier', $record['identifier'])
-                    ->exists();
-
-                if (isset($seenIdentifiers[$record['identifier']]) || $identifierExists) {
-                    $failed++;
-                    $errors[] = 'Baris '.$rowNumber.': NIP sudah terdaftar pada kategori ini.';
-
-                    continue;
-                }
-
-                $seenIdentifiers[$record['identifier']] = true;
+                continue;
             }
 
-            if ($category->usesNameAccess()) {
-                $nameKey = Str::lower($record['name']);
-
-                $nameExists = InvitationRecipient::query()
-                    ->where('period_id', $data['period_id'])
-                    ->where('category_id', $category->id)
-                    ->whereRaw('LOWER(name) = ?', [$nameKey])
-                    ->exists();
-
-                if (isset($seenNames[$nameKey]) || $nameExists) {
-                    $failed++;
-                    $errors[] = 'Baris '.$rowNumber.': nama sudah terdaftar pada kategori ini.';
-
-                    continue;
-                }
-
-                $seenNames[$nameKey] = true;
-            }
-
-            InvitationRecipient::create([
-                'period_id' => $data['period_id'],
-                'category_id' => $category->id,
+            $directory->upsert($category, [
                 ...$record,
+                'period_id' => $data['period_id'],
             ]);
             $saved++;
         }
@@ -251,11 +192,24 @@ class AdminRecipientController extends Controller
     {
         $data = $this->validateData($request);
         $category = InvitationCategory::query()->findOrFail($data['category_id']);
+        $directory = app(RecipientDirectory::class);
+        $existing = $directory->findInPeriod((int) $data['period_id'], $data['name'], $data['identifier'] ?? null);
+        $recipient = $directory->upsert($category, $data);
+        $recipient = $this->syncSubmittedRoles(
+            $directory,
+            $recipient->load('roles'),
+            $request,
+            $category,
+            keepOtherCategories: (bool) $existing,
+            keepDisplay: (bool) $existing,
+        );
 
-        $recipient = InvitationRecipient::create($data);
+        $message = $existing
+            ? 'Jabatan ditambahkan ke undangan yang sudah ada. Konfirmasi kehadiran memakai 1 link.'
+            : 'Penerima ditambahkan.';
 
         if ($request->expectsJson()) {
-            return response()->json($this->recipientPayload($recipient, 'Penerima tersimpan otomatis.'), 201);
+            return response()->json($this->recipientPayload($recipient, $existing ? 'Jabatan ditambahkan ke undangan yang sudah ada.' : 'Penerima tersimpan otomatis.'), $existing ? 200 : 201);
         }
 
         return redirect()
@@ -264,16 +218,17 @@ class AdminRecipientController extends Controller
                 'recipient' => $recipient,
                 'period_id' => $recipient->period_id,
             ])
-            ->with('success', 'Penerima ditambahkan.');
+            ->with('success', $message);
     }
 
     public function update(Request $request, InvitationRecipient $recipient): RedirectResponse|JsonResponse
     {
         $data = $this->validateData($request, $recipient);
-
-        $recipient->update($data);
-
         $category = InvitationCategory::query()->findOrFail($data['category_id']);
+        $directory = app(RecipientDirectory::class);
+
+        $recipient->update(Arr::except($data, ['roles', 'display_role']));
+        $recipient = $this->syncSubmittedRoles($directory, $recipient->fresh(['roles']), $request, $category);
 
         if ($request->expectsJson()) {
             return response()->json($this->recipientPayload($recipient, 'Perubahan penerima tersimpan otomatis.'));
@@ -313,10 +268,18 @@ class AdminRecipientController extends Controller
             return back()->with('error', 'Pilih minimal satu penerima untuk dihapus.');
         }
 
-        $deleted = InvitationRecipient::query()
-            ->where('category_id', $category->id)
+        $directory = app(RecipientDirectory::class);
+        $removed = 0;
+
+        InvitationRecipient::query()
             ->whereIn('id', $ids)
-            ->delete();
+            ->where('period_id', $periodId)
+            ->get()
+            ->filter(fn (InvitationRecipient $recipient) => $recipient->belongsToCategory((int) $category->id))
+            ->each(function (InvitationRecipient $recipient) use ($directory, $category, &$removed): void {
+                $directory->removeFromCategory($recipient, $category);
+                $removed++;
+            });
 
         return redirect()
             ->route('admin.recipients.index', array_filter([
@@ -325,7 +288,7 @@ class AdminRecipientController extends Controller
                 'rsvp' => $data['rsvp'] ?? null,
                 'q' => $data['q'] ?? null,
             ]))
-            ->with('success', "{$deleted} penerima berhasil dihapus.");
+            ->with('success', "{$removed} penerima berhasil dihapus dari kategori ini.");
     }
 
     private function validateData(Request $request, ?InvitationRecipient $recipient = null): array
@@ -338,6 +301,10 @@ class AdminRecipientController extends Controller
             'identifier' => ['nullable', 'string', 'max:50'],
             'position' => ['nullable', 'string', 'max:255'],
             'context_note' => ['nullable', 'string', 'max:255'],
+            'roles' => ['nullable', 'array'],
+            'roles.*.category_id' => ['nullable', 'integer', 'exists:invitation_categories,id'],
+            'roles.*.position' => ['nullable', 'string', 'max:255'],
+            'display_role' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $category = InvitationCategory::query()->find($data['category_id']);
@@ -365,20 +332,18 @@ class AdminRecipientController extends Controller
             ]);
         }
 
-        $duplicateQuery = InvitationRecipient::query()
-            ->where('period_id', $data['period_id'])
-            ->where('category_id', $category->id)
-            ->when($recipient?->exists, fn ($query) => $query->whereKeyNot($recipient->id));
+        $duplicate = app(RecipientDirectory::class)
+            ->findInPeriod((int) $data['period_id'], $data['name'], $data['identifier'] ?? null, $recipient?->id);
 
-        if ($category->usesNipAccess() && (clone $duplicateQuery)->where('identifier', trim((string) $data['identifier']))->exists()) {
+        if ($duplicate && $category->usesNipAccess() && $duplicate->identifier && $duplicate->identifier === trim((string) $data['identifier']) && $recipient?->exists) {
             throw ValidationException::withMessages([
-                'identifier' => 'NIP ini sudah terdaftar pada kategori yang sama.',
+                'identifier' => 'NIP ini sudah dipakai undangan lain. Edit penerima itu untuk menambah jabatan.',
             ]);
         }
 
-        if ($category->usesNameAccess() && (clone $duplicateQuery)->whereRaw('LOWER(name) = ?', [Str::lower($data['name'])])->exists()) {
+        if ($duplicate && $category->usesNameAccess() && $recipient?->exists) {
             throw ValidationException::withMessages([
-                'name' => 'Nama ini sudah terdaftar pada kategori yang sama.',
+                'name' => 'Nama ini sudah dipakai undangan lain. Edit penerima itu untuk menambah jabatan.',
             ]);
         }
 
@@ -392,20 +357,51 @@ class AdminRecipientController extends Controller
         return $data;
     }
 
+    private function syncSubmittedRoles(
+        RecipientDirectory $directory,
+        InvitationRecipient $recipient,
+        Request $request,
+        InvitationCategory $category,
+        bool $keepOtherCategories = false,
+        bool $keepDisplay = false
+    ): InvitationRecipient {
+        $roles = collect($request->input('roles', []))
+            ->map(function ($role) use ($category) {
+                return [
+                    'category_id' => (int) ($role['category_id'] ?? $category->id),
+                    'position' => $role['position'] ?? null,
+                    'show_on_invitation' => false,
+                ];
+            })
+            ->filter(fn (array $role) => $role['category_id'] > 0)
+            ->values();
+
+        if ($roles->isEmpty()) {
+            $roles = collect([[
+                'category_id' => $category->id,
+                'position' => $request->input('position') ?: $recipient->position,
+                'show_on_invitation' => true,
+            ]]);
+        }
+
+        $displayIndex = $keepDisplay
+            ? null
+            : ($request->filled('display_role') ? (int) $request->input('display_role') : 0);
+
+        return $directory->syncRoles($recipient, $roles->all(), $displayIndex, $keepOtherCategories);
+    }
+
     private function recipientPayload(InvitationRecipient $recipient, string $message): array
     {
-        $recipient->loadMissing(['period', 'category']);
-        $url = route('home', [
-            'event' => $recipient->period?->slug,
-            'to' => $recipient->category?->slug,
-        ]).($recipient->category?->usesPrivateAccess() ? '&ref='.$recipient->token : '');
+        $recipient->loadMissing(['period', 'category', 'roles.category']);
+        $url = $recipient->invitationUrl();
 
         return [
             'id' => $recipient->id,
             'token' => $recipient->token,
             'message' => $message,
             'edit_url' => route('admin.recipients.edit', [
-                'categorySlug' => $recipient->category?->slug,
+                'categorySlug' => $recipient->invitationCategory()?->slug ?: $recipient->category?->slug,
                 'recipient' => $recipient,
                 'period_id' => $recipient->period_id,
             ]),

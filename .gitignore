@@ -18,7 +18,15 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/app/playwright
 /vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/android-scanner/.gradle
+/android-scanner/.idea
+/android-scanner/build
+/android-scanner/app/build
+/android-scanner/local.properties
+/android-scanner/*.iml
+/android-scanner/app/*.iml

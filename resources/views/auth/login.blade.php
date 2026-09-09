@@ -7,17 +7,22 @@
     <meta name="description" content="Login admin Yudisium Fakultas Teknik Universitas Mulawarman">
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('assets-template/assets/vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets-template/assets/vendor/font-awesome/css/font-awesome.min.css') }}">
 
     <style>
         :root {
-            --orange: #d97706;
-            --orange-dark: #b85f00;
-            --ink: #1f2933;
-            --muted: #6b7280;
-            --line: #e5e7eb;
-            --soft-orange: #fff7ed;
+            --orange: #F5530D;
+            --orange-dark: #D9450B;
+            --ink: #1c1c1e;
+            --muted: #636366;
+            --line: rgba(60, 60, 67, 0.16);
+            --soft-orange: #FFF3EE;
+            --spring: cubic-bezier(0.32, 0.72, 0, 1);
+            --press: 100ms ease-out;
         }
 
         * {
@@ -27,13 +32,17 @@
         html,
         body {
             min-height: 100%;
+            font-optical-sizing: auto;
         }
 
         body {
             margin: 0;
-            font-family: "Nunito Sans", "Nunito", Arial, sans-serif;
+            font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
             background: #111827;
             color: var(--ink);
+            letter-spacing: 0;
+            line-height: 1.5;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .login-page {
@@ -66,10 +75,13 @@
         .login-card {
             width: min(100%, 470px);
             padding: 38px 42px 42px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.96);
-            box-shadow: 0 22px 70px rgba(17, 24, 39, 0.36);
-            backdrop-filter: blur(10px);
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-top-color: rgba(255, 255, 255, 0.88);
+            box-shadow: 0 22px 70px rgba(17, 24, 39, 0.28);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
         }
 
         .brand {
@@ -95,10 +107,11 @@
 
         .brand h1 {
             margin: 0;
-            color: #17211d;
+            color: #1c1c1e;
             font-size: 30px;
             font-weight: 800;
-            line-height: 1.18;
+            line-height: 1.08;
+            letter-spacing: -0.03em;
         }
 
         .brand-copy {
@@ -150,17 +163,18 @@
         .input-wrap .form-control {
             height: 54px;
             padding: 0 52px 0 16px;
-            color: #111827;
+            color: #1c1c1e;
             background: #fff;
             border: 1px solid var(--line);
-            border-radius: 8px;
+            border-radius: 14px;
             box-shadow: none;
             font-size: 15px;
         }
 
         .input-wrap .form-control:focus {
             border-color: var(--orange);
-            box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.12);
+            box-shadow: 0 0 0 4px rgba(245, 83, 13, 0.12);
+            outline: none;
         }
 
         .input-icon {
@@ -206,24 +220,42 @@
 
         .login-button {
             min-width: 120px;
+            min-height: 48px;
             height: 56px;
             padding: 0 26px;
             color: #fff;
             background: var(--orange);
             border: 0;
-            border-radius: 8px;
+            border-radius: 14px;
             font-size: 15px;
             font-weight: 800;
-            box-shadow: 0 14px 26px rgba(217, 119, 6, 0.26);
-            transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+            box-shadow: 0 10px 24px rgba(245, 83, 13, 0.26);
+            transition: background-color 180ms var(--spring), transform var(--press), box-shadow 180ms var(--spring);
+            touch-action: manipulation;
         }
 
         .login-button:hover,
         .login-button:focus {
             color: #fff;
             background: var(--orange-dark);
-            box-shadow: 0 12px 22px rgba(217, 119, 6, 0.22);
-            transform: translateY(-1px);
+            box-shadow: 0 10px 22px rgba(245, 83, 13, 0.22);
+        }
+
+        .login-button:active {
+            transform: scale(0.97);
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            .login-button:hover,
+            .login-button:focus {
+                transform: translateY(-1px);
+            }
+        }
+
+        .login-button:focus-visible,
+        .public-link:focus-visible {
+            outline: 2px solid var(--orange);
+            outline-offset: 3px;
         }
 
         .public-link {
@@ -253,7 +285,7 @@
 
             .login-card {
                 padding: 30px 22px 32px;
-                border-radius: 8px;
+                border-radius: 20px;
             }
 
             .brand-logo {
@@ -277,6 +309,73 @@
 
             .login-button {
                 width: 100%;
+            }
+        }
+
+        @media (min-width: 700px) and (min-height: 700px) {
+            .login-page {
+                padding: 48px 24px;
+            }
+
+            .login-card {
+                width: min(100%, 480px);
+            }
+        }
+
+        @media (max-height: 520px) and (orientation: landscape) {
+            .login-page {
+                align-items: stretch;
+                padding: 16px;
+            }
+
+            .login-card {
+                padding: 20px 24px 24px;
+            }
+
+            .brand {
+                margin-bottom: 14px;
+            }
+
+            .brand-logo {
+                width: 56px;
+                height: 56px;
+                margin-bottom: 8px;
+            }
+
+            .brand h1 {
+                font-size: 22px;
+            }
+
+            .brand-copy {
+                margin-top: 8px;
+                font-size: 14px;
+            }
+
+            .form-row-actions {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .login-button {
+                transition: background-color 200ms ease;
+                transform: none !important;
+            }
+        }
+
+        @media (prefers-reduced-transparency: reduce) {
+            .login-card {
+                background: #ffffff;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+        }
+
+        @media (prefers-contrast: more) {
+            .login-card {
+                background: #ffffff;
+                border: 2px solid #1c1c1e;
             }
         }
     </style>

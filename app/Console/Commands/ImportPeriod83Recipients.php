@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\InvitationCategory;
 use App\Models\InvitationRecipient;
 use App\Models\YudisiumPeriod;
+use App\Services\RecipientDirectory;
 use DOMDocument;
 use DOMNode;
 use DOMXPath;
@@ -20,6 +21,7 @@ class ImportPeriod83Recipients extends Command
         {--period=yudisium-tahun-2026-angkatan-83-periode-3 : Slug periode tujuan}
         {--officials=DAFTAR NAMA PEJABAT, KPS, KALAB FT 2024 AGUSTUS 2026 (1).xlsx : File pejabat/KPS/Kalab}
         {--employees=Data Pegawai FT Unmul 2026.xlsx : File tendik/keamanan/kebersihan}
+        {--senate=Daftar Nama Pejabat Undangan Digital Yudisium 2026 (2).xlsx : File ketua dan anggota senat}
         {--keep-missing : Jangan hapus penerima lama yang tidak ada di Excel}';
 
     protected $description = 'Import data pejabat, KPS, Kalab, tendik, keamanan, dan CS untuk periode 83 periode 3.';
@@ -38,22 +40,27 @@ class ImportPeriod83Recipients extends Command
 
         $officialsPath = $this->workbookPath((string) $this->option('officials'));
         $employeesPath = $this->workbookPath((string) $this->option('employees'));
+        $senatePath = $this->workbookPath((string) $this->option('senate'));
 
-        if (! is_file($officialsPath) || ! is_file($employeesPath)) {
-            $this->error('File Excel tidak ditemukan. Pastikan file berada di root project atau isi option --officials/--employees.');
+        if (! is_file($officialsPath) || ! is_file($employeesPath) || ! is_file($senatePath)) {
+            $this->error('File Excel tidak ditemukan. Pastikan file berada di root project atau isi option --officials/--employees/--senate.');
 
             return self::FAILURE;
         }
 
-        DB::transaction(function () use ($period, $officialsPath, $employeesPath): void {
+        DB::transaction(function () use ($period, $officialsPath, $employeesPath, $senatePath): void {
             $categories = $this->ensureCategories($period);
             $officials = $this->readWorkbook($officialsPath);
             $employees = $this->readWorkbook($employeesPath);
+            $senate = $this->readWorkbook($senatePath);
+            $senateRows = $senate['Pejabat FT'] ?? [];
 
             $imports = [
                 'pejabat' => $this->officialRows($employees['PEJABAT'] ?? $officials['PEJABAT FT 2024'] ?? []),
                 'kps' => $this->officialRows($officials['KPS'] ?? []),
                 'kalab' => $this->officialRows($officials['KALAB'] ?? []),
+                'ketuasenat' => $this->sectionRows($senateRows, 'Ketua Senat Fakultas'),
+                'anggota-senat-fakultas-teknik' => $this->sectionRows($senateRows, 'Anggota Senat Fakultas'),
                 'tendik' => [
                     ...$this->tendikPnsRows($employees['TENDIK PNS'] ?? []),
                     ...$this->tendikPppkRows($employees['TENDIK PPPK'] ?? []),
@@ -84,10 +91,6 @@ class ImportPeriod83Recipients extends Command
                 ));
             }
 
-            $staleLegacyRecords = $this->removeStaleLegacyRecipients($period, $imports);
-            if ($staleLegacyRecords > 0) {
-                $this->line('Kategori senat/manual: '.$staleLegacyRecords.' data lama yang bentrok dengan XLSX dibersihkan.');
-            }
         });
 
         $this->info('Import periode 83 selesai.');
@@ -310,6 +313,8 @@ class ImportPeriod83Recipients extends Command
             'pejabat' => ['Pejabat Fakultas dan Universitas', 'Pejabat Fakultas dan Universitas', InvitationCategory::ACCESS_PRIVATE, 3],
             'kps' => ['Koordinator Program Studi', 'Koordinator Program Studi Fakultas Teknik', InvitationCategory::ACCESS_PRIVATE, 4],
             'kalab' => ['Kepala Laboratorium', 'Kepala Laboratorium Fakultas Teknik', InvitationCategory::ACCESS_PRIVATE, 5],
+            'ketuasenat' => ['Ketua Senat Fakultas Teknik', 'Ketua Senat Fakultas Teknik', InvitationCategory::ACCESS_PRIVATE, 6],
+            'anggota-senat-fakultas-teknik' => ['Anggota Senat Fakultas Teknik', 'Anggota Senat Fakultas Teknik', InvitationCategory::ACCESS_PRIVATE, 7],
             'tendik' => ['Tenaga Kependidikan', 'Tenaga Kependidikan Fakultas Teknik', InvitationCategory::ACCESS_NIP, 8],
             'tenaga-cs' => ['Tenaga Cleaning Service', 'Tenaga Cleaning Service Fakultas Teknik', InvitationCategory::ACCESS_NAME, 9],
             'tenaga-keamanan' => ['Tenaga Keamanan', 'Tenaga Keamanan Fakultas Teknik', InvitationCategory::ACCESS_NAME, 10],
@@ -377,6 +382,54 @@ class ImportPeriod83Recipients extends Command
         foreach (array_slice($rows, 3) as $row) {
             $name = $this->clean($this->cell($row, 1));
             $position = $this->clean($this->cell($row, 6));
+
+            if ($name === '' || $position === '') {
+                continue;
+            }
+
+            $records[] = $this->record(
+                $name,
+                $this->cleanIdentifier($this->cell($row, 2)),
+                $position,
+                $position
+            );
+        }
+
+        return $records;
+    }
+
+    /**
+     * @param  array<int, array<int, string>>  $rows
+     * @return array<int, array<string, ?string>>
+     */
+    private function sectionRows(array $rows, string $sectionTitle): array
+    {
+        $records = [];
+        $collecting = false;
+
+        foreach ($rows as $row) {
+            $firstCell = $this->clean($this->cell($row, 0));
+
+            if (Str::lower($firstCell) === Str::lower($sectionTitle)) {
+                $collecting = true;
+
+                continue;
+            }
+
+            if (! $collecting) {
+                continue;
+            }
+
+            if (! ctype_digit($firstCell)) {
+                if ($this->rowHasValue($row)) {
+                    break;
+                }
+
+                continue;
+            }
+
+            $name = $this->clean($this->cell($row, 1));
+            $position = $this->clean($this->cell($row, 3));
 
             if ($name === '' || $position === '') {
                 continue;
@@ -519,7 +572,6 @@ class ImportPeriod83Recipients extends Command
     private function saveRecipients(YudisiumPeriod $period, InvitationCategory $category, array $records): array
     {
         $summary = ['created' => 0, 'updated' => 0, 'deleted' => 0, 'skipped' => 0];
-        $seen = [];
         $keptIds = [];
 
         if ($records === []) {
@@ -531,105 +583,53 @@ class ImportPeriod83Recipients extends Command
         foreach ($records as $record) {
             $name = $this->clean($record['name'] ?? '');
             $identifier = $record['identifier'] ? $this->cleanIdentifier($record['identifier']) : null;
-            $key = $identifier ?: Str::lower($name);
 
-            if ($name === '' || isset($seen[$key])) {
+            if ($name === '') {
                 $summary['skipped']++;
 
                 continue;
             }
 
-            $seen[$key] = true;
-
-            $recipient = $this->findRecipient($period, $category, $name, $identifier);
-            $payload = [
+            $wasExisting = (bool) $this->directory()->findInPeriod($period->id, $name, $identifier);
+            $recipient = $this->directory()->upsert($category, [
                 ...$record,
-                'period_id' => $period->id,
-                'category_id' => $category->id,
                 'name' => $name,
-                'display_name' => $name,
                 'identifier' => $identifier,
-            ];
-
-            if ($recipient) {
-                $recipient->forceFill($payload)->save();
-                $keptIds[] = $recipient->id;
-                $summary['updated']++;
-
-                continue;
-            }
-
-            $created = InvitationRecipient::create([
-                ...$payload,
-                'rsvp_status' => 'pending',
             ]);
-            $keptIds[] = $created->id;
-            $summary['created']++;
+
+            $keptIds[] = $recipient->id;
+
+            if ($wasExisting) {
+                $summary['updated']++;
+            } else {
+                $summary['created']++;
+            }
         }
 
+        $keptIds = array_values(array_unique($keptIds));
+
         if (! $this->option('keep-missing')) {
-            $summary['deleted'] = InvitationRecipient::query()
+            $stale = InvitationRecipient::query()
                 ->where('period_id', $period->id)
-                ->where('category_id', $category->id)
+                ->where(function ($query) use ($category) {
+                    $query->where('category_id', $category->id)
+                        ->orWhereHas('roles', fn ($roles) => $roles->where('category_id', $category->id));
+                })
                 ->whereNotIn('id', $keptIds)
-                ->delete();
+                ->get();
+
+            foreach ($stale as $recipient) {
+                $this->directory()->removeFromCategory($recipient, $category);
+                $summary['deleted']++;
+            }
         }
 
         return $summary;
     }
 
-    private function findRecipient(YudisiumPeriod $period, InvitationCategory $category, string $name, ?string $identifier): ?InvitationRecipient
+    private function directory(): RecipientDirectory
     {
-        $query = InvitationRecipient::query()
-            ->where('period_id', $period->id)
-            ->where('category_id', $category->id);
-
-        if ($identifier) {
-            $recipient = (clone $query)->where('identifier', $identifier)->first();
-
-            if ($recipient) {
-                return $recipient;
-            }
-        }
-
-        return $query->whereRaw('LOWER(name) = ?', [Str::lower($name)])->first();
-    }
-
-    /**
-     * @param  array<string, array<int, array<string, ?string>>>  $imports
-     */
-    private function removeStaleLegacyRecipients(YudisiumPeriod $period, array $imports): int
-    {
-        if ($this->option('keep-missing')) {
-            return 0;
-        }
-
-        $sourceNameKeys = collect($imports)
-            ->flatten(1)
-            ->pluck('name')
-            ->filter()
-            ->map(fn (string $name): string => Str::lower($this->clean($name)))
-            ->unique()
-            ->values();
-
-        if ($sourceNameKeys->isEmpty()) {
-            return 0;
-        }
-
-        $legacyCategoryIds = InvitationCategory::query()
-            ->where('period_id', $period->id)
-            ->whereIn('slug', ['ketuasenat', 'anggota-senat-fakultas-teknik'])
-            ->pluck('id');
-
-        if ($legacyCategoryIds->isEmpty()) {
-            return 0;
-        }
-
-        return InvitationRecipient::query()
-            ->where('period_id', $period->id)
-            ->whereIn('category_id', $legacyCategoryIds)
-            ->whereIn(DB::raw('LOWER(name)'), $sourceNameKeys->all())
-            ->delete();
+        return app(RecipientDirectory::class);
     }
 
     private function cell(array $row, int $index): string

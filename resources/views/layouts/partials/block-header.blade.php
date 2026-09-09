@@ -16,7 +16,7 @@
         </div>
         @hasSection('page_actions')
             <div class="col-lg-6 col-md-6 col-sm-12">
-                <div class="d-flex flex-row-reverse">
+                <div class="d-flex flex-row-reverse flex-wrap">
                     <div class="page_action">
                         @yield('page_actions')
                     </div>

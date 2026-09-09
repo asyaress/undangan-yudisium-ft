@@ -26,7 +26,16 @@
       "{{ asset('UNMUL.png') }}"
     ];
 
-    const isMobileView = window.matchMedia("(max-width: 768px)").matches;
+    const mobileQuery = window.matchMedia("(max-width: 768px)");
+    let isMobileView = mobileQuery.matches;
+    const syncMobileView = (event) => {
+      isMobileView = event.matches;
+    };
+    if (typeof mobileQuery.addEventListener === "function") {
+      mobileQuery.addEventListener("change", syncMobileView);
+    } else if (typeof mobileQuery.addListener === "function") {
+      mobileQuery.addListener(syncMobileView);
+    }
 
     document.querySelectorAll("[data-category-picker]").forEach((picker) => {
       const select = picker.querySelector("[data-category-select]");
@@ -895,6 +904,12 @@
       }, INVITATION_OPEN_MS);
     };
 
+    openButton?.addEventListener("pointerdown", () => {
+      openButton.classList.add("is-pressed");
+    });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach((type) => {
+      openButton?.addEventListener(type, () => openButton.classList.remove("is-pressed"));
+    });
     openButton?.addEventListener("click", openInvitation);
 
     if (previewMode === "open" || shouldReturnToRsvp) {

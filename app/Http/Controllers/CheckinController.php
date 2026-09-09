@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CheckinLog;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
+use App\Services\CheckinDesk;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,8 @@ use Illuminate\View\View;
 class CheckinController extends Controller
 {
     private const MAX_ACCEPTED_ACCURACY_METERS = 500;
+
+    public function __construct(private CheckinDesk $desk) {}
 
     public function index(Request $request, ?string $slug = null): View
     {
@@ -195,37 +198,24 @@ class CheckinController extends Controller
         }
 
         $result = DB::transaction(function () use ($request, $event, $participant, $latitude, $longitude, $distance, $accuracy, $radius) {
+            $claimed = $participant->claimCheckin('web-location');
             $lockedParticipant = YudisiumParticipant::query()
                 ->with(['period', 'studyProgram'])
                 ->whereKey($participant->id)
-                ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedParticipant->checked_in_at) {
-                $this->logAttempt($request, $event, $lockedParticipant, [
-                    'status' => 'duplicate',
-                    'source' => 'web',
-                    'message' => 'Peserta sudah check-in sebelumnya.',
-                ]);
-
-                return ['participant' => $lockedParticipant, 'alreadyCheckedIn' => true];
-            }
-
-            $lockedParticipant->markCheckedIn('web-location');
-            $lockedParticipant->refresh();
-
             $this->logAttempt($request, $event, $lockedParticipant, [
-                'status' => 'accepted',
+                'status' => $claimed ? 'accepted' : 'duplicate',
                 'source' => 'web',
-                'latitude' => $latitude,
-                'longitude' => $longitude,
-                'distance_meter' => $distance,
-                'accuracy_meter' => $accuracy,
-                'radius_meter' => $event->hasCheckinCoordinate() ? $radius : null,
-                'message' => 'Check-in berhasil.',
+                'latitude' => $claimed ? $latitude : null,
+                'longitude' => $claimed ? $longitude : null,
+                'distance_meter' => $claimed ? $distance : null,
+                'accuracy_meter' => $claimed ? $accuracy : null,
+                'radius_meter' => $claimed && $event->hasCheckinCoordinate() ? $radius : null,
+                'message' => $claimed ? 'Check-in berhasil.' : 'Peserta sudah check-in sebelumnya.',
             ]);
 
-            return ['participant' => $lockedParticipant, 'alreadyCheckedIn' => false];
+            return ['participant' => $lockedParticipant, 'alreadyCheckedIn' => ! $claimed];
         });
 
         return $this->publicView($event, [
@@ -426,42 +416,7 @@ class CheckinController extends Controller
 
     private function resolveScannedParticipant(YudisiumPeriod $event, string $scanCode): array
     {
-        $scanCode = trim($scanCode);
-
-        if (Str::startsWith($scanCode, 'YFT|')) {
-            $parts = explode('|', $scanCode);
-
-            if (count($parts) !== 4) {
-                return [null, 'scanner', 'Format QR tidak valid.'];
-            }
-
-            [, $periodId, $participantId, $token] = $parts;
-
-            if ((int) $periodId !== (int) $event->id) {
-                return [null, 'scanner', 'QR ini bukan untuk event yang sedang dipilih.'];
-            }
-
-            $participant = YudisiumParticipant::query()
-                ->with(['period', 'studyProgram'])
-                ->where('period_id', $event->id)
-                ->whereKey((int) $participantId)
-                ->where('invitation_token', $token)
-                ->first();
-
-            return [$participant, 'scanner', $participant ? null : 'QR tidak cocok dengan data mahasiswa.'];
-        }
-
-        if (! preg_match('/^[0-9]+$/', $scanCode)) {
-            return [null, 'manual', 'Masukkan NIM angka atau scan QR kartu konfirmasi.'];
-        }
-
-        $participant = YudisiumParticipant::query()
-            ->with(['period', 'studyProgram'])
-            ->where('period_id', $event->id)
-            ->where('nim', $scanCode)
-            ->first();
-
-        return [$participant, 'manual', $participant ? null : 'NIM tidak ditemukan pada event ini.'];
+        return $this->desk->resolve($event, $scanCode);
     }
 
     private function storeManualCheckin(
@@ -471,34 +426,11 @@ class CheckinController extends Controller
         string $manualNote,
         string $source = 'manual'
     ): array {
-        return DB::transaction(function () use ($request, $event, $participant, $manualNote, $source) {
-            $lockedParticipant = YudisiumParticipant::query()
-                ->with(['period', 'studyProgram'])
-                ->whereKey($participant->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            $alreadyCheckedIn = (bool) $lockedParticipant->checked_in_at;
-            if (! $alreadyCheckedIn) {
-                $lockedParticipant->markCheckedIn($source);
-                $lockedParticipant->refresh()->load(['period', 'studyProgram']);
-            }
-
-            $this->logAttempt($request, $event, $lockedParticipant, [
-                'status' => $alreadyCheckedIn ? 'duplicate' : 'accepted',
-                'source' => $source,
-                'admin_id' => $request->user()?->id,
-                'manual_note' => $manualNote,
-                'message' => $alreadyCheckedIn
-                    ? 'Peserta sudah check-in sebelumnya.'
-                    : ($source === 'scanner' ? 'Check-in melalui scan QR.' : 'Check-in manual oleh panitia.'),
-            ]);
-
-            return [
-                'alreadyCheckedIn' => $alreadyCheckedIn,
-                'participant' => $lockedParticipant,
-            ];
-        });
+        return $this->desk->store($event, $participant, $manualNote, $source, [
+            'admin_id' => $request->user()?->id,
+            'ip_address' => $request->ip(),
+            'user_agent' => (string) $request->userAgent(),
+        ]);
     }
 
     private function manualLivePayload(?YudisiumPeriod $event): array

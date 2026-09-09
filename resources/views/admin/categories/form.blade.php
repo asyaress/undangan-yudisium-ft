@@ -241,7 +241,14 @@
             }
 
             .preview-frame {
-                height: 680px;
+                height: min(70vh, 520px);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .preview-toolbar {
+                align-items: flex-start;
+                flex-direction: column;
             }
         }
     </style>

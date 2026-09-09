@@ -7,7 +7,7 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="description" content="Dashboard admin Yudisium Fakultas Teknik Universitas Mulawarman">
     <title>@yield('title', 'Dashboard Yudisium')</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
@@ -59,7 +59,12 @@
             display: flex;
             align-items: center;
             gap: 14px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            min-width: 0;
+            flex: 0 0 auto;
+            position: relative;
+            z-index: 1;
+            background: transparent;
         }
 
         .navbar-status {
@@ -84,7 +89,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
 
         .top-action {
@@ -107,7 +112,6 @@
         }
 
         #main-content {
-            padding-top: 0;
             background: #f4f6f8;
         }
 
@@ -432,12 +436,77 @@
             width: 14px !important;
             height: 14px !important;
         }
+
+        .navbar.navbar-fixed-top {
+            background: #ffffff;
+            border-bottom: 1px solid var(--line);
+            box-shadow: none;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+        }
+
+        .sidebar {
+            background: rgba(247, 249, 252, 0.94);
+        }
+
+        .btn,
+        .btn-primary,
+        .btn-secondary,
+        .btn-success,
+        .top-action,
+        .page-link {
+            touch-action: manipulation;
+            transition: transform 100ms ease-out, background-color 180ms cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        .btn:active,
+        .btn-primary:active,
+        .btn-secondary:active,
+        .btn-success:active,
+        .top-action:active,
+        .admin-nav-card:active {
+            transform: scale(0.97);
+        }
+
+        .btn:focus-visible,
+        .top-action:focus-visible,
+        a:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+        }
+
+        .card .header h2,
+        .block-header h2 {
+            letter-spacing: -0.03em;
+            line-height: 1.12;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .btn,
+            .btn-primary,
+            .top-action,
+            .admin-nav-card {
+                transition: background-color 200ms ease;
+                transform: none !important;
+            }
+        }
+
+        @media (prefers-reduced-transparency: reduce) {
+            .navbar.navbar-fixed-top {
+                background: #ffffff;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+        }
     </style>
+    @include('admin.partials.styles')
+    @include('admin.partials.shell')
     @stack('head')
 </head>
 
-<body data-theme="light" class="font-nunito">
+<body data-theme="light" class="font-nunito admin-app right_icon_toggle">
 <div id="wrapper" class="admin-orange">
+    <div class="admin-scrim" data-admin-scrim></div>
     <div class="page-loader-wrapper">
         <div class="loader">
             <div class="m-t-30">
@@ -606,6 +675,25 @@
             if (!slugInput.value.trim()) {
                 applySlug();
             }
+        });
+    })();
+</script>
+<script>
+    (function () {
+        var scrim = document.querySelector('[data-admin-scrim]');
+
+        if (scrim) {
+            scrim.addEventListener('click', function () {
+                document.body.classList.remove('offcanvas-active');
+            });
+        }
+
+        document.querySelectorAll('#left-sidebar-nav a[href]:not([href^="#"])').forEach(function (link) {
+            link.addEventListener('click', function () {
+                if (window.matchMedia('(max-width: 1279.98px)').matches) {
+                    document.body.classList.remove('offcanvas-active');
+                }
+            });
         });
     })();
 </script>

@@ -5,12 +5,29 @@
     $salutation = old('salutation', $recipient->salutation);
     $identifier = old('identifier', $recipient->identifier);
     $position = old('position', $recipient->position);
+    $roleRows = old('roles');
+    if (! is_array($roleRows) || $roleRows === []) {
+        $roleRows = $recipient->relationLoaded('roles') && $recipient->roles->isNotEmpty()
+            ? $recipient->roles->map(fn ($role) => [
+                'category_id' => $role->category_id,
+                'position' => $role->position,
+            ])->all()
+            : [[
+                'category_id' => $category->id,
+                'position' => $position,
+            ]];
+    }
+    $displayRoleIndex = (int) old('display_role', collect($roleRows)->search(function ($role) use ($recipient, $position) {
+        return ($role['position'] ?? null) === ($recipient->displayPosition() ?: $position);
+    }) ?: 0);
     $contextNote = old('context_note', $recipient->context_note);
     $invitationName = trim(collect([$salutation, $recipientName])->filter()->implode(' ')) ?: 'Nama Penerima';
     $tokenPreview = $recipient->token ?: 'TOKEN_OTOMATIS';
-    $invitationUrl = $selectedPeriod
-        ? route('home', ['event' => $selectedPeriod->slug, 'to' => $category->slug]).($category->usesPrivateAccess() ? '&ref='.$tokenPreview : '')
-        : '#';
+    $invitationUrl = $isEdit && $recipient->token
+        ? $recipient->invitationUrl()
+        : ($selectedPeriod
+            ? route('home', ['event' => $selectedPeriod->slug, 'to' => $category->slug]).($category->usesPrivateAccess() ? '&ref='.$tokenPreview : '')
+            : '#');
     $eventPreviewData = [
         'date' => $selectedPeriod?->event_date?->format('Y-m-d'),
         'time' => $selectedPeriod?->event_time,
@@ -66,12 +83,36 @@
             border-top: 0;
         }
 
-        .recipient-editor-card label {
-            color: #4b5563;
+        .recipient-editor-card .context-hint {
+            display: block;
+            margin: 4px 0 10px;
+            color: #6b7280;
             font-size: 12px;
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
+            line-height: 1.5;
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 600;
+        }
+
+        .role-row + .role-row {
+            margin-top: 10px;
+        }
+
+        .role-row__fields {
+            display: grid;
+            gap: 8px;
+        }
+
+        .role-row__display {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            color: #374151;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0;
+            text-transform: none;
         }
 
         .recipient-editor-card .form-control {
@@ -250,7 +291,18 @@
             }
 
             .preview-frame {
-                height: 680px;
+                height: min(70vh, 520px);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .preview-toolbar {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .role-row__display {
+                min-height: 44px;
             }
         }
     </style>
@@ -315,9 +367,27 @@
                             <input class="form-control" name="name" value="{{ $recipientName }}" placeholder="Nama penerima" required>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-role-list>
                         <label>Jabatan</label>
-                        <input class="form-control" name="position" value="{{ $position }}" placeholder="Contoh: Tenaga Kependidikan / Satpam / Cleaning Service">
+                        <p class="context-hint">Satu orang satu undangan. Pilih jabatan yang tampil di undangan; jabatan lain tetap tersimpan dan ikut status konfirmasi yang sama.</p>
+                        <div data-role-rows>
+                            @foreach ($roleRows as $index => $roleRow)
+                                <div class="role-row" data-role-row>
+                                    <input type="hidden" name="roles[{{ $index }}][category_id]" value="{{ $roleRow['category_id'] ?? $category->id }}">
+                                    <div class="role-row__fields">
+                                        <input class="form-control" name="roles[{{ $index }}][position]" value="{{ $roleRow['position'] ?? '' }}" placeholder="Contoh: Ketua Senat / Kepala Laboratorium">
+                                        <label class="role-row__display">
+                                            <input type="radio" name="display_role" value="{{ $index }}" @checked($displayRoleIndex === $index)>
+                                            Tampilkan di undangan
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm mt-2" type="button" data-add-role>
+                            <i class="fa fa-plus"></i> Tambah jabatan
+                        </button>
+                        <input type="hidden" name="position" value="{{ $position }}">
                     </div>
                     <div class="form-group">
                         <label>Catatan</label>
@@ -411,6 +481,7 @@
             <p class="meta">__COVER_TEXT__</p>
             <p class="guest-label">Kepada Yth.</p>
             <p class="guest">__INVITATION_NAME__</p>
+            <p class="guest-role">__DISPLAY_POSITION__</p>
             <button class="btn" id="openInvitation" type="button">Buka Undangan</button>
         </section>
 
@@ -553,9 +624,52 @@
                 return input ? input.value.trim() : '';
             }
 
-            function invitationName() {
-                return [field('salutation'), field('name')].filter(Boolean).join(' ') || 'Nama Penerima';
+            function displayPosition() {
+                var checked = form.querySelector('[name="display_role"]:checked');
+                var row = checked ? checked.closest('[data-role-row]') : form.querySelector('[data-role-row]');
+                var input = row ? row.querySelector('input[name*="[position]"]') : null;
+                var value = input ? input.value.trim() : field('position');
+                var hiddenPosition = form.querySelector('input[name="position"]');
+                if (hiddenPosition) {
+                    hiddenPosition.value = value;
+                }
+                return value;
             }
+
+            function reindexRoles() {
+                form.querySelectorAll('[data-role-row]').forEach(function (row, index) {
+                    var categoryInput = row.querySelector('input[name*="[category_id]"]');
+                    var positionInput = row.querySelector('input[name*="[position]"]');
+                    var radio = row.querySelector('input[name="display_role"]');
+                    if (categoryInput) categoryInput.name = 'roles[' + index + '][category_id]';
+                    if (positionInput) positionInput.name = 'roles[' + index + '][position]';
+                    if (radio) radio.value = String(index);
+                });
+            }
+
+            var addRoleButton = form.querySelector('[data-add-role]');
+            if (addRoleButton) {
+                addRoleButton.addEventListener('click', function () {
+                    var list = form.querySelector('[data-role-rows]');
+                    var first = list && list.querySelector('[data-role-row]');
+                    if (!list || !first) return;
+                    var clone = first.cloneNode(true);
+                    var positionInput = clone.querySelector('input[name*="[position]"]');
+                    var radio = clone.querySelector('input[name="display_role"]');
+                    if (positionInput) positionInput.value = '';
+                    if (radio) radio.checked = false;
+                    list.appendChild(clone);
+                    reindexRoles();
+                    renderPreview();
+                });
+            }
+
+            form.addEventListener('change', function (event) {
+                if (event.target && event.target.name === 'display_role') {
+                    displayPosition();
+                    renderPreview();
+                }
+            });
 
             function escapeHtml(value) {
                 return String(value || '')
@@ -614,7 +728,8 @@
                     '__INVITATION_TEXT__': escapeHtml(categoryData.invitation_text || 'Dengan hormat, kami mengundang Bapak/Ibu/Saudara(i) untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.'),
                     '__CLOSING_TEXT__': escapeHtml(categoryData.closing_text || 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.'),
                     '__INVITATION_NAME__': escapeHtml(name),
-                    '__CONTEXT_NOTE__': escapeHtml(field('position') || field('context_note') || 'Tidak ada catatan khusus.'),
+                    '__DISPLAY_POSITION__': escapeHtml(displayPosition()),
+                    '__CONTEXT_NOTE__': escapeHtml(displayPosition() || field('context_note') || 'Tidak ada catatan khusus.'),
                     '__EVENT_DATE_LABEL__': escapeHtml(formatDate(eventData.date, 'long')),
                     '__EVENT_DATE_SHORT__': escapeHtml(formatDate(eventData.date, 'short')),
                     '__EVENT_TIME__': escapeHtml(eventData.time || '09.00 s/d Selesai'),

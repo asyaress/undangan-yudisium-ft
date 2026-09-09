@@ -233,8 +233,8 @@
                             @foreach ($recipients as $recipient)
                                 @php
                                     $linkId = 'link-recipient-'.$recipient->id;
-                                    $inviteUrl = route('home', ['event' => $recipient->period?->slug, 'to' => $category->slug])
-                                        .($category->usesPrivateAccess() ? '&ref='.$recipient->token : '');
+                                    $inviteUrl = $recipient->invitationUrl();
+                                    $positionLabel = $recipient->positionFor($category) ?: '-';
                                 @endphp
                                 <tr>
                                     <td><input type="checkbox" name="ids[]" value="{{ $recipient->id }}" form="recipientBulkDeleteForm" data-check-item="recipient"></td>
@@ -245,7 +245,12 @@
                                     @if ($category->usesNipAccess())
                                         <td>{{ $recipient->identifier ?: '-' }}</td>
                                     @endif
-                                    <td>{{ $recipient->position ?: '-' }}</td>
+                                    <td>
+                                        <div>{{ $positionLabel }}</div>
+                                        @if ($recipient->extraPositionCount() > 0)
+                                            <div class="recipient-muted">+{{ $recipient->extraPositionCount() }} jabatan lain, RSVP mengikuti 1 undangan</div>
+                                        @endif
+                                    </td>
                                     <td>{{ $recipient->context_note ?: '-' }}</td>
                                     <td>
                                         @if ($recipient->rsvp_status === 'attending')<span class="badge badge-success">Hadir</span>
