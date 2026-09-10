@@ -79,7 +79,7 @@ import id.unmul.ft.yudisium.scanner.ui.theme.rememberReduceMotion
 @Composable
 fun AppRoot(
     state: ScanUiState,
-    onLogin: (String, String, String) -> Unit,
+    onLogin: (String, String) -> Unit,
     onRefreshEvents: () -> Unit,
     onOpenEvent: (Int) -> Unit,
     onScan: (String) -> Unit,
@@ -99,9 +99,8 @@ fun AppRoot(
 @Composable
 private fun LoginScreen(
     state: ScanUiState,
-    onLogin: (String, String, String) -> Unit,
+    onLogin: (String, String) -> Unit,
 ) {
-    var baseUrl by remember { mutableStateOf(state.session.baseUrl) }
     var email by remember { mutableStateOf(state.session.email) }
     var password by remember { mutableStateOf("") }
     Column(
@@ -115,7 +114,7 @@ private fun LoginScreen(
     ) {
         Text("Scan Yudisium", style = MaterialTheme.typography.displaySmall)
         Spacer(Modifier.height(8.dp))
-        Text("Masuk dengan akun panitia. Unduh data sekali, lalu scan bisa offline.", color = Label)
+        Text("Masuk dengan akun panitia. Data event diambil dari undangan resmi FT UNMUL.", color = Label)
         Spacer(Modifier.height(28.dp))
         Column(
             Modifier
@@ -124,8 +123,6 @@ private fun LoginScreen(
                 .background(Panel)
                 .padding(16.dp),
         ) {
-            Field(baseUrl, { baseUrl = it }, "Alamat server", "http://192.168.1.10:8000")
-            Spacer(Modifier.height(12.dp))
             Field(email, { email = it }, "Email", keyboardType = KeyboardType.Email)
             Spacer(Modifier.height(12.dp))
             Field(
@@ -134,7 +131,7 @@ private fun LoginScreen(
                 "Password",
                 password = true,
                 imeAction = ImeAction.Done,
-                onDone = { onLogin(baseUrl, email, password) },
+                onDone = { onLogin(email, password) },
             )
         }
         state.notice?.let {
@@ -144,7 +141,7 @@ private fun LoginScreen(
         Spacer(Modifier.height(20.dp))
         PrimaryButton(
             text = if (state.loading) "Masuk..." else "Masuk",
-            onClick = { onLogin(baseUrl, email, password) },
+            onClick = { onLogin(email, password) },
             enabled = !state.loading,
             modifier = Modifier.fillMaxWidth(),
         )

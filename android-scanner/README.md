@@ -6,7 +6,7 @@ Aplikasi panitia untuk scan QR kehadiran. Bisa dipakai **offline**, lalu otomati
 
 - Android 7.0 ke atas (API 24)
 - Android Studio (untuk install ke HP)
-- Server Laravel yang sama dengan dashboard admin
+- Server resmi: https://undangan-yudisium.ft.unmul.ac.id/
 
 ## Pasang di HP
 
@@ -15,18 +15,7 @@ Aplikasi panitia untuk scan QR kehadiran. Bisa dipakai **offline**, lalu otomati
 3. Sambungkan HP (USB debugging) atau pakai beberapa HP sekaligus.
 4. Run ke masing-masing HP.
 
-Kalau event di jaringan lokal, jalankan server agar bisa diakses semua HP:
-
-```bash
-php artisan migrate
-php artisan serve --host=0.0.0.0 --port=8000
-```
-
-Di aplikasi, isi **Alamat server** dengan IP komputer, contoh:
-
-`http://192.168.1.10:8000`
-
-HP dan komputer harus satu Wi-Fi.
+Aplikasi langsung memakai server produksi. Cukup login akun panitia; tidak perlu isi alamat server.
 
 ## Cara pakai hari H
 

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import id.unmul.ft.yudisium.scanner.ScannerApp
+import id.unmul.ft.yudisium.scanner.data.DEFAULT_SERVER_URL
 import id.unmul.ft.yudisium.scanner.data.LocalScanResult
 import id.unmul.ft.yudisium.scanner.data.Session
 import id.unmul.ft.yudisium.scanner.data.local.EventEntity
@@ -64,8 +65,8 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun login(baseUrl: String, email: String, password: String) = runAction {
-        repository.login(baseUrl, email, password)
+    fun login(email: String, password: String) = runAction {
+        repository.login(DEFAULT_SERVER_URL, email, password)
     }
 
     fun refreshEvents() = runAction { repository.refreshEvents() }

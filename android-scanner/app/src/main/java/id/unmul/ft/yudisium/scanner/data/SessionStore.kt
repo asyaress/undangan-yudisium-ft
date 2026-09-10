@@ -10,10 +10,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
+const val DEFAULT_SERVER_URL = "https://undangan-yudisium.ft.unmul.ac.id"
+
 private val Context.dataStore by preferencesDataStore("yudisium_scan_session")
 
 data class Session(
-    val baseUrl: String = "http://192.168.1.10:8000",
+    val baseUrl: String = DEFAULT_SERVER_URL,
     val token: String = "",
     val name: String = "",
     val email: String = "",
@@ -29,7 +31,7 @@ class SessionStore(private val context: Context) {
 
     val session: Flow<Session> = context.dataStore.data.map { prefs ->
         Session(
-            baseUrl = prefs[baseUrlKey] ?: "http://192.168.1.10:8000",
+            baseUrl = prefs[baseUrlKey] ?: DEFAULT_SERVER_URL,
             token = prefs[tokenKey].orEmpty(),
             name = prefs[nameKey].orEmpty(),
             email = prefs[emailKey].orEmpty(),
