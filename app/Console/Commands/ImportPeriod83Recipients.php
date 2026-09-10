@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\InvitationCategory;
 use App\Models\InvitationRecipient;
+use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
 use App\Services\RecipientDirectory;
 use DOMDocument;
@@ -22,6 +23,7 @@ class ImportPeriod83Recipients extends Command
         {--officials=DAFTAR NAMA PEJABAT, KPS, KALAB FT 2024 AGUSTUS 2026 (1).xlsx : File pejabat/KPS/Kalab}
         {--employees=Data Pegawai FT Unmul 2026.xlsx : File tendik/keamanan/kebersihan}
         {--senate=Daftar Nama Pejabat Undangan Digital Yudisium 2026 (2).xlsx : File ketua dan anggota senat}
+        {--reset-rsvp : Reset semua RSVP penerima dan mahasiswa sebelum import}
         {--keep-missing : Jangan hapus penerima lama yang tidak ada di Excel}';
 
     protected $description = 'Import data pejabat, KPS, Kalab, tendik, keamanan, dan CS untuk periode 83 periode 3.';
@@ -49,6 +51,9 @@ class ImportPeriod83Recipients extends Command
         }
 
         DB::transaction(function () use ($period, $officialsPath, $employeesPath, $senatePath): void {
+            if ($this->option('reset-rsvp')) {
+                $this->resetAllRsvp();
+            }
             $categories = $this->ensureCategories($period);
             $officials = $this->readWorkbook($officialsPath);
             $employees = $this->readWorkbook($employeesPath);
@@ -56,7 +61,10 @@ class ImportPeriod83Recipients extends Command
             $senateRows = $senate['Pejabat FT'] ?? [];
 
             $imports = [
-                'pejabat' => $this->officialRows($employees['PEJABAT'] ?? $officials['PEJABAT FT 2024'] ?? []),
+                'pejabat' => $this->uniqueRecords([
+                    ...$this->sectionRows($senateRows, 'Pejabat Fakultas'),
+                    ...$this->officialRows($employees['PEJABAT'] ?? $officials['PEJABAT FT 2024'] ?? []),
+                ]),
                 'kps' => $this->officialRows($officials['KPS'] ?? []),
                 'kalab' => $this->officialRows($officials['KALAB'] ?? []),
                 'ketuasenat' => $this->sectionRows($senateRows, 'Ketua Senat Fakultas'),
@@ -96,6 +104,27 @@ class ImportPeriod83Recipients extends Command
         $this->info('Import periode 83 selesai.');
 
         return self::SUCCESS;
+    }
+
+    private function resetAllRsvp(): void
+    {
+        $recipients = InvitationRecipient::query()->update([
+            'rsvp_status' => 'pending',
+            'rsvp_note' => null,
+            'rsvp_signature' => null,
+            'responded_at' => null,
+        ]);
+
+        $participants = YudisiumParticipant::query()->update([
+            'rsvp_status' => 'pending',
+            'rsvp_note' => null,
+            'rsvp_companion_count' => null,
+            'rsvp_whatsapp' => null,
+            'rsvp_proof_code' => null,
+            'rsvp_responded_at' => null,
+        ]);
+
+        $this->info("RSVP direset: {$recipients} penerima, {$participants} mahasiswa.");
     }
 
     private function workbookPath(string $path): string
@@ -567,6 +596,29 @@ class ImportPeriod83Recipients extends Command
 
     /**
      * @param  array<int, array<string, ?string>>  $records
+     * @return array<int, array<string, ?string>>
+     */
+    private function uniqueRecords(array $records): array
+    {
+        $unique = [];
+
+        foreach ($records as $record) {
+            $name = $this->clean($record['name'] ?? '');
+            $identifier = $record['identifier'] ? $this->cleanIdentifier($record['identifier']) : null;
+            $key = $identifier ?: Str::lower($name);
+
+            if ($key === '' || isset($unique[$key])) {
+                continue;
+            }
+
+            $unique[$key] = $record;
+        }
+
+        return array_values($unique);
+    }
+
+    /**
+     * @param  array<int, array<string, ?string>>  $records
      * @return array{created: int, updated: int, deleted: int, skipped: int}
      */
     private function saveRecipients(YudisiumPeriod $period, InvitationCategory $category, array $records): array
@@ -595,7 +647,7 @@ class ImportPeriod83Recipients extends Command
                 ...$record,
                 'name' => $name,
                 'identifier' => $identifier,
-            ]);
+            ], replaceCategoryRoles: true);
 
             $keptIds[] = $recipient->id;
 

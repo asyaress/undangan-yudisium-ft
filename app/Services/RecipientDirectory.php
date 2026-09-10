@@ -37,7 +37,7 @@ class RecipientDirectory
     /**
      * @param  array<string, mixed>  $payload
      */
-    public function upsert(InvitationCategory $category, array $payload): InvitationRecipient
+    public function upsert(InvitationCategory $category, array $payload, bool $replaceCategoryRoles = false): InvitationRecipient
     {
         $name = trim((string) ($payload['name'] ?? ''));
         $identifier = $this->cleanIdentifier($payload['identifier'] ?? null);
@@ -67,6 +67,11 @@ class RecipientDirectory
         }
 
         $this->rememberRole($recipient, $category, $position, $recipient->roles()->doesntExist());
+
+        if ($replaceCategoryRoles) {
+            $this->pruneOtherCategoryRoles($recipient, $category, $position);
+        }
+
         $this->refreshDisplay($recipient);
 
         return $recipient->fresh(['roles.category', 'category', 'period']);
@@ -184,6 +189,20 @@ class RecipientDirectory
         }
 
         return $url;
+    }
+
+    private function pruneOtherCategoryRoles(InvitationRecipient $recipient, InvitationCategory $category, ?string $position): void
+    {
+        $kept = $recipient->roles()
+            ->where('category_id', $category->id)
+            ->when($position, fn ($query) => $query->where('position', $position))
+            ->orderBy('id')
+            ->first();
+
+        $recipient->roles()
+            ->where('category_id', $category->id)
+            ->when($kept, fn ($query) => $query->whereKeyNot($kept->id))
+            ->delete();
     }
 
     private function rememberRole(
