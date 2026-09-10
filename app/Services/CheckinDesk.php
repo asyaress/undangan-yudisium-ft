@@ -73,14 +73,11 @@ class CheckinDesk
                 }
 
                 $claimed = $participant->claimCheckin($source);
-                $lockedParticipant = YudisiumParticipant::query()
-                    ->with(['period', 'studyProgram'])
-                    ->whereKey($participant->id)
-                    ->firstOrFail();
+                $participant->loadMissing(['studyProgram']);
 
                 $status = $claimed ? 'accepted' : 'duplicate';
 
-                $this->log($event, $lockedParticipant, [
+                $this->log($event, $participant, [
                     'status' => $status,
                     'source' => $source,
                     'admin_id' => $meta['admin_id'] ?? null,
@@ -97,7 +94,7 @@ class CheckinDesk
 
                 return [
                     'alreadyCheckedIn' => ! $claimed,
-                    'participant' => $lockedParticipant,
+                    'participant' => $participant,
                     'status' => $status,
                 ];
             });
@@ -152,6 +149,35 @@ class CheckinDesk
         }
     }
 
+    /**
+     * @return array{total: int, checked_in: int, remaining: int}
+     */
+    public function summary(YudisiumPeriod $event): array
+    {
+        $row = YudisiumParticipant::query()
+            ->where('period_id', $event->id)
+            ->toBase()
+            ->selectRaw('COUNT(*) as total, SUM(CASE WHEN checked_in_at IS NOT NULL THEN 1 ELSE 0 END) as checked_in')
+            ->first();
+
+        if (! $row) {
+            return [
+                'total' => 0,
+                'checked_in' => 0,
+                'remaining' => 0,
+            ];
+        }
+
+        $total = (int) ($row->total ?? 0);
+        $checkedIn = (int) ($row->checked_in ?? 0);
+
+        return [
+            'total' => $total,
+            'checked_in' => $checkedIn,
+            'remaining' => max(0, $total - $checkedIn),
+        ];
+    }
+
     public function qrPayload(YudisiumParticipant $participant): string
     {
         return 'YFT|'.$participant->period_id.'|'.$participant->id.'|'.$participant->invitation_token;
@@ -186,7 +212,7 @@ class CheckinDesk
         }
 
         $existing = CheckinLog::query()
-            ->with(['participant.period', 'participant.studyProgram'])
+            ->with(['participant.studyProgram'])
             ->where('client_scan_id', $clientScanId)
             ->first();
 
@@ -196,7 +222,7 @@ class CheckinDesk
 
         return [
             'alreadyCheckedIn' => $existing->status === 'duplicate',
-            'participant' => $existing->participant ?: $participant->fresh(['period', 'studyProgram']) ?: $participant,
+            'participant' => $existing->participant ?: $participant->fresh(['studyProgram']) ?: $participant,
             'status' => $existing->status,
             'idempotent' => true,
         ];

@@ -37,19 +37,35 @@ class MobileCheckinController extends Controller
             ->orderBy('name')
             ->get();
 
-        $checkedIn = $participants->whereNotNull('checked_in_at')->count();
+        $summary = $this->desk->summary($period);
 
         return response()->json([
             'generated_at' => now()->toIso8601String(),
             'event' => $this->eventPayload($period),
-            'summary' => [
-                'total' => $participants->count(),
-                'checked_in' => $checkedIn,
-                'remaining' => max(0, $participants->count() - $checkedIn),
-            ],
+            'summary' => $summary,
             'participants' => $participants
                 ->map(fn (YudisiumParticipant $participant) => $this->desk->participantCard($participant))
                 ->values(),
+        ]);
+    }
+
+    public function scan(Request $request, YudisiumPeriod $period): JsonResponse
+    {
+        $scan = $request->validate([
+            'client_scan_id' => ['required', 'uuid'],
+            'scan_code' => ['required', 'string', 'max:500'],
+            'scanned_at' => ['nullable', 'date'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $device = $request->attributes->get('mobileDevice');
+        $deviceName = $device instanceof MobileDeviceToken ? $device->name : null;
+
+        return response()->json([
+            'ok' => true,
+            'server_time' => now()->toIso8601String(),
+            'result' => $this->syncOne($request, $period, $scan, $deviceName),
+            'summary' => $this->desk->summary($period),
         ]);
     }
 
@@ -61,6 +77,7 @@ class MobileCheckinController extends Controller
             'scans.*.scan_code' => ['required', 'string', 'max:500'],
             'scans.*.scanned_at' => ['nullable', 'date'],
             'scans.*.note' => ['nullable', 'string', 'max:500'],
+            'include_checked_in' => ['sometimes', 'boolean'],
         ]);
 
         $device = $request->attributes->get('mobileDevice');
@@ -76,26 +93,35 @@ class MobileCheckinController extends Controller
             );
         }
 
-        $checkedIn = YudisiumParticipant::query()
-            ->where('period_id', $period->id)
-            ->whereNotNull('checked_in_at')
-            ->orderBy('checked_in_at')
-            ->get(['id', 'checked_in_at', 'checkin_source']);
+        $summary = $this->desk->summary($period);
+        $includeCheckedIn = $request->boolean('include_checked_in');
 
         return response()->json([
             'ok' => true,
             'server_time' => now()->toIso8601String(),
             'results' => $results,
-            'checked_in' => $checkedIn->map(fn (YudisiumParticipant $participant) => [
+            'checked_in' => $includeCheckedIn ? $this->checkedInList($period) : [],
+            'summary' => $summary,
+        ]);
+    }
+
+    /**
+     * @return array<int, array{id: int, checked_in_at: string|null, checkin_source: string|null}>
+     */
+    private function checkedInList(YudisiumPeriod $period): array
+    {
+        return YudisiumParticipant::query()
+            ->where('period_id', $period->id)
+            ->whereNotNull('checked_in_at')
+            ->orderBy('checked_in_at')
+            ->get(['id', 'checked_in_at', 'checkin_source'])
+            ->map(fn (YudisiumParticipant $participant) => [
                 'id' => $participant->id,
                 'checked_in_at' => $participant->checked_in_at?->toIso8601String(),
                 'checkin_source' => $participant->checkin_source,
-            ])->values(),
-            'summary' => [
-                'total' => YudisiumParticipant::query()->where('period_id', $period->id)->count(),
-                'checked_in' => $checkedIn->count(),
-            ],
-        ]);
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -164,7 +190,7 @@ class MobileCheckinController extends Controller
             'event_date' => $period->event_date?->toDateString(),
             'location' => $period->location,
             'is_active' => (bool) $period->is_active,
-            'participant_count' => (int) ($period->participant_count ?? $period->participants()->count()),
+            'participant_count' => (int) ($period->participant_count ?? 0) ?: $period->participants()->count(),
         ];
     }
 }

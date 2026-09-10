@@ -15,6 +15,7 @@ Route::prefix('mobile')->group(function () {
         Route::post('/logout', [MobileAuthController::class, 'logout']);
         Route::get('/events', [MobileCheckinController::class, 'events']);
         Route::get('/events/{period}/roster', [MobileCheckinController::class, 'roster']);
+        Route::post('/events/{period}/scan', [MobileCheckinController::class, 'scan']);
         Route::post('/events/{period}/sync', [MobileCheckinController::class, 'sync']);
     });
 });

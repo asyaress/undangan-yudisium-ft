@@ -20,6 +20,9 @@ interface MobileApi {
     @GET("api/mobile/events/{id}/roster")
     suspend fun roster(@Path("id") id: Int): RosterResponse
 
+    @POST("api/mobile/events/{id}/scan")
+    suspend fun scan(@Path("id") id: Int, @Body body: ScanDto): ScanResponse
+
     @POST("api/mobile/events/{id}/sync")
     suspend fun sync(@Path("id") id: Int, @Body body: SyncRequest): SyncResponse
 }
@@ -85,6 +88,13 @@ data class ParticipantDto(
     @SerialName("checked_in") val checkedIn: Boolean = false,
     @SerialName("checked_in_at") val checkedInAt: String? = null,
     @SerialName("checkin_source") val checkinSource: String? = null,
+)
+
+@Serializable
+data class ScanResponse(
+    val ok: Boolean = true,
+    val result: SyncResultDto,
+    val summary: SummaryDto = SummaryDto(),
 )
 
 @Serializable

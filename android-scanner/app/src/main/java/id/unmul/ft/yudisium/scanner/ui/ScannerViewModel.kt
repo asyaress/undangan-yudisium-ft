@@ -94,14 +94,17 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
 
     fun onScanned(code: String) {
         val now = System.currentTimeMillis()
-        if (code == lastCode && now - lastAt < 2500L) return
+        if (code == lastCode && now - lastAt < 1200L) return
         lastCode = code
         lastAt = now
         val periodId = _uiState.value.session.periodId
         if (periodId == 0) return
         viewModelScope.launch {
             runCatching { repository.recordScan(periodId, code) }
-                .onSuccess { scan -> _uiState.update { it.copy(result = scan) } }
+                .onSuccess { scan ->
+                    _uiState.update { it.copy(result = scan) }
+                    launch { runCatching { repository.sync(periodId) } }
+                }
                 .onFailure { error -> _uiState.update { it.copy(notice = repository.apiError(error)) } }
         }
     }
@@ -158,7 +161,7 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
         syncJob = viewModelScope.launch {
             while (isActive) {
                 runCatching { repository.sync(session.periodId) }
-                delay(8_000)
+                delay(15_000)
             }
         }
     }

@@ -112,8 +112,7 @@ class MobileCheckinApiTest extends TestCase
                 ]],
             ])
             ->assertOk()
-            ->assertJsonPath('results.0.status', 'duplicate')
-            ->assertJsonPath('checked_in.0.id', $participant->id);
+            ->assertJsonPath('results.0.status', 'duplicate');
     }
 
     public function test_batch_sync_keeps_one_accepted_when_same_person_scanned_twice(): void
@@ -227,6 +226,53 @@ class MobileCheckinApiTest extends TestCase
             'status' => 'not_found',
             'source' => 'mobile',
         ]);
+    }
+
+    public function test_fast_scan_accepts_without_full_checked_in_list(): void
+    {
+        [$event, $participant] = $this->eventAndParticipant();
+        $token = $this->mobileToken($this->admin());
+        $clientScanId = '99999999-9999-4999-8999-999999999999';
+
+        $this->withToken($token)
+            ->postJson('/api/mobile/events/'.$event->id.'/scan', [
+                'client_scan_id' => $clientScanId,
+                'scan_code' => $participant->nim,
+            ])
+            ->assertOk()
+            ->assertJsonPath('result.status', 'accepted')
+            ->assertJsonPath('result.participant.nim', $participant->nim)
+            ->assertJsonPath('summary.checked_in', 1)
+            ->assertJsonMissingPath('checked_in');
+
+        $this->withToken($token)
+            ->postJson('/api/mobile/events/'.$event->id.'/scan', [
+                'client_scan_id' => $clientScanId,
+                'scan_code' => $participant->nim,
+            ])
+            ->assertOk()
+            ->assertJsonPath('result.status', 'accepted')
+            ->assertJsonPath('result.idempotent', true);
+
+        $this->assertSame(1, CheckinLog::query()->where('client_scan_id', $clientScanId)->count());
+    }
+
+    public function test_sync_skips_checked_in_roster_by_default(): void
+    {
+        [$event, $participant] = $this->eventAndParticipant();
+        $token = $this->mobileToken($this->admin());
+
+        $this->withToken($token)
+            ->postJson('/api/mobile/events/'.$event->id.'/sync', [
+                'scans' => [[
+                    'client_scan_id' => 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+                    'scan_code' => $participant->nim,
+                ]],
+            ])
+            ->assertOk()
+            ->assertJsonPath('results.0.status', 'accepted')
+            ->assertJsonPath('summary.checked_in', 1)
+            ->assertJsonPath('checked_in', []);
     }
 
     private function mobileToken(User $admin): string

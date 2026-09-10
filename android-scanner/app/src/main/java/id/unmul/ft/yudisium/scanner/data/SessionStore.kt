@@ -9,6 +9,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 
 const val DEFAULT_SERVER_URL = "https://undangan-yudisium.ft.unmul.ac.id"
 
@@ -23,6 +24,8 @@ data class Session(
 )
 
 class SessionStore(private val context: Context) {
+    @Volatile
+    private var cached = Session()
     private val baseUrlKey = stringPreferencesKey("base_url")
     private val tokenKey = stringPreferencesKey("token")
     private val nameKey = stringPreferencesKey("name")
@@ -37,11 +40,19 @@ class SessionStore(private val context: Context) {
             email = prefs[emailKey].orEmpty(),
             periodId = prefs[periodKey] ?: 0,
         )
-    }
+    }.onEach { cached = it }
+
+    fun peek(): Session = cached
 
     suspend fun snapshot(): Session = session.first()
 
     suspend fun saveLogin(baseUrl: String, token: String, name: String, email: String) {
+        cached = cached.copy(
+            baseUrl = baseUrl.trim().trimEnd('/'),
+            token = token,
+            name = name,
+            email = email,
+        )
         context.dataStore.edit { prefs ->
             prefs[baseUrlKey] = baseUrl.trim().trimEnd('/')
             prefs[tokenKey] = token
@@ -51,10 +62,12 @@ class SessionStore(private val context: Context) {
     }
 
     suspend fun savePeriod(periodId: Int) {
+        cached = cached.copy(periodId = periodId)
         context.dataStore.edit { prefs -> prefs[periodKey] = periodId }
     }
 
     suspend fun clearAuth() {
+        cached = cached.copy(token = "", name = "", email = "", periodId = 0)
         context.dataStore.edit { prefs ->
             prefs.remove(tokenKey)
             prefs.remove(nameKey)

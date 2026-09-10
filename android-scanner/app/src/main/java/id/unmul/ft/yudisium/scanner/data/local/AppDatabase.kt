@@ -73,6 +73,12 @@ interface ParticipantDao {
     @Query("SELECT * FROM participants WHERE periodId = :periodId AND (qrPayload = :code OR nim = :code OR invitationToken = :code) LIMIT 1")
     suspend fun match(periodId: Int, code: String): ParticipantEntity?
 
+    @Query("SELECT * FROM participants WHERE id = :id LIMIT 1")
+    suspend fun find(id: Int): ParticipantEntity?
+
+    @Query("SELECT * FROM participants WHERE periodId = :periodId AND id = :id AND invitationToken = :token LIMIT 1")
+    suspend fun matchQr(periodId: Int, id: Int, token: String): ParticipantEntity?
+
     @Query("SELECT COUNT(*) FROM participants WHERE periodId = :periodId")
     fun observeTotal(periodId: Int): Flow<Int>
 

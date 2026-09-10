@@ -9,7 +9,7 @@ import id.unmul.ft.yudisium.scanner.data.remote.ErrorMessage
 import id.unmul.ft.yudisium.scanner.data.remote.LoginRequest
 import id.unmul.ft.yudisium.scanner.data.remote.ScanDto
 import id.unmul.ft.yudisium.scanner.data.remote.SyncRequest
-import id.unmul.ft.yudisium.scanner.data.remote.SyncResponse
+import id.unmul.ft.yudisium.scanner.data.remote.SyncResultDto
 import id.unmul.ft.yudisium.scanner.scan.QrParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -38,7 +38,8 @@ class CheckinRepository(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val io = Dispatchers.IO
-    private val gate = Mutex()
+    private val dbGate = Mutex()
+    private val uploadGate = Mutex()
 
     val session = sessionStore.session
 
@@ -93,7 +94,7 @@ class CheckinRepository(
     }
 
     suspend fun downloadRoster(periodId: Int) = withContext(io) {
-        gate.withLock {
+        dbGate.withLock {
             val keepChecked = database.pendingScans().unsyncedAcceptedIds(periodId).toSet()
             val response = apiFactory.create().roster(periodId)
             database.events().upsertAll(
@@ -134,20 +135,20 @@ class CheckinRepository(
     }
 
     suspend fun recordScan(periodId: Int, rawCode: String): LocalScanResult = withContext(io) {
-        val clientScanId = gate.withLock {
-            val id = recordLocked(periodId, rawCode)
-            runCatching { syncLocked(periodId) }
-            id
-        }
+        val clientScanId = dbGate.withLock { recordLocked(periodId, rawCode) }
         val row = database.pendingScans().find(clientScanId)
-        val match = row?.participantId?.let { id ->
-            database.participants().forPeriod(periodId).firstOrNull { it.id == id }
-        }
+        val match = row?.participantId?.let { database.participants().find(it) }
         toResult(row, match, pending = row?.synced != true)
     }
 
     suspend fun sync(periodId: Int) = withContext(io) {
-        gate.withLock { syncLocked(periodId) }
+        uploadGate.withLock {
+            while (true) {
+                val pending = database.pendingScans().unsynced(periodId)
+                if (pending.isEmpty()) break
+                runCatching { pushPending(periodId, pending) }.getOrElse { return@withLock }
+            }
+        }
     }
 
     suspend fun event(periodId: Int): EventEntity? = database.events().find(periodId)
@@ -194,45 +195,57 @@ class CheckinRepository(
         return scan.clientScanId
     }
 
-    private suspend fun syncLocked(periodId: Int) {
-        val pending = database.pendingScans().unsynced(periodId)
-        val response = apiFactory.create().sync(
-            periodId,
-            SyncRequest(
-                scans = pending.map {
-                    ScanDto(
-                        clientScanId = it.clientScanId,
-                        scanCode = it.scanCode,
-                        scannedAt = it.scannedAt,
-                    )
-                },
-            ),
-        )
-        response.results.forEach { result ->
+    private suspend fun pushPending(periodId: Int, pending: List<PendingScanEntity>) {
+        val api = apiFactory.create()
+        val results = if (pending.size == 1) {
+            val scan = pending.first()
+            val body = ScanDto(
+                clientScanId = scan.clientScanId,
+                scanCode = scan.scanCode,
+                scannedAt = scan.scannedAt,
+            )
+            try {
+                listOf(api.scan(periodId, body).result)
+            } catch (error: HttpException) {
+                if (error.code() == 404 || error.code() == 405) {
+                    api.sync(periodId, SyncRequest(scans = listOf(body))).results
+                } else {
+                    throw error
+                }
+            }
+        } else {
+            api.sync(
+                periodId,
+                SyncRequest(
+                    scans = pending.map {
+                        ScanDto(
+                            clientScanId = it.clientScanId,
+                            scanCode = it.scanCode,
+                            scannedAt = it.scannedAt,
+                        )
+                    },
+                ),
+            ).results
+        }
+        applyResults(results)
+    }
+
+    private suspend fun applyResults(results: List<SyncResultDto>) {
+        results.forEach { result ->
             database.pendingScans().markSynced(
                 id = result.clientScanId,
                 status = result.status,
                 message = messageFor(result.status, pending = false, fallback = result.message),
             )
-        }
-        reconcileCheckedIn(periodId, response)
-    }
-
-    private suspend fun reconcileCheckedIn(periodId: Int, response: SyncResponse) {
-        val pendingLocal = database.pendingScans().unsyncedAcceptedIds(periodId).toSet()
-        val remote = response.checkedIn.associateBy { it.id }
-        val rows = database.participants().forPeriod(periodId)
-        database.participants().upsertAll(
-            rows.map { participant ->
-                val server = remote[participant.id]
-                val held = server != null || pendingLocal.contains(participant.id)
-                participant.copy(
-                    checkedIn = held,
-                    checkedInAt = server?.checkedInAt ?: participant.checkedInAt,
-                    checkinSource = server?.checkinSource ?: participant.checkinSource,
+            val participant = result.participant ?: return@forEach
+            if (participant.checkedIn || result.status == "accepted" || result.status == "duplicate") {
+                database.participants().markCheckedIn(
+                    participant.id,
+                    participant.checkedInAt,
+                    participant.checkinSource,
                 )
-            },
-        )
+            }
+        }
     }
 
     private suspend fun matchParticipant(periodId: Int, code: String): ParticipantEntity? {
@@ -240,12 +253,11 @@ class CheckinRepository(
         if (code.startsWith("YFT|")) {
             val parts = code.split("|")
             if (parts.size == 4) {
-                return database.participants().forPeriod(periodId).firstOrNull { participant ->
-                    participant.id == parts[2].toIntOrNull() && participant.invitationToken == parts[3]
-                }
+                val id = parts[2].toIntOrNull() ?: return null
+                return database.participants().matchQr(periodId, id, parts[3])
             }
         }
-        return database.participants().forPeriod(periodId).firstOrNull { it.nim == code }
+        return null
     }
 
     private fun toResult(row: PendingScanEntity?, match: ParticipantEntity?, pending: Boolean): LocalScanResult {
