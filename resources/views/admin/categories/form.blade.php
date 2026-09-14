@@ -112,6 +112,17 @@
             color: #d97706;
         }
 
+        .category-editor-card .context-hint {
+            display: block;
+            margin-top: 6px;
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0;
+            line-height: 1.5;
+            text-transform: none;
+        }
+
         .preview-shell {
             position: sticky;
             top: 84px;
@@ -328,14 +339,17 @@
                         <div class="form-group">
                             <label>Teks Cover</label>
                             <textarea class="form-control" name="cover_text" rows="3" required>{{ $coverValue }}</textarea>
+                            <span class="context-hint">Tampil di halaman depan undangan, di bawah judul Yudisium.</span>
                         </div>
                         <div class="form-group">
-                            <label>Teks Undangan</label>
+                            <label>Teks Pembuka Surat</label>
                             <textarea class="form-control" name="invitation_text" rows="5" required>{{ $invitationValue }}</textarea>
+                            <span class="context-hint">Paragraf “Dengan hormat...” di dalam surat undangan. Perubahan di sini langsung dipakai undangan kategori ini.</span>
                         </div>
                         <div class="form-group">
                             <label>Teks Penutup</label>
                             <textarea class="form-control" name="closing_text" rows="3">{{ $closingValue }}</textarea>
+                            <span class="context-hint">Kalimat penutup sebelum blok tanda tangan.</span>
                         </div>
 
                         <div class="autosave-note" data-autosave-inline>

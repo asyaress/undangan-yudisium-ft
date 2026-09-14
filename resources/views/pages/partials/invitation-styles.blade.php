@@ -993,6 +993,7 @@
       margin-bottom: 16px;
       line-height: 1.65;
       letter-spacing: 0;
+      overflow-wrap: anywhere;
     }
 
     .mini-brand {
@@ -1657,9 +1658,15 @@
     }
 
     .invite-form {
-      display: grid;
-      gap: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
       margin-top: 14px;
+    }
+
+    .invite-form > * + * {
+      margin-top: 12px;
+      transition: margin-top 420ms cubic-bezier(0.32, 0.72, 0, 1);
     }
 
     [data-delegate-fields],
@@ -1668,20 +1675,32 @@
       overflow: hidden;
       opacity: 0;
       max-height: 0;
-      transform: translateY(-6px);
-      transition: opacity 220ms var(--ease-out), max-height 260ms var(--ease-out), transform 260ms var(--ease-out);
+      transform: translateY(-8px);
+      pointer-events: none;
+      transition:
+        opacity 360ms cubic-bezier(0.32, 0.72, 0, 1),
+        max-height 420ms cubic-bezier(0.32, 0.72, 0, 1),
+        transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .invite-form > [data-conditional-note-field]:not(.is-open),
+    .invite-form > [data-delegate-fields]:not(.is-open),
+    .invite-form > [data-signature-field]:not(.is-open) {
+      margin-top: 0;
     }
 
     [data-conditional-note-field].is-open {
       opacity: 1;
-      max-height: 190px;
+      max-height: 220px;
       transform: translateY(0);
+      pointer-events: auto;
     }
 
     [data-delegate-fields].is-open {
       opacity: 1;
-      max-height: 170px;
+      max-height: 190px;
       transform: translateY(0);
+      pointer-events: auto;
     }
 
     .invite-form .field[hidden],
@@ -1690,7 +1709,7 @@
     [data-delegate-fields][hidden],
     [data-conditional-note-field][hidden],
     [data-signature-field][hidden] {
-      display: none !important;
+      display: grid;
     }
 
     .identity-panel,
@@ -1763,7 +1782,7 @@
       font-weight: 700;
       cursor: pointer;
       touch-action: manipulation;
-      transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out), color 180ms var(--ease-out), transform var(--press);
+      transition: border-color 320ms cubic-bezier(0.32, 0.72, 0, 1), background 320ms cubic-bezier(0.32, 0.72, 0, 1), color 320ms cubic-bezier(0.32, 0.72, 0, 1), transform var(--press);
     }
 
     .radio-option:active {
@@ -1795,6 +1814,7 @@
       display: inline-grid;
       place-items: center;
       flex: 0 0 auto;
+      transition: border-color 320ms cubic-bezier(0.32, 0.72, 0, 1);
     }
 
     .radio-mark::after {
@@ -1805,7 +1825,7 @@
       background: var(--primary);
       opacity: 0;
       transform: scale(0.6);
-      transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+      transition: opacity 280ms cubic-bezier(0.32, 0.72, 0, 1), transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
     }
 
     .radio-option:has(input:checked) .radio-mark {
@@ -1926,8 +1946,9 @@
 
     .signature-field.is-open {
       opacity: 1;
-      max-height: 360px;
+      max-height: 380px;
       transform: translateY(0);
+      pointer-events: auto;
     }
 
     .signature-head {

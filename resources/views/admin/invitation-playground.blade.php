@@ -324,7 +324,9 @@
             color: #344054;
             font-size: 16px;
             line-height: 1.9;
-            overflow-wrap: break-word;
+            overflow-wrap: anywhere;
+            overflow-x: hidden;
+            min-width: 0;
         }
 
         .info-grid {
@@ -532,8 +534,14 @@
         }
 
         .playground-rsvp-form {
-            display: grid;
-            gap: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .playground-rsvp-form > * + * {
+            margin-top: 14px;
+            transition: margin-top 420ms cubic-bezier(0.32, 0.72, 0, 1);
         }
 
         .playground-rsvp-person {
@@ -601,16 +609,6 @@
 
         .playground-signature-field {
             overflow: hidden;
-            opacity: 0;
-            max-height: 0;
-            transform: translateY(-6px);
-            transition: opacity 220ms ease, max-height 260ms ease, transform 260ms ease;
-        }
-
-        .playground-signature-field.is-open {
-            opacity: 1;
-            max-height: 350px;
-            transform: translateY(0);
         }
 
         .playground-signature-head {
@@ -694,32 +692,45 @@
             overflow: hidden;
             opacity: 0;
             max-height: 0;
-            transform: translateY(-6px);
-            transition: opacity 220ms ease, max-height 260ms ease, transform 260ms ease;
+            transform: translateY(-8px);
+            pointer-events: none;
+            transition:
+                opacity 360ms cubic-bezier(0.32, 0.72, 0, 1),
+                max-height 420ms cubic-bezier(0.32, 0.72, 0, 1),
+                transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        .playground-rsvp-form > [data-playground-note-field]:not(.is-open),
+        .playground-rsvp-form > [data-playground-delegate-fields]:not(.is-open),
+        .playground-rsvp-form > [data-playground-signature-field]:not(.is-open) {
+            margin-top: 0;
         }
 
         [data-playground-note-field].is-open {
             opacity: 1;
-            max-height: 190px;
+            max-height: 220px;
             transform: translateY(0);
+            pointer-events: auto;
         }
 
         [data-playground-delegate-fields].is-open {
             opacity: 1;
-            max-height: 130px;
+            max-height: 160px;
             transform: translateY(0);
+            pointer-events: auto;
         }
 
         [data-playground-signature-field].is-open {
             opacity: 1;
-            max-height: 350px;
+            max-height: 380px;
             transform: translateY(0);
+            pointer-events: auto;
         }
 
         [data-playground-note-field][hidden],
         [data-playground-delegate-fields][hidden],
         [data-playground-signature-field][hidden] {
-            display: none !important;
+            display: grid;
         }
 
         .radio-grid {
@@ -746,6 +757,16 @@
             font-weight: 850;
             font-size: 13px;
             cursor: pointer;
+            transition:
+                border-color 320ms cubic-bezier(0.32, 0.72, 0, 1),
+                background-color 320ms cubic-bezier(0.32, 0.72, 0, 1),
+                color 320ms cubic-bezier(0.32, 0.72, 0, 1),
+                box-shadow 320ms cubic-bezier(0.32, 0.72, 0, 1),
+                transform 100ms ease-out;
+        }
+
+        .radio-option:active {
+            transform: scale(0.98);
         }
 
         .radio-option > span:last-child {
@@ -764,6 +785,7 @@
             border: 1px solid #d0d5dd;
             border-radius: 999px;
             background: #fff;
+            transition: border-color 320ms cubic-bezier(0.32, 0.72, 0, 1), background-color 320ms cubic-bezier(0.32, 0.72, 0, 1), outline-color 320ms cubic-bezier(0.32, 0.72, 0, 1);
         }
 
         .radio-icon {
@@ -773,7 +795,7 @@
             height: 22px;
             color: #667085;
             transform: translateY(0) scale(1);
-            transition: color 180ms ease, transform 180ms ease;
+            transition: color 320ms cubic-bezier(0.32, 0.72, 0, 1), transform 320ms cubic-bezier(0.32, 0.72, 0, 1);
         }
 
         .radio-icon svg {
@@ -1711,6 +1733,22 @@
 
             .formal-cover-panel p {
                 margin-bottom: 10px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .radio-option,
+            .radio-mark,
+            .radio-icon,
+            [data-playground-note-field],
+            [data-playground-delegate-fields],
+            [data-playground-signature-field],
+            .playground-rsvp-form > * + * {
+                transition-duration: 1ms !important;
+            }
+
+            .radio-option:active {
+                transform: none;
             }
         }
 
@@ -2710,7 +2748,9 @@
 
                     window.clearTimeout(field._playgroundHideTimer);
                     field.hidden = false;
-                    field.style.display = '';
+                    field.style.removeProperty('display');
+                    field.setAttribute('aria-hidden', 'false');
+                    field.offsetHeight;
 
                     window.requestAnimationFrame(function () {
                         field.classList.add('is-open');
@@ -2722,12 +2762,12 @@
 
                     window.clearTimeout(field._playgroundHideTimer);
                     field.classList.remove('is-open');
+                    field.setAttribute('aria-hidden', 'true');
                     field._playgroundHideTimer = window.setTimeout(function () {
                         if (!field.classList.contains('is-open')) {
                             field.hidden = true;
-                            field.style.display = 'none';
                         }
-                    }, 270);
+                    }, 420);
                 }
 
                 function clearSignature() {

@@ -515,6 +515,18 @@ class InvitationRoutingTest extends TestCase
             ->assertSee('Masuk');
     }
 
+    public function test_invitation_renders_editable_category_opening_text(): void
+    {
+        $period = $this->period();
+        $text = 'Dengan hormat, kami mengundang Pejabat Fakultas dan Universitas Fakultas Teknik Universitas Mulawarman untuk menghadiri prosesi Yudisium Program Sarjana Angkatan 83 Periode 3 Tahun 2026.';
+        $this->category($period, 'umum', InvitationCategory::ACCESS_PUBLIC);
+        InvitationCategory::query()->where('period_id', $period->id)->update(['invitation_text' => $text]);
+
+        $this->get('/?event='.$period->slug.'&to=umum')
+            ->assertOk()
+            ->assertSee($text, false);
+    }
+
     private function period(): YudisiumPeriod
     {
         return YudisiumPeriod::query()->create([

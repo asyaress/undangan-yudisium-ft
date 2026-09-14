@@ -103,6 +103,13 @@
             gap: 8px;
         }
 
+        .role-row__meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
         .role-row__display {
             display: inline-flex;
             align-items: center;
@@ -113,6 +120,32 @@
             font-weight: 700;
             letter-spacing: 0;
             text-transform: none;
+        }
+
+        .role-row__remove {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            color: #b91c1c;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 4px 0;
+            white-space: nowrap;
+        }
+
+        .role-row__remove:hover,
+        .role-row__remove:focus-visible {
+            color: #991b1b;
+            outline: 0;
+            text-decoration: underline;
+        }
+
+        .role-row__remove:disabled {
+            color: #9ca3af;
+            cursor: not-allowed;
+            text-decoration: none;
         }
 
         .recipient-editor-card .form-control {
@@ -301,7 +334,8 @@
                 flex-direction: column;
             }
 
-            .role-row__display {
+            .role-row__display,
+            .role-row__remove {
                 min-height: 44px;
             }
         }
@@ -376,10 +410,15 @@
                                     <input type="hidden" name="roles[{{ $index }}][category_id]" value="{{ $roleRow['category_id'] ?? $category->id }}">
                                     <div class="role-row__fields">
                                         <input class="form-control" name="roles[{{ $index }}][position]" value="{{ $roleRow['position'] ?? '' }}" placeholder="Contoh: Ketua Senat / Kepala Laboratorium">
-                                        <label class="role-row__display">
-                                            <input type="radio" name="display_role" value="{{ $index }}" @checked($displayRoleIndex === $index)>
-                                            Tampilkan di undangan
-                                        </label>
+                                        <div class="role-row__meta">
+                                            <label class="role-row__display">
+                                                <input type="radio" name="display_role" value="{{ $index }}" @checked($displayRoleIndex === $index)>
+                                                Tampilkan di undangan
+                                            </label>
+                                            <button class="role-row__remove" type="button" data-remove-role @disabled(count($roleRows) < 2)>
+                                                <i class="fa fa-trash"></i> Hapus
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             @endforeach
@@ -647,6 +686,16 @@
                 });
             }
 
+            function syncRoleRemoveButtons() {
+                var rows = form.querySelectorAll('[data-role-row]');
+                rows.forEach(function (row) {
+                    var button = row.querySelector('[data-remove-role]');
+                    if (!button) return;
+                    button.disabled = rows.length < 2;
+                    button.title = rows.length < 2 ? 'Minimal satu jabatan' : 'Hapus jabatan ini';
+                });
+            }
+
             var addRoleButton = form.querySelector('[data-add-role]');
             if (addRoleButton) {
                 addRoleButton.addEventListener('click', function () {
@@ -660,9 +709,36 @@
                     if (radio) radio.checked = false;
                     list.appendChild(clone);
                     reindexRoles();
+                    syncRoleRemoveButtons();
                     renderPreview();
                 });
             }
+
+            var roleList = form.querySelector('[data-role-rows]');
+            if (roleList) {
+                roleList.addEventListener('click', function (event) {
+                    var button = event.target.closest('[data-remove-role]');
+                    if (!button || button.disabled) return;
+
+                    var row = button.closest('[data-role-row]');
+                    var rows = form.querySelectorAll('[data-role-row]');
+                    if (!row || rows.length < 2) return;
+
+                    var wasDisplay = Boolean(row.querySelector('input[name="display_role"]:checked'));
+                    row.remove();
+                    reindexRoles();
+                    syncRoleRemoveButtons();
+
+                    if (wasDisplay) {
+                        var nextRadio = form.querySelector('[data-role-row] input[name="display_role"]');
+                        if (nextRadio) nextRadio.checked = true;
+                    }
+
+                    queuePreviewAndSave();
+                });
+            }
+
+            syncRoleRemoveButtons();
 
             form.addEventListener('change', function (event) {
                 if (event.target && event.target.name === 'display_role') {

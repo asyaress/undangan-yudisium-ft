@@ -352,7 +352,7 @@ class ImportPeriod83Recipients extends Command
         $categories = [];
 
         foreach ($definitions as $slug => [$title, $recipientLabel, $accessMode, $sortOrder]) {
-            $categories[$slug] = InvitationCategory::query()->updateOrCreate(
+            $category = InvitationCategory::query()->firstOrCreate(
                 [
                     'period_id' => $period->id,
                     'slug' => $slug,
@@ -368,6 +368,16 @@ class ImportPeriod83Recipients extends Command
                     'rsvp_enabled' => true,
                 ],
             );
+
+            $category->fill([
+                'title' => $title,
+                'recipient_label' => $recipientLabel,
+                'sort_order' => $sortOrder,
+                'access_mode' => $accessMode,
+                'rsvp_enabled' => true,
+            ])->save();
+
+            $categories[$slug] = $category;
         }
 
         $this->mergeLegacyCategory($period, 'satpam', $categories['tenaga-keamanan']);

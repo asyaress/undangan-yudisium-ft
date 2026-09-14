@@ -286,7 +286,9 @@
 
         window.clearTimeout(field._inviteHideTimer);
         field.hidden = false;
-        field.style.display = "";
+        field.style.removeProperty("display");
+        field.setAttribute("aria-hidden", "false");
+        field.offsetHeight;
 
         window.requestAnimationFrame(() => {
           field.classList.add("is-open");
@@ -298,12 +300,12 @@
 
         window.clearTimeout(field._inviteHideTimer);
         field.classList.remove("is-open");
+        field.setAttribute("aria-hidden", "true");
         field._inviteHideTimer = window.setTimeout(() => {
           if (!field.classList.contains("is-open")) {
             field.hidden = true;
-            field.style.display = "none";
           }
-        }, 270);
+        }, 420);
       };
 
       const clearSignature = () => {
