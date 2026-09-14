@@ -114,11 +114,18 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
+      text-align: center;
       padding:
         max(16px, env(safe-area-inset-top, 0px))
         max(20px, env(safe-area-inset-right, 0px))
         max(20px, env(safe-area-inset-bottom, 0px))
         max(20px, env(safe-area-inset-left, 0px));
+    }
+
+    body:not(.opened) .cover > * {
+      width: min(100%, 22rem);
+      margin-inline: auto;
+      align-self: center;
     }
 
     body.opened #cover {
@@ -297,28 +304,35 @@
       text-transform: uppercase;
     }
 
-    .logo-frame {
-      width: min(42vw, 140px);
-      aspect-ratio: 1;
-      border-radius: 50%;
-      margin: 12px auto 18px;
-      display: grid;
-      place-items: center;
-      padding: 14px;
-      border: 1px solid var(--line);
-      background: #fff;
-      box-shadow: var(--shadow-soft);
-      box-sizing: border-box;
-      overflow: hidden;
+    .cover .cover-logo-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: min(100%, 22rem);
+      margin: 14px auto 18px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .cover .cover-logo,
+    .cover .cover-logo.logo {
+      width: clamp(88px, 22vw, 132px);
+      height: clamp(88px, 22vw, 132px);
+      margin: 0 auto;
+      display: block;
+      object-fit: contain;
+      object-position: center center;
+      border: 0;
+      box-shadow: none;
+      background: transparent;
     }
 
     .logo {
-      width: 100%;
-      height: 100%;
-      max-width: 100%;
-      max-height: 100%;
       display: block;
       object-fit: contain;
+      object-position: center center;
     }
 
     .logo-fallback {
@@ -334,7 +348,8 @@
     .meta {
       color: var(--muted);
       line-height: 1.65;
-      margin-bottom: 20px;
+      margin: 0 auto 20px;
+      max-width: 28ch;
       font-size: 0.94rem;
     }
 
@@ -349,7 +364,8 @@
 
     .guest {
       font-weight: 800;
-      margin-bottom: 8px;
+      margin: 0 auto 8px;
+      max-width: 32ch;
       font-size: 1.08rem;
       color: var(--text);
       line-height: 1.5;
@@ -2210,10 +2226,10 @@
         font-size: clamp(1.65rem, 8vw, 2.15rem);
       }
 
-      .cover .logo-frame {
-        width: min(34vw, 120px);
+      .cover .cover-logo {
+        width: clamp(80px, 20vw, 120px);
+        height: clamp(80px, 20vw, 120px);
         margin: 8px auto 12px;
-        padding: 12px;
       }
 
       .cover .meta {
@@ -2402,8 +2418,9 @@
         font-size: clamp(1.4rem, 9vw, 1.85rem);
       }
 
-      .cover .logo-frame {
-        width: min(42vw, 96px);
+      .cover .cover-logo {
+        width: clamp(72px, 24vw, 96px);
+        height: clamp(72px, 24vw, 96px);
       }
 
       .cover .btn,
@@ -2444,10 +2461,10 @@
         font-size: clamp(1.2rem, 6vh, 1.8rem);
       }
 
-      .cover .logo-frame {
+      .cover .cover-logo {
         width: min(18vh, 84px);
+        height: min(18vh, 84px);
         margin: 4px auto 8px;
-        padding: 8px;
       }
 
       .cover .meta {

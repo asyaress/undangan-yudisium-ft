@@ -55,6 +55,11 @@
     box-sizing: border-box;
   }
 
+  body:not(.opened) .cover > * {
+    width: min(100%, 22rem);
+    margin-inline: auto;
+  }
+
   .cover .label {
     margin: 0 0 8px;
     font-size: 12px;
@@ -139,27 +144,24 @@
     font-size: 1rem;
   }
 
-  .cover .logo-frame {
-    width: min(42vw, 140px);
-    aspect-ratio: 1;
-    border-radius: 50%;
-    margin: 12px auto 18px;
-    display: grid;
-    place-items: center;
-    padding: 14px;
-    border: 1px solid rgba(60, 60, 67, 0.12);
-    background: #fff;
-    box-sizing: border-box;
-    overflow: hidden;
+  .cover .cover-logo-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 14px auto 18px;
+    padding: 0;
+    border: 0;
+    background: transparent;
   }
 
-  .cover .logo {
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
-    margin: 0;
+  .cover .cover-logo {
+    width: clamp(88px, 22vw, 132px);
+    height: clamp(88px, 22vw, 132px);
+    margin: 0 auto;
     object-fit: contain;
+    object-position: center center;
     display: block;
+    border: 0;
+    box-shadow: none;
   }
 </style>
