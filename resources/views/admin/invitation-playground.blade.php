@@ -133,10 +133,10 @@
             text-align: center;
         }
     </style>
-    <link rel="preload" href="{{ asset('css/formal-invitation.css') }}?v=4" as="style" />
-    <link rel="stylesheet" href="{{ asset('css/formal-invitation.css') }}?v=4">
+    <link rel="preload" href="{{ asset('css/formal-invitation.css') }}?v=5" as="style" />
+    <link rel="stylesheet" href="{{ asset('css/formal-invitation.css') }}?v=5">
     @if ($standalone ?? false)
-        <link rel="preload" href="{{ asset('js/formal-invitation.js') }}?v=4" as="script">
+        <link rel="preload" href="{{ asset('js/formal-invitation.js') }}?v=5" as="script">
     @endif
 @endpush
 
@@ -451,7 +451,10 @@
                                         <p class="playground-signature-error" data-playground-signature-error hidden>Mohon isi tanda tangan terlebih dahulu.</p>
                                     </div>
                                 @endif
-                                <button class="playground-submit" type="submit">Simpan Konfirmasi</button>
+                                <button class="playground-submit" type="submit">
+                                    <span class="ui-btn-spinner" aria-hidden="true"></span>
+                                    <span data-submit-label>Simpan Konfirmasi</span>
+                                </button>
                             </form>
                         @elseif (! $rsvpClosed && $participant)
                             <form method="post" action="{{ route('rsvp.participant') }}" class="playground-rsvp-form" id="playgroundParticipantRsvpForm">
@@ -502,7 +505,10 @@
                                     <p class="playground-signature-help" data-playground-signature-help>Bubuhkan tanda tangan sebagai konfirmasi kehadiran.</p>
                                     <p class="playground-signature-error" data-playground-signature-error hidden>Mohon isi tanda tangan terlebih dahulu.</p>
                                 </div>
-                                <button class="playground-submit" type="submit">Simpan Konfirmasi</button>
+                                <button class="playground-submit" type="submit">
+                                    <span class="ui-btn-spinner" aria-hidden="true"></span>
+                                    <span data-submit-label>Simpan Konfirmasi</span>
+                                </button>
                             </form>
                         @elseif (! $rsvpClosed)
                             <div class="playground-flash error">Data penerima belum tersedia untuk kategori ini.</div>
@@ -554,6 +560,7 @@
                                 type="button"
                                 data-download-qr-card
                                 data-file-name="{{ $studentQrFileName }}">
+                                <span class="ui-btn-spinner" aria-hidden="true"></span>
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <path d="M7 10l5 5 5-5"></path>
@@ -588,5 +595,5 @@
         <script src="{{ asset('vendor/qrcode/qrcode.min.js') }}" defer></script>
     @endif
     <script type="application/json" id="formal-invitation-boot">@json($formalInvitationBoot)</script>
-    <script src="{{ asset('js/formal-invitation.js') }}?v=4" defer></script>
+    <script src="{{ asset('js/formal-invitation.js') }}?v=5" defer></script>
 @endpush

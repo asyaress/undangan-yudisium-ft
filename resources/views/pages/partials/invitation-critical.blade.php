@@ -151,36 +151,35 @@
     }
   }
 
-  .btn.is-loading {
-    position: relative;
-    color: transparent !important;
-    pointer-events: none;
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 
-  .btn.is-loading::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    margin: auto;
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(245, 83, 13, 0.25);
-    border-top-color: #f5530d;
+  .btn .ui-btn-spinner {
+    display: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #ffffff;
     border-radius: 50%;
     animation: invitation-spin 0.75s linear infinite;
+    flex-shrink: 0;
+  }
+
+  .btn.is-loading {
+    pointer-events: none;
+    opacity: 0.94;
+  }
+
+  .btn.is-loading .ui-btn-spinner {
+    display: block;
   }
 
   body.is-ui-busy {
     cursor: progress;
-  }
-
-  body.is-ui-busy::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 10040;
-    background: rgba(255, 255, 255, 0.78);
-    pointer-events: all;
   }
 
   .cover .btn {

@@ -570,6 +570,109 @@ var stage = document.getElementById('formalPreviewStage');
                 window.setTimeout(openStudentQrGuide, 720);
             }
 
+            function ensureSavingOverlay() {
+                var overlay = document.getElementById('uiSavingOverlay');
+                if (overlay) {
+                    return overlay;
+                }
+
+                overlay = document.createElement('div');
+                overlay.id = 'uiSavingOverlay';
+                overlay.className = 'ui-saving-overlay';
+                overlay.hidden = true;
+                overlay.setAttribute('role', 'status');
+                overlay.setAttribute('aria-live', 'polite');
+                overlay.innerHTML = '<div class="ui-saving-overlay__card"><div class="ui-spinner" aria-hidden="true"></div><p>Menyimpan konfirmasi…</p></div>';
+                document.body.appendChild(overlay);
+
+                return overlay;
+            }
+
+            function showSavingOverlay() {
+                ensureSavingOverlay().hidden = false;
+                document.body.classList.add('is-ui-busy');
+            }
+
+            function setSubmitButtonLoading(button, isLoading) {
+                if (!button) {
+                    return;
+                }
+
+                var label = button.querySelector('[data-submit-label]');
+
+                if (isLoading) {
+                    button.disabled = true;
+                    button.classList.add('is-loading');
+                    button.setAttribute('aria-busy', 'true');
+
+                    if (label && !button.dataset.originalLabel) {
+                        button.dataset.originalLabel = label.textContent || '';
+                    }
+
+                    if (label) {
+                        label.textContent = 'Menyimpan…';
+                    }
+                } else {
+                    button.disabled = false;
+                    button.classList.remove('is-loading');
+                    button.removeAttribute('aria-busy');
+
+                    if (label && button.dataset.originalLabel) {
+                        label.textContent = button.dataset.originalLabel;
+                    }
+                }
+            }
+
+            function encodeSignatureCanvas(sourceCanvas) {
+                if (!sourceCanvas || !sourceCanvas.width) {
+                    return '';
+                }
+
+                var maxEdge = 520;
+                var w = sourceCanvas.width;
+                var h = sourceCanvas.height;
+                var scale = Math.min(1, maxEdge / Math.max(w, h));
+                var target = sourceCanvas;
+
+                if (scale < 1) {
+                    var tmp = document.createElement('canvas');
+                    tmp.width = Math.max(1, Math.round(w * scale));
+                    tmp.height = Math.max(1, Math.round(h * scale));
+                    var ctx = tmp.getContext('2d');
+
+                    if (!ctx) {
+                        return '';
+                    }
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, tmp.width, tmp.height);
+                    ctx.drawImage(sourceCanvas, 0, 0, tmp.width, tmp.height);
+                    target = tmp;
+                }
+
+                try {
+                    return target.toDataURL('image/jpeg', 0.72);
+                } catch (error) {
+                    try {
+                        return target.toDataURL('image/png');
+                    } catch (fallbackError) {
+                        return '';
+                    }
+                }
+            }
+
+            function beginFormSubmit(form, submitButton) {
+                if (form.dataset.submitting === '1') {
+                    return false;
+                }
+
+                form.dataset.submitting = '1';
+                showSavingOverlay();
+                setSubmitButtonLoading(submitButton, true);
+
+                return true;
+            }
+
             document.querySelectorAll('.playground-rsvp-form').forEach(function (form) {
                 var noteField = form.querySelector('[data-playground-note-field]');
                 var noteLabel = form.querySelector('[data-playground-note-label]');
@@ -723,13 +826,11 @@ var stage = document.getElementById('formalPreviewStage');
                 }
 
                 function flushSignatureToInput() {
-                    if (!signatureCanvas || !signatureInput || !hasSignature) return '';
-
-                    try {
-                        return signatureCanvas.toDataURL('image/jpeg', 0.82);
-                    } catch (error) {
-                        return signatureCanvas.toDataURL('image/png');
+                    if (!signatureCanvas || !hasSignature) {
+                        return '';
                     }
+
+                    return encodeSignatureCanvas(signatureCanvas);
                 }
 
                 function startSignature(event) {
@@ -877,26 +978,39 @@ var stage = document.getElementById('formalPreviewStage');
                             return;
                         }
 
-                        signatureInput.value = flushSignatureToInput();
+                        event.preventDefault();
 
-                        if (!signatureInput.value) {
-                            event.preventDefault();
-
-                            if (signatureError) {
-                                signatureError.hidden = false;
-                            }
-
+                        if (!beginFormSubmit(form, submitButton)) {
                             return;
                         }
+
+                        window.requestAnimationFrame(function () {
+                            signatureInput.value = flushSignatureToInput();
+
+                            if (!signatureInput.value) {
+                                form.dataset.submitting = '0';
+                                setSubmitButtonLoading(submitButton, false);
+                                document.body.classList.remove('is-ui-busy');
+                                var overlay = document.getElementById('uiSavingOverlay');
+                                if (overlay) {
+                                    overlay.hidden = true;
+                                }
+
+                                if (signatureError) {
+                                    signatureError.hidden = false;
+                                }
+
+                                return;
+                            }
+
+                            form.submit();
+                        });
+
+                        return;
                     }
 
-                    if (submitButton && !submitButton.disabled) {
-                        submitButton.disabled = true;
-                        submitButton.setAttribute('aria-busy', 'true');
-                        submitButton.classList.add('is-loading');
-                        submitButton.dataset.originalLabel = submitButton.textContent || '';
-                        submitButton.textContent = 'Menyimpan...';
-                        document.body.classList.add('is-ui-busy');
+                    if (!beginFormSubmit(form, submitButton)) {
+                        event.preventDefault();
                     }
                 });
 

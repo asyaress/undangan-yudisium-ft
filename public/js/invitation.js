@@ -211,8 +211,20 @@ const openButton = document.getElementById("openInvitation");
           const button = submitter || form.querySelector("button[type='submit']");
           if (!button) return;
 
-          button.dataset.originalText = button.textContent;
-          button.textContent = "Memproses...";
+          if (!button.querySelector(".ui-btn-spinner")) {
+            const spinner = document.createElement("span");
+            spinner.className = "ui-btn-spinner";
+            spinner.setAttribute("aria-hidden", "true");
+            button.prepend(spinner);
+          }
+
+          const label = button.querySelector("[data-submit-label]") || button;
+          if (!button.dataset.originalText) {
+            button.dataset.originalText = label.textContent || "";
+          }
+          if (label) {
+            label.textContent = "Memproses…";
+          }
           button.disabled = true;
           button.classList.add("is-loading");
           document.body.classList.add("is-ui-busy");
