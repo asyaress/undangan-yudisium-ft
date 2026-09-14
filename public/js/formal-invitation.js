@@ -630,16 +630,25 @@ var stage = document.getElementById('formalPreviewStage');
                     };
                 }
 
-                function updateSignatureValue() {
-                    if (!signatureCanvas || !signatureInput || !signatureDrawnInput || !signatureField) return;
+                function markSignatureDrawn() {
+                    if (!signatureDrawnInput || !signatureField) return;
 
-                    signatureInput.value = signatureCanvas.toDataURL('image/png');
                     signatureDrawnInput.value = '1';
                     signatureField.classList.add('is-drawn');
                     hasSignature = true;
 
                     if (signatureError) {
                         signatureError.hidden = true;
+                    }
+                }
+
+                function flushSignatureToInput() {
+                    if (!signatureCanvas || !signatureInput || !hasSignature) return '';
+
+                    try {
+                        return signatureCanvas.toDataURL('image/jpeg', 0.82);
+                    } catch (error) {
+                        return signatureCanvas.toDataURL('image/png');
                     }
                 }
 
@@ -670,7 +679,7 @@ var stage = document.getElementById('formalPreviewStage');
                     signatureContext.lineTo(point.x, point.y);
                     signatureContext.stroke();
                     lastPoint = point;
-                    updateSignatureValue();
+                    markSignatureDrawn();
                 }
 
                 function endSignature(event) {
@@ -683,7 +692,7 @@ var stage = document.getElementById('formalPreviewStage');
                         signatureContext.arc(lastPoint.x, lastPoint.y, 1.7, 0, Math.PI * 2);
                         signatureContext.fillStyle = '#111827';
                         signatureContext.fill();
-                        updateSignatureValue();
+                        markSignatureDrawn();
                     }
 
                     isDrawing = false;
@@ -768,22 +777,44 @@ var stage = document.getElementById('formalPreviewStage');
                     input.addEventListener('change', syncNoteField);
                 });
 
+                var submitButton = form.querySelector('.playground-submit, button[type="submit"]');
+
                 form.addEventListener('submit', function (event) {
                     var checked = form.querySelector('input[name="attendance"]:checked');
                     var mode = checked ? checked.value : '';
                     var needsSignature = mode === 'attending' || mode === 'represented';
 
-                    if (!needsSignature || !signatureField || !signatureInput) return;
+                    if (needsSignature && signatureField && signatureInput) {
+                        if (!hasSignature) {
+                            event.preventDefault();
+                            showSignatureField(mode);
 
-                    if (!hasSignature || signatureInput.value === '') {
-                        event.preventDefault();
-                        showSignatureField(mode);
+                            if (signatureError) {
+                                signatureError.hidden = false;
+                            }
 
-                        if (signatureError) {
-                            signatureError.hidden = false;
+                            signatureField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            return;
                         }
 
-                        signatureField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        signatureInput.value = flushSignatureToInput();
+
+                        if (!signatureInput.value) {
+                            event.preventDefault();
+
+                            if (signatureError) {
+                                signatureError.hidden = false;
+                            }
+
+                            return;
+                        }
+                    }
+
+                    if (submitButton && !submitButton.disabled) {
+                        submitButton.disabled = true;
+                        submitButton.setAttribute('aria-busy', 'true');
+                        submitButton.dataset.originalLabel = submitButton.textContent || '';
+                        submitButton.textContent = 'Menyimpan...';
                     }
                 });
 

@@ -5,41 +5,44 @@ namespace App\Http\Controllers;
 use App\Models\InvitationCategory;
 use App\Models\InvitationRecipient;
 use App\Models\YudisiumParticipant;
+use App\Models\YudisiumPeriod;
+use App\Support\AdminDashboardCache;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\Response;
 
 class InvitationResponseController extends Controller
 {
     public function participant(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'event_id' => ['required', 'integer', 'exists:yudisium_periods,id'],
+            'event_id' => ['required', 'integer', 'min:1'],
             'participant_token' => ['required', 'string', 'max:255'],
             'attendance' => ['required', 'in:attending,declined'],
             'note' => ['nullable', 'required_if:attendance,declined', 'string', 'max:1000'],
-            'rsvp_signature' => ['nullable', 'string', 'max:600000'],
+            'rsvp_signature' => ['nullable', 'string', 'max:350000'],
             'signature_drawn' => ['nullable', 'string', 'max:5'],
             'return_to' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $participant = YudisiumParticipant::query()
-            ->with('period')
+            ->select(['id', 'period_id', 'invitation_token', 'rsvp_proof_code'])
             ->where('period_id', $data['event_id'])
             ->where('invitation_token', $data['participant_token'])
             ->firstOrFail();
 
-        $category = InvitationCategory::query()
-            ->where('period_id', $participant->period_id)
-            ->where('access_mode', InvitationCategory::ACCESS_NIM)
-            ->orderByRaw("slug = 'yudisiawan' desc")
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->first();
+        $period = $this->cachedPublishedPeriodById((int) $participant->period_id);
+        if (! $period) {
+            abort(404);
+        }
+
+        $category = $this->cachedStudentCategory((int) $participant->period_id);
         if (! $category?->requiresRsvp()) {
             return back()->with('error', 'Konfirmasi kehadiran tidak tersedia untuk kategori ini.');
         }
 
-        if ($participant->period?->rsvpIsClosed()) {
+        if ($period->rsvpIsClosed()) {
             return back()->with('error', 'Konfirmasi kehadiran ditutup. Batas konfirmasi sudah berakhir.');
         }
 
@@ -57,14 +60,16 @@ class InvitationResponseController extends Controller
             $data['attendance'] === 'attending' ? ($data['rsvp_signature'] ?? null) : null
         );
 
+        AdminDashboardCache::forgetSidebarStats((int) $participant->period_id);
+
         $defaultReturnTo = route('home', [
-                'event' => $participant->period?->slug,
-                'to' => $category->slug,
-                'ref' => $participant->invitation_token,
-            ]).'#rsvpSection';
+            'event' => $period->slug,
+            'to' => $category->slug,
+            'ref' => $participant->invitation_token,
+        ]).'#letterRsvp';
 
         return redirect()
-            ->to($this->safeReturnTo($request, $defaultReturnTo))
+            ->to($this->safeReturnTo($request, $defaultReturnTo), Response::HTTP_SEE_OTHER)
             ->with('success', $this->successMessage($data['attendance']));
     }
 
@@ -77,13 +82,13 @@ class InvitationResponseController extends Controller
             'note' => ['nullable', 'required_if:attendance,declined', 'string', 'max:1000'],
             'representative_name' => ['nullable', 'required_if:attendance,represented', 'string', 'max:255'],
             'representative_position' => ['nullable', 'required_if:attendance,represented', 'string', 'max:255'],
-            'rsvp_signature' => ['nullable', 'string', 'max:600000'],
+            'rsvp_signature' => ['nullable', 'string', 'max:350000'],
             'signature_drawn' => ['nullable', 'string', 'max:5'],
             'return_to' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $recipient = InvitationRecipient::query()
-            ->with(['period', 'category'])
+            ->select(['id', 'period_id', 'category_id', 'token', 'rsvp_status'])
             ->whereKey($data['recipient_id'])
             ->firstOrFail();
 
@@ -91,7 +96,14 @@ class InvitationResponseController extends Controller
             return back()->with('error', 'Token undangan tidak cocok.');
         }
 
-        if (! $recipient->invitationCategory()?->requiresRsvp()) {
+        $recipient->load([
+            'category:id,period_id,slug,access_mode,rsvp_enabled',
+            'period:id,slug,rsvp_deadline',
+        ]);
+
+        $canonicalCategory = $recipient->invitationCategory() ?: $recipient->category;
+
+        if (! $canonicalCategory?->requiresRsvp()) {
             return back()->with('error', 'Konfirmasi kehadiran tidak tersedia untuk kategori ini.');
         }
 
@@ -99,7 +111,7 @@ class InvitationResponseController extends Controller
             return back()->with('error', 'Konfirmasi kehadiran ditutup. Batas konfirmasi sudah berakhir.');
         }
 
-        $allowsRepresentative = $recipient->invitationCategory()?->usesPrivateAccess() ?? false;
+        $allowsRepresentative = $canonicalCategory->usesPrivateAccess();
         if ($data['attendance'] === 'represented' && ! $allowsRepresentative) {
             return back()
                 ->withInput($request->except(['rsvp_signature', 'signature_drawn']))
@@ -107,8 +119,8 @@ class InvitationResponseController extends Controller
         }
 
         $requiresSignature = match (true) {
-            $recipient->invitationCategory()?->usesPrivateAccess() => in_array($data['attendance'], ['attending', 'represented'], true),
-            $recipient->invitationCategory()?->usesNipAccess() => $data['attendance'] === 'attending',
+            $canonicalCategory->usesPrivateAccess() => in_array($data['attendance'], ['attending', 'represented'], true),
+            $canonicalCategory->usesNipAccess() => $data['attendance'] === 'attending',
             default => false,
         };
 
@@ -126,15 +138,44 @@ class InvitationResponseController extends Controller
             $requiresSignature ? $data['rsvp_signature'] : null
         );
 
+        AdminDashboardCache::forgetSidebarStats((int) $recipient->period_id);
+
         $defaultReturnTo = route('home', [
-                'event' => $recipient->period?->slug,
-                'to' => $recipient->invitationCategory()?->slug ?: $recipient->category?->slug,
-                'ref' => $recipient->token,
-            ]).'#rsvpSection';
+            'event' => $recipient->period?->slug,
+            'to' => $canonicalCategory->slug,
+            'ref' => $recipient->token,
+        ]).'#letterRsvp';
 
         return redirect()
-            ->to($this->safeReturnTo($request, $defaultReturnTo))
+            ->to($this->safeReturnTo($request, $defaultReturnTo), Response::HTTP_SEE_OTHER)
             ->with('success', $this->successMessage($data['attendance']));
+    }
+
+    private function cachedPublishedPeriodById(int $id): ?YudisiumPeriod
+    {
+        return Cache::remember(
+            'yudisium.invitation.period_id.'.$id,
+            now()->addMinutes(15),
+            fn () => YudisiumPeriod::query()
+                ->whereKey($id)
+                ->where('is_published', true)
+                ->first(),
+        );
+    }
+
+    private function cachedStudentCategory(int $periodId): ?InvitationCategory
+    {
+        return Cache::remember(
+            'yudisium.invitation.student_category.'.$periodId,
+            now()->addMinutes(30),
+            fn () => InvitationCategory::query()
+                ->where('period_id', $periodId)
+                ->where('access_mode', InvitationCategory::ACCESS_NIM)
+                ->orderByRaw("slug = 'yudisiawan' desc")
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->first(),
+        );
     }
 
     private function rsvpNote(array $data): ?string
@@ -164,18 +205,27 @@ class InvitationResponseController extends Controller
 
     private function validSignatureData(?string $signature): bool
     {
-        if (! is_string($signature) || ! str_starts_with($signature, 'data:image/png;base64,')) {
+        if (! is_string($signature)) {
             return false;
         }
 
-        $payload = substr($signature, strlen('data:image/png;base64,'));
+        if (! preg_match('#^data:image/(png|jpeg);base64,#', $signature)) {
+            return false;
+        }
+
+        $payload = substr($signature, strpos($signature, ',') + 1);
         if ($payload === '') {
+            return false;
+        }
+
+        $approxBytes = (int) (strlen($payload) * 3 / 4);
+        if ($approxBytes < 80) {
             return false;
         }
 
         $decoded = base64_decode($payload, true);
 
-        return is_string($decoded) && strlen($decoded) > 100;
+        return is_string($decoded) && strlen($decoded) > 80;
     }
 
     private function safeReturnTo(Request $request, string $fallback): string

@@ -112,7 +112,7 @@
     <link rel="preload" href="{{ asset('css/formal-invitation.css') }}?v=3" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="{{ asset('css/formal-invitation.css') }}?v=3"></noscript>
     @if ($standalone ?? false)
-        <link rel="preload" href="{{ asset('js/formal-invitation.js') }}?v=1" as="script">
+        <link rel="preload" href="{{ asset('js/formal-invitation.js') }}?v=2" as="script">
     @endif
 @endpush
 
@@ -556,5 +556,5 @@
         <script src="{{ asset('vendor/qrcode/qrcode.min.js') }}" defer></script>
     @endif
     <script type="application/json" id="formal-invitation-boot">@json($formalInvitationBoot)</script>
-    <script src="{{ asset('js/formal-invitation.js') }}?v=1" defer></script>
+    <script src="{{ asset('js/formal-invitation.js') }}?v=2" defer></script>
 @endpush

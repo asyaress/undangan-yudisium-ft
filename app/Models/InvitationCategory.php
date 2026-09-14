@@ -14,11 +14,13 @@ class InvitationCategory extends Model
     {
         static::saved(function (self $category): void {
             Cache::forget('yudisium.invitation.categories.'.$category->period_id);
+            Cache::forget('yudisium.invitation.student_category.'.$category->period_id);
             \App\Support\AdminDashboardCache::forgetLists();
         });
 
         static::deleted(function (self $category): void {
             Cache::forget('yudisium.invitation.categories.'.$category->period_id);
+            Cache::forget('yudisium.invitation.student_category.'.$category->period_id);
             \App\Support\AdminDashboardCache::forgetLists();
         });
     }

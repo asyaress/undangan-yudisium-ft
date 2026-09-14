@@ -6,6 +6,7 @@ use App\Models\InvitationCategory;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -71,6 +72,33 @@ class InvitationPerformanceTest extends TestCase
         $this->assertLessThanOrEqual(12, $metrics['queries'], 'Query arsip: '.$metrics['queries']);
         $this->assertLessThanOrEqual(95_000, $metrics['bytes'], 'HTML arsip (bytes): '.$metrics['bytes']);
         $this->assertLessThanOrEqual(700, $metrics['ms'], 'Render arsip (ms): '.$metrics['ms']);
+    }
+
+    public function test_student_rsvp_post_stays_within_performance_budget(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+        $signature = 'data:image/png;base64,'.base64_encode(str_repeat('sig', 40));
+
+        Cache::remember('yudisium.invitation.period_id.'.$period->id, now()->addMinute(), fn () => $period);
+        Cache::remember('yudisium.invitation.student_category.'.$period->id, now()->addMinute(), fn () => $category);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $start = hrtime(true);
+        $this->post(route('rsvp.participant'), [
+            'event_id' => $period->id,
+            'participant_token' => $participant->invitation_token,
+            'attendance' => 'attending',
+            'rsvp_signature' => $signature,
+            'signature_drawn' => '1',
+        ])->assertRedirect();
+        $ms = round((hrtime(true) - $start) / 1_000_000, 2);
+
+        $this->assertLessThanOrEqual(6, count(DB::getQueryLog()), 'Query RSVP mahasiswa: '.count(DB::getQueryLog()));
+        $this->assertLessThanOrEqual(500, $ms, 'RSVP mahasiswa (ms): '.$ms);
     }
 
     public function test_verify_nim_post_stays_within_performance_budget(): void
