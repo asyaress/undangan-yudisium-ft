@@ -85,22 +85,30 @@ class MonitoringController extends Controller
         ]);
     }
 
-    public function signature(InvitationRecipient $recipient): Response
+    public function signature(Request $request, InvitationRecipient $recipient): Response
     {
         abort_unless($recipient->invitationCategory() && in_array($recipient->invitationCategory()->access_mode, $this->recipientAccessModes(), true), 404);
 
         $png = $this->decodeSignature($recipient->rsvp_signature);
         abort_unless($png !== null, 404);
 
-        return $this->pngResponse($png, $this->signatureFilename('private', $recipient->invitation_name, $recipient->id));
+        return $this->pngResponse(
+            $png,
+            $this->signatureFilename('private', $recipient->invitation_name, $recipient->id),
+            $request->boolean('download'),
+        );
     }
 
-    public function studentSignature(YudisiumParticipant $participant): Response
+    public function studentSignature(Request $request, YudisiumParticipant $participant): Response
     {
         $png = $this->decodeSignature($participant->rsvp_signature);
         abort_unless($png !== null, 404);
 
-        return $this->pngResponse($png, $this->signatureFilename('mahasiswa', $participant->nim, $participant->id));
+        return $this->pngResponse(
+            $png,
+            $this->signatureFilename('mahasiswa', $participant->nim, $participant->id),
+            $request->boolean('download'),
+        );
     }
 
     private function page(Request $request, string $type): View
@@ -462,11 +470,13 @@ class MonitoringController extends Controller
         return $decoded === false || $decoded === '' ? null : $decoded;
     }
 
-    private function pngResponse(string $png, string $filename): Response
+    private function pngResponse(string $png, string $filename, bool $attachment = false): Response
     {
+        $disposition = $attachment ? 'attachment' : 'inline';
+
         return response($png)
             ->header('Content-Type', 'image/png')
-            ->header('Content-Disposition', 'inline; filename="'.$filename.'"')
+            ->header('Content-Disposition', $disposition.'; filename="'.$filename.'"')
             ->header('Cache-Control', 'private, max-age=300');
     }
 

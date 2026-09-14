@@ -101,14 +101,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="preload" as="video" href="{{ asset('video-back.mp4') }}" type="video/mp4" />
+  <link rel="preload" as="image" href="{{ asset('backdrop-fix.png') }}" />
   @include('pages.partials.invitation-styles')
 </head>
 
 <body class="{{ $bodyClasses }}">
   <div class="bg-video-layer" aria-hidden="true">
-    <video class="bg-video" id="backgroundVideo" autoplay muted loop playsinline webkit-playsinline="true" preload="auto">
-      <source src="{{ asset('video-back.mp4') }}" type="video/mp4" />
+    <video class="bg-video" id="backgroundVideo" autoplay muted loop playsinline webkit-playsinline="true" preload="none" poster="{{ asset('backdrop-fix.png') }}">
+      <source data-src="{{ asset('video-back.mp4') }}" type="video/mp4" />
     </video>
   </div>
   <div class="bg-video-overlay" aria-hidden="true"></div>

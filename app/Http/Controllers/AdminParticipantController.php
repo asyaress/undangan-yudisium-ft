@@ -6,6 +6,7 @@ use App\Models\InvitationCategory;
 use App\Models\StudyProgram;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
+use App\Support\AdminDashboardCache;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,8 +27,18 @@ class AdminParticipantController extends Controller
         $search = trim($request->string('q')->toString());
 
         $participants = YudisiumParticipant::query()
-            ->select('yudisium_participants.*')
-            ->with(['period', 'studyProgram'])
+            ->select([
+                'yudisium_participants.id',
+                'yudisium_participants.period_id',
+                'yudisium_participants.study_program_id',
+                'yudisium_participants.sequence_number',
+                'yudisium_participants.nim',
+                'yudisium_participants.name',
+                'yudisium_participants.birth_date',
+                'yudisium_participants.study_program',
+                'yudisium_participants.rsvp_status',
+            ])
+            ->with(['studyProgram:id,code,name,sort_order'])
             ->leftJoin('study_programs', 'study_programs.id', '=', 'yudisium_participants.study_program_id')
             ->when($period, fn ($query) => $query->where('period_id', $period->id))
             ->when($search !== '', function ($query) use ($search) {
@@ -63,17 +74,7 @@ class AdminParticipantController extends Controller
             })
             ->values();
 
-        $stats = [
-            'total' => $period
-                ? YudisiumParticipant::where('period_id', $period->id)->count()
-                : YudisiumParticipant::count(),
-            'attending' => $period
-                ? YudisiumParticipant::where('period_id', $period->id)->where('rsvp_status', 'attending')->count()
-                : YudisiumParticipant::where('rsvp_status', 'attending')->count(),
-            'checked_in' => $period
-                ? YudisiumParticipant::where('period_id', $period->id)->whereNotNull('checked_in_at')->count()
-                : YudisiumParticipant::whereNotNull('checked_in_at')->count(),
-        ];
+        $stats = AdminDashboardCache::participantStats($period?->id);
 
         $studyPrograms = StudyProgram::query()
             ->where('is_active', true)
@@ -132,6 +133,8 @@ class AdminParticipantController extends Controller
             $studyProgram->id
         );
 
+        AdminDashboardCache::forgetSidebarStats((int) $data['period_id']);
+
         YudisiumParticipant::query()->create([
             'period_id' => $data['period_id'],
             'sequence_number' => $sequenceNumber,
@@ -170,9 +173,17 @@ class AdminParticipantController extends Controller
             return back()->with('error', 'Pilih minimal satu data mahasiswa untuk dihapus.');
         }
 
+        $periodIds = YudisiumParticipant::query()
+            ->whereIn('id', $ids)
+            ->pluck('period_id')
+            ->unique()
+            ->filter();
+
         $deleted = YudisiumParticipant::query()
             ->whereIn('id', $ids)
             ->delete();
+
+        $periodIds->each(fn ($id) => AdminDashboardCache::forgetSidebarStats((int) $id));
 
         return redirect()
             ->route('admin.participants.index', array_filter([

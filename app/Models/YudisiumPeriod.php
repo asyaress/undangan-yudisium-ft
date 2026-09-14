@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class YudisiumPeriod extends Model
@@ -61,6 +62,16 @@ class YudisiumPeriod extends Model
             if (! $period->slug) {
                 $period->slug = static::uniqueSlug($period->name ?: 'yudisium');
             }
+        });
+
+        static::saved(function (): void {
+            Cache::forget('yudisium.invitation.archive_events');
+            \App\Support\AdminDashboardCache::forgetLists();
+        });
+
+        static::deleted(function (): void {
+            Cache::forget('yudisium.invitation.archive_events');
+            \App\Support\AdminDashboardCache::forgetLists();
         });
     }
 

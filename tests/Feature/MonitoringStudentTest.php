@@ -183,6 +183,11 @@ class MonitoringStudentTest extends TestCase
             ->assertHeader('Content-Type', 'image/png')
             ->assertContent('fake-png');
 
+        $this->actingAs($admin)
+            ->get(route('monitoring.mahasiswa.signature', $participant).'?download=1')
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'attachment; filename="ttd-'.$participant->nim.'.png"');
+
         $export = $this->actingAs($admin)
             ->get(route('monitoring.export', ['type' => 'mahasiswa', 'period_id' => $period->id, 'format' => 'xls']))
             ->assertOk();

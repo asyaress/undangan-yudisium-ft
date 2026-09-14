@@ -846,6 +846,7 @@
     };
 
     const openInvitation = () => {
+      startBackgroundVideo();
       if (document.body.classList.contains("opening") || document.body.classList.contains("opened")) {
         return;
       }
@@ -927,15 +928,23 @@
       });
     }
 
-    const setupBackgroundVideo = () => {
-      if (!backgroundVideo) return;
+    let backgroundVideoStarted = false;
+    const startBackgroundVideo = () => {
+      if (!backgroundVideo || backgroundVideoStarted) return;
+      backgroundVideoStarted = true;
+
+      const source = backgroundVideo.querySelector("source[data-src]");
+      if (source && !source.getAttribute("src")) {
+        source.setAttribute("src", source.dataset.src || "");
+        backgroundVideo.load();
+      }
 
       const revealVideo = () => backgroundVideo.classList.add("is-ready");
       backgroundVideo.addEventListener("loadeddata", revealVideo, { once: true });
       backgroundVideo.addEventListener("canplay", revealVideo, { once: true });
 
       backgroundVideo.play().then(revealVideo).catch(() => {
-        // Keep static gradient fallback when autoplay is blocked.
+        // Keep poster fallback when autoplay is blocked.
       });
     };
 
@@ -1028,7 +1037,14 @@
       }
     };
 
-    setupBackgroundVideo();
+    if (!openButton) {
+      if ("requestIdleCallback" in window) {
+        requestIdleCallback(() => startBackgroundVideo(), { timeout: 3000 });
+      } else {
+        window.setTimeout(() => startBackgroundVideo(), 1500);
+      }
+    }
+
     setupLogoFallback();
     setupAssetPlaceholder("ttdImage", "ttdPlaceholder");
     setupAssetPlaceholder("stampImage", "stampPlaceholder");

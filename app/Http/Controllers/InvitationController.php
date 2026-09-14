@@ -10,6 +10,7 @@ use App\Models\YudisiumPeriod;
 use App\Services\RecipientDirectory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -31,7 +32,7 @@ class InvitationController extends Controller
                 'mode' => 'archive',
                 'events' => $events,
                 'activeEvent' => $activeEvent,
-                'categories' => $activeEvent ? $this->categoriesForEvent($activeEvent)->get() : collect(),
+                'categories' => $activeEvent ? $this->cachedCategoriesForEvent($activeEvent) : collect(),
             ]);
         }
 
@@ -41,7 +42,7 @@ class InvitationController extends Controller
             abort(404);
         }
 
-        $categories = $this->categoriesForEvent($event)->get();
+        $categories = $this->cachedCategoriesForEvent($event);
         $selectedCategory = $request->filled('to')
             ? $this->resolveCategory($categories, $request->string('to')->toString())
             : null;
@@ -74,10 +75,11 @@ class InvitationController extends Controller
         }
 
         if ($recipient) {
-            $recipient = app(RecipientDirectory::class)->refreshCanonicalRoles($recipient);
+            $directory = app(RecipientDirectory::class);
+            $recipient = $directory->loadForInvitationView($recipient);
             $canonicalCategory = $recipient->invitationCategory();
             if ($canonicalCategory && $canonicalCategory->slug !== $selectedCategory->slug) {
-                return redirect()->to($recipient->invitationUrl());
+                return redirect()->to($directory->invitationHomeUrl($recipient, $canonicalCategory));
             }
         }
 
@@ -345,6 +347,7 @@ class InvitationController extends Controller
         }
 
         $participant = YudisiumParticipant::query()
+            ->with('studyProgram')
             ->where('period_id', $event->id)
             ->where('invitation_token', $token)
             ->first();
@@ -405,19 +408,37 @@ class InvitationController extends Controller
      */
     private function publishedEventsForArchive()
     {
-        return YudisiumPeriod::query()
-            ->where('is_published', true)
-            ->withCount('participants')
-            ->withCount([
-                'participants as checked_in_participants_count' => fn ($query) => $query->whereNotNull('checked_in_at'),
-            ])
-            ->withCount('recipients')
-            ->orderByDesc('event_year')
-            ->orderByDesc('event_date')
-            ->orderByDesc('id')
-            ->get()
-            ->reject(fn (YudisiumPeriod $event) => $event->isLegacyPeriodTwo())
-            ->values();
+        return Cache::remember(
+            'yudisium.invitation.archive_events',
+            now()->addMinutes(15),
+            function () {
+                return YudisiumPeriod::query()
+                    ->where('is_published', true)
+                    ->withCount('participants')
+                    ->withCount([
+                        'participants as checked_in_participants_count' => fn ($query) => $query->whereNotNull('checked_in_at'),
+                    ])
+                    ->withCount('recipients')
+                    ->orderByDesc('event_year')
+                    ->orderByDesc('event_date')
+                    ->orderByDesc('id')
+                    ->get()
+                    ->reject(fn (YudisiumPeriod $event) => $event->isLegacyPeriodTwo())
+                    ->values();
+            },
+        );
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, InvitationCategory>
+     */
+    private function cachedCategoriesForEvent(YudisiumPeriod $event)
+    {
+        return Cache::remember(
+            'yudisium.invitation.categories.'.$event->id,
+            now()->addMinutes(30),
+            fn () => $this->categoriesForEvent($event)->get(),
+        );
     }
 
     private function invitationUrl(YudisiumPeriod $event, InvitationCategory $category): string

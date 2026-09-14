@@ -424,6 +424,25 @@ class InvitationRoutingTest extends TestCase
         );
     }
 
+    public function test_private_recipient_invitation_view_stays_lightweight(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true);
+        $recipient = $this->recipient($period, $category);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->get('/?event='.$period->slug.'&to='.$category->slug.'&ref='.$recipient->token)
+            ->assertOk();
+
+        $this->assertLessThanOrEqual(
+            18,
+            count(DB::getQueryLog()),
+            'Undangan formal penerima tidak boleh refresh jabatan di setiap request.',
+        );
+    }
+
     public function test_student_gate_page_does_not_load_all_published_events(): void
     {
         $period = $this->period();

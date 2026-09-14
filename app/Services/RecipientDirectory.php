@@ -185,11 +185,27 @@ class RecipientDirectory
         $recipient = $this->refreshCanonicalRoles($recipient);
         $category = $recipient->invitationCategory();
 
-        return route('home', [
+        return $this->invitationHomeUrl($recipient, $category);
+    }
+
+    /**
+     * Muat relasi untuk tampilan undangan tanpa menulis ulang jabatan ke database.
+     */
+    public function loadForInvitationView(InvitationRecipient $recipient): InvitationRecipient
+    {
+        return $recipient->loadMissing(['roles.category', 'category', 'period']);
+    }
+
+    public function invitationHomeUrl(InvitationRecipient $recipient, ?InvitationCategory $category = null): string
+    {
+        $recipient = $this->loadForInvitationView($recipient);
+        $category ??= $recipient->invitationCategory();
+
+        return route('home', array_filter([
             'event' => $recipient->period?->slug,
             'to' => $category?->slug,
             'ref' => $recipient->token,
-        ]);
+        ]));
     }
 
     public function refreshCanonicalRoles(InvitationRecipient $recipient): InvitationRecipient

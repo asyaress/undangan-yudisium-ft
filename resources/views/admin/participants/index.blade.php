@@ -210,6 +210,7 @@
                     @method('DELETE')
                     <input type="hidden" name="period_id" value="{{ $period?->id }}">
                     <input type="hidden" name="q" value="{{ $search }}">
+                    <input type="hidden" name="only_id" value="" id="participantOnlyDeleteId">
                 </form>
 
                 <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
@@ -260,7 +261,7 @@
                                                 @else<span class="badge badge-warning">Belum</span>@endif
                                             </td>
                                             <td>
-                                                <button class="btn btn-outline-danger btn-sm" type="submit" form="deleteParticipant{{ $participant->id }}" data-confirm-delete>Hapus</button>
+                                                <button class="btn btn-outline-danger btn-sm" type="button" data-delete-participant="{{ $participant->id }}" data-confirm-delete>Hapus</button>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -272,15 +273,6 @@
                     <div class="text-muted border rounded p-3">Belum ada data mahasiswa.</div>
                 @endforelse
 
-                @foreach ($participants as $participant)
-                    <form id="deleteParticipant{{ $participant->id }}" method="post" action="{{ route('admin.participants.destroy-selected') }}">
-                        @csrf
-                        @method('DELETE')
-                        <input type="hidden" name="only_id" value="{{ $participant->id }}">
-                        <input type="hidden" name="period_id" value="{{ $period?->id }}">
-                        <input type="hidden" name="q" value="{{ $search }}">
-                    </form>
-                @endforeach
             </div>
         </div>
     </div>
@@ -383,7 +375,22 @@
             });
         });
 
-        document.querySelectorAll('[data-confirm-delete]').forEach(function (button) {
+        document.querySelectorAll('[data-delete-participant]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                if (!confirm('Hapus data mahasiswa ini? Tindakan ini tidak bisa dibatalkan.')) {
+                    return;
+                }
+
+                var onlyId = document.getElementById('participantOnlyDeleteId');
+                if (onlyId) {
+                    onlyId.value = button.getAttribute('data-delete-participant') || '';
+                }
+
+                document.getElementById('participantBulkDeleteForm').submit();
+            });
+        });
+
+        document.querySelectorAll('[data-confirm-delete]:not([data-delete-participant])').forEach(function (button) {
             button.addEventListener('click', function (event) {
                 if (!confirm('Hapus data yang dipilih? Tindakan ini tidak bisa dibatalkan.')) {
                     event.preventDefault();

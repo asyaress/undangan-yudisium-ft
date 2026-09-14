@@ -367,10 +367,16 @@
     }
 
     .signature-download-link {
+        display: inline-block;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: none;
         color: #D9450B;
         font-size: 0.78rem;
         font-weight: 800;
         text-decoration: none;
+        cursor: pointer;
     }
 
     .signature-download-link:hover,
@@ -749,7 +755,7 @@
             <a href="${escapeHtml(row.signature_url)}" target="_blank" rel="noopener" title="Buka ${label}" download="${escapeHtml(fileName)}">
               <img src="${escapeHtml(row.signature_url)}" alt="${label} ${escapeHtml(row.name)}">
             </a>
-            <a class="signature-download-link" href="${escapeHtml(row.signature_url)}" download="${escapeHtml(fileName)}">Unduh PNG</a>
+            <button type="button" class="signature-download-link" data-signature-download data-url="${escapeHtml(row.signature_url)}" data-file-name="${escapeHtml(fileName)}">Unduh PNG</button>
           </div>
         `;
       };
@@ -864,6 +870,62 @@
           audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
           await audioContext.resume();
           playBeep();
+        }
+      });
+
+      const savePngBlob = async (blob, fileName) => {
+        const name = fileName || "unduhan.png";
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+        if (isIOS && navigator.share && navigator.canShare) {
+          try {
+            const file = new File([blob], name, { type: "image/png" });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({ files: [file], title: name });
+              return;
+            }
+          } catch (error) {
+            // Fall through to anchor download.
+          }
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = name;
+        if (isIOS) {
+          link.target = "_blank";
+          link.rel = "noopener";
+        }
+        document.body.appendChild(link);
+        link.click();
+        window.setTimeout(() => {
+          URL.revokeObjectURL(url);
+          link.remove();
+        }, 2000);
+      };
+
+      document.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-signature-download]");
+        if (!button) return;
+
+        event.preventDefault();
+        const baseUrl = button.dataset.url || "";
+        const fileName = button.dataset.fileName || "ttd.png";
+        if (!baseUrl) return;
+
+        const downloadUrl = baseUrl + (baseUrl.includes("?") ? "&" : "?") + "download=1";
+
+        try {
+          const response = await fetch(downloadUrl, {
+            credentials: "same-origin",
+            headers: { Accept: "image/png" },
+          });
+          if (!response.ok) throw new Error("download failed");
+          const blob = await response.blob();
+          await savePngBlob(blob, fileName);
+        } catch (error) {
+          window.open(downloadUrl, "_blank", "noopener");
         }
       });
 
