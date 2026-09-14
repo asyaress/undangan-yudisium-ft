@@ -6,7 +6,6 @@ import id.unmul.ft.yudisium.scanner.data.local.ParticipantEntity
 import id.unmul.ft.yudisium.scanner.data.local.PendingScanEntity
 import id.unmul.ft.yudisium.scanner.data.remote.ApiFactory
 import id.unmul.ft.yudisium.scanner.data.remote.ErrorMessage
-import id.unmul.ft.yudisium.scanner.data.remote.LoginRequest
 import id.unmul.ft.yudisium.scanner.data.remote.ScanDto
 import id.unmul.ft.yudisium.scanner.data.remote.SyncRequest
 import id.unmul.ft.yudisium.scanner.data.remote.SyncResultDto
@@ -18,6 +17,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import retrofit2.HttpException
+import java.io.IOException
+import java.net.SocketTimeoutException
 import java.time.Instant
 import java.util.UUID
 
@@ -59,17 +60,19 @@ class CheckinRepository(
 
     fun checkedInCount(periodId: Int): Flow<Int> = database.participants().observeCheckedIn(periodId)
 
-    suspend fun login(baseUrl: String, email: String, password: String) = withContext(io) {
-        val url = normalizeBaseUrl(baseUrl)
-        sessionStore.saveLogin(url, "", "", email)
-        val response = apiFactory.create().login(
-            LoginRequest(
-                email = email.trim(),
-                password = password,
-                deviceName = sessionStore.deviceName(),
-            ),
+    suspend fun ensureInternalSession() = withContext(io) {
+        val snap = sessionStore.snapshot()
+        val baseUrl = snap.baseUrl.ifBlank { DEFAULT_SERVER_URL }
+        sessionStore.saveLogin(
+            baseUrl,
+            INTERNAL_SCANNER_ACCESS_KEY,
+            "Panitia registrasi",
+            "",
         )
-        sessionStore.saveLogin(url, response.token, response.user.name, response.user.email)
+    }
+
+    suspend fun refreshEventsIfOnline() = withContext(io) {
+        ensureInternalSession()
         refreshEvents()
     }
 
@@ -77,10 +80,10 @@ class CheckinRepository(
         sessionStore.savePeriod(0)
     }
 
-    suspend fun logout() = withContext(io) {
-        runCatching { apiFactory.create().logout() }
-        sessionStore.clearAuth()
+    suspend fun clearLocalData() = withContext(io) {
+        sessionStore.savePeriod(0)
         database.clearAllTables()
+        ensureInternalSession()
     }
 
     suspend fun refreshEvents() = withContext(io) {
@@ -172,7 +175,10 @@ class CheckinRepository(
         if (error is HttpException) {
             val raw = error.response()?.errorBody()?.string().orEmpty()
             runCatching { json.decodeFromString<ErrorMessage>(raw).message }.getOrNull()?.let { return it }
-            if (error.code() == 401) return "Sesi habis. Masuk ulang."
+            if (error.code() == 401) return "Akses scanner ditolak server. Pastikan MOBILE_SCANNER_KEY sudah diset."
+        }
+        if (error is SocketTimeoutException || (error is IOException && error.message?.contains("timeout", true) == true)) {
+            return "Koneksi ke server lambat. Scan offline tetap jalan jika data event sudah diunduh."
         }
         return error.message ?: "Tidak bisa terhubung ke server."
     }

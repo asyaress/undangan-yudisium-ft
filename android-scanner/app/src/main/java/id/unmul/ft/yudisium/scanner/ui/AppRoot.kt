@@ -2,7 +2,6 @@ package id.unmul.ft.yudisium.scanner.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -48,7 +47,6 @@ import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.OfflineBolt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sync
@@ -81,7 +79,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import id.unmul.ft.yudisium.scanner.R
-import id.unmul.ft.yudisium.scanner.data.DEFAULT_SERVER_URL
 import id.unmul.ft.yudisium.scanner.data.EventCacheStats
 import id.unmul.ft.yudisium.scanner.data.LocalScanResult
 import id.unmul.ft.yudisium.scanner.data.local.EventEntity
@@ -112,94 +109,18 @@ import androidx.compose.foundation.Image
 @Composable
 fun AppRoot(
     state: ScanUiState,
-    onLogin: (String, String) -> Unit,
     onRefreshEvents: () -> Unit,
     onOpenEvent: (Int) -> Unit,
     onScan: (String) -> Unit,
     onSync: () -> Unit,
     onLeaveEvent: () -> Unit,
-    onLogout: () -> Unit,
+    onClearLocalData: () -> Unit,
     onDismissResult: () -> Unit,
     onDismissNotice: () -> Unit,
 ) {
-    val session = state.session
-    when {
-        session.token.isBlank() -> LoginScreen(state, onLogin, onDismissNotice)
-        session.periodId == 0 -> EventsScreen(state, onRefreshEvents, onOpenEvent, onLogout, onDismissNotice)
+    when (state.session.periodId) {
+        0 -> EventsScreen(state, onRefreshEvents, onOpenEvent, onClearLocalData, onDismissNotice)
         else -> ScanScreen(state, onScan, onSync, onLeaveEvent, onDismissResult)
-    }
-}
-
-@Composable
-private fun LoginScreen(
-    state: ScanUiState,
-    onLogin: (String, String) -> Unit,
-    onDismissNotice: () -> Unit,
-) {
-    val layout = rememberAppLayout()
-    var email by remember { mutableStateOf(state.session.email) }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var dismissedError by remember { mutableStateOf(false) }
-    val host = remember { Uri.parse(DEFAULT_SERVER_URL).host ?: DEFAULT_SERVER_URL }
-
-    LaunchedEffect(state.notice) {
-        if (state.notice != null) dismissedError = false
-    }
-
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Canvas)
-            .statusBarsPadding()
-            .imePadding()
-            .navigationBarsPadding(),
-    ) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .widthIn(max = layout.contentMax)
-                .padding(horizontal = layout.pagePad)
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(Modifier.height(8.dp))
-            HeroBanner(height = layout.hero)
-            Spacer(Modifier.height(16.dp))
-            BrandIdentity(logo = layout.logo)
-            Spacer(Modifier.height(12.dp))
-            Text("Yudisium", style = MaterialTheme.typography.displaySmall)
-            Text("Check-in kehadiran panitia", color = Label, style = MaterialTheme.typography.bodyLarge)
-            Spacer(Modifier.height(8.dp))
-            ServerHostChip(host)
-            Spacer(Modifier.height(16.dp))
-            if (state.notice != null && !dismissedError) {
-                ErrorBanner(state.notice, onDismiss = {
-                    dismissedError = true
-                    onDismissNotice()
-                })
-                Spacer(Modifier.height(12.dp))
-            }
-            GroupedCredentialCard(
-                email = email,
-                onEmailChange = { email = it },
-                password = password,
-                onPasswordChange = { password = it },
-                passwordVisible = passwordVisible,
-                onTogglePassword = { passwordVisible = !passwordVisible },
-                onSubmit = { onLogin(email, password) },
-            )
-            Spacer(Modifier.height(16.dp))
-            LoginPrimaryButton(
-                loading = state.loading,
-                enabled = email.isNotBlank() && password.isNotBlank(),
-                onClick = { onLogin(email, password) },
-            )
-            Spacer(Modifier.height(14.dp))
-            OperationalFooterNote()
-        }
     }
 }
 
@@ -208,13 +129,13 @@ private fun EventsScreen(
     state: ScanUiState,
     onRefreshEvents: () -> Unit,
     onOpenEvent: (Int) -> Unit,
-    onLogout: () -> Unit,
+    onClearLocalData: () -> Unit,
     onDismissNotice: () -> Unit,
 ) {
     val layout = rememberAppLayout()
     val active = state.events.filter { it.isActive }
     val archives = state.events.filterNot { it.isActive }
-    val operator = state.session.name.ifBlank { state.session.email }
+    val operator = state.session.name.ifBlank { "Panitia registrasi" }
     val anyOffline = state.eventStats.values.any { it.rosterDownloaded }
 
     Column(
@@ -234,7 +155,7 @@ private fun EventsScreen(
         ) {
             item {
                 Spacer(Modifier.height(8.dp))
-                OperatorPanel(operator, onRefreshEvents, onLogout, state.loading)
+                OperatorPanel(operator, onRefreshEvents, onClearLocalData, state.loading)
             }
             item {
                 EventsHeroBanner()
@@ -298,7 +219,7 @@ private fun EventsScreen(
 }
 
 @Composable
-private fun OperatorPanel(operator: String, onRefresh: () -> Unit, onLogout: () -> Unit, loading: Boolean) {
+private fun OperatorPanel(operator: String, onRefresh: () -> Unit, onClearLocalData: () -> Unit, loading: Boolean) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -332,7 +253,7 @@ private fun OperatorPanel(operator: String, onRefresh: () -> Unit, onLogout: () 
                     Text("Perbarui", style = MaterialTheme.typography.labelLarge, color = Ink)
                 }
             }
-            Pressable(onClick = onLogout, enabled = !loading) { mod ->
+            Pressable(onClick = onClearLocalData, enabled = !loading) { mod ->
                 Row(
                     mod
                         .clip(RoundedCornerShape(8.dp))
@@ -340,9 +261,9 @@ private fun OperatorPanel(operator: String, onRefresh: () -> Unit, onLogout: () 
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.Logout, contentDescription = null, tint = Bad, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.OfflineBolt, contentDescription = null, tint = Bad, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.size(4.dp))
-                    Text("Keluar", style = MaterialTheme.typography.labelLarge, color = Bad)
+                    Text("Hapus data lokal", style = MaterialTheme.typography.labelLarge, color = Bad)
                 }
             }
         }

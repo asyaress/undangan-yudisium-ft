@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.onEach
 
 const val DEFAULT_SERVER_URL = "https://undangan-yudisium.ft.unmul.ac.id"
 
+/** Samakan dengan MOBILE_SCANNER_KEY di server (.env). */
+const val INTERNAL_SCANNER_ACCESS_KEY = "YFT-SCANNER-FT-INTERNAL-83P3"
+
 private val Context.dataStore by preferencesDataStore("yudisium_scan_session")
 
 data class Session(

@@ -22,13 +22,12 @@ class MainActivity : ComponentActivity() {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 AppRoot(
                     state = state,
-                    onLogin = viewModel::login,
                     onRefreshEvents = viewModel::refreshEvents,
                     onOpenEvent = viewModel::openEvent,
                     onScan = viewModel::onScanned,
                     onSync = viewModel::syncNow,
                     onLeaveEvent = viewModel::leaveEvent,
-                    onLogout = viewModel::logout,
+                    onClearLocalData = viewModel::clearLocalData,
                     onDismissResult = viewModel::dismissResult,
                     onDismissNotice = viewModel::consumeNotice,
                 )

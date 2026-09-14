@@ -20,6 +20,14 @@ class AuthenticateMobileAdmin
             ], 401);
         }
 
+        $scannerKey = (string) config('services.mobile_scanner_key');
+
+        if ($scannerKey !== '' && hash_equals($scannerKey, $plain)) {
+            $request->attributes->set('mobileScannerDevice', true);
+
+            return $next($request);
+        }
+
         $device = MobileDeviceToken::query()
             ->with('user')
             ->where('token_hash', MobileDeviceToken::hashToken($plain))

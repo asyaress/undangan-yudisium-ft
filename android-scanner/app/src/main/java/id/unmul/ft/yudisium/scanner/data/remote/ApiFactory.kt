@@ -17,10 +17,10 @@ class ApiFactory(private val sessionStore: SessionStore) {
     }
     private val lock = Any()
     private val httpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .writeTimeout(12, TimeUnit.SECONDS)
-        .callTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .callTimeout(120, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .addInterceptor(Interceptor { chain ->
             val token = sessionStore.peek().token

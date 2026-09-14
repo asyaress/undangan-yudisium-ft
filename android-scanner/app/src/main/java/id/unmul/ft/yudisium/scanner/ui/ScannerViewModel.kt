@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import id.unmul.ft.yudisium.scanner.ScannerApp
-import id.unmul.ft.yudisium.scanner.data.DEFAULT_SERVER_URL
 import id.unmul.ft.yudisium.scanner.data.EventCacheStats
 import id.unmul.ft.yudisium.scanner.data.LocalScanResult
 import id.unmul.ft.yudisium.scanner.data.Session
@@ -44,6 +43,13 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         viewModelScope.launch {
+            runCatching { repository.ensureInternalSession() }
+            runCatching { repository.refreshEvents() }
+                .onFailure { error ->
+                    _uiState.update { it.copy(notice = repository.apiError(error)) }
+                }
+        }
+        viewModelScope.launch {
             repository.session.collectLatest { session ->
                 _uiState.update {
                     it.copy(
@@ -77,11 +83,8 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun login(email: String, password: String) = runAction {
-        repository.login(DEFAULT_SERVER_URL, email, password)
-    }
-
     fun refreshEvents() = runAction {
+        repository.ensureInternalSession()
         repository.refreshEvents()
         refreshEventStats()
     }
@@ -98,7 +101,10 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
 
     fun leaveEvent() = runAction { repository.leaveEvent() }
 
-    fun logout() = runAction { repository.logout() }
+    fun clearLocalData() = runAction {
+        repository.clearLocalData()
+        refreshEventStats()
+    }
 
     fun consumeNotice() {
         _uiState.update { it.copy(notice = null) }
@@ -173,7 +179,7 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
 
     private fun startSyncLoop(session: Session) {
         syncJob?.cancel()
-        if (session.token.isBlank() || session.periodId == 0) return
+        if (session.periodId == 0) return
         syncJob = viewModelScope.launch {
             while (isActive) {
                 runCatching { repository.sync(session.periodId) }

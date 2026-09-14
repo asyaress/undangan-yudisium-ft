@@ -14,6 +14,22 @@ class MobileCheckinApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_scanner_device_key_can_access_mobile_api_without_login(): void
+    {
+        config(['services.mobile_scanner_key' => 'scanner-device-key-test']);
+        [$event, $participant] = $this->eventAndParticipant();
+
+        $this->withToken('scanner-device-key-test')
+            ->getJson('/api/mobile/events')
+            ->assertOk()
+            ->assertJsonPath('events.0.id', $event->id);
+
+        $this->withToken('scanner-device-key-test')
+            ->getJson('/api/mobile/events/'.$event->id.'/roster')
+            ->assertOk()
+            ->assertJsonPath('participants.0.nim', $participant->nim);
+    }
+
     public function test_admin_can_login_and_download_roster(): void
     {
         [$event, $participant] = $this->eventAndParticipant();
