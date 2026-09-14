@@ -602,7 +602,7 @@
                 <div class="invite-kicker">Universitas Mulawarman</div>
                 <h1>Undangan Yudisium</h1>
                 <h2>Fakultas Teknik</h2>
-                <p>Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Sebuah undangan resmi yang dirancang dengan tampilan modern, tegas, dan elegan untuk menyambut momen penting para lulusan Fakultas Teknik.</p>
+                <p>Program Sarjana Angkatan 83 Periode 3 Tahun 2026. Sebuah undangan resmi yang dirancang dengan tampilan modern, tegas, dan elegan untuk menyambut momen penting para lulusan Fakultas Teknik.</p>
                 <div class="invite-meta">
                     <span class="invite-pill">Logo Universitas Mulawarman</span>
                     <span class="invite-pill invite-pill--accent">#F5530D</span>
@@ -617,7 +617,7 @@
                 <div class="invite-card">
                     <strong>Acara</strong>
                     <h3>Yudisium Program Sarjana</h3>
-                    <p>Rangkaian prosesi resmi untuk Angkatan 82 Periode 2 Tahun 2026.</p>
+                    <p>Rangkaian prosesi resmi untuk Angkatan 83 Periode 3 Tahun 2026.</p>
                 </div>
                 <div class="invite-card">
                     <strong>Identitas</strong>
@@ -642,7 +642,7 @@
                         <i class="ti-calendar"></i>
                     </div>
                     <h3>Tanggal Acara</h3>
-                    <p>Periode 2 Tahun 2026. Silakan isi tanggal pelaksanaan final ketika jadwal resmi sudah ditetapkan.</p>
+                    <p>Periode 3 Tahun 2026. Silakan isi tanggal pelaksanaan final ketika jadwal resmi sudah ditetapkan.</p>
                 </div>
 
                 <div class="detail-card">
@@ -658,7 +658,7 @@
                         <i class="ti-user"></i>
                     </div>
                     <h3>Penyelenggara</h3>
-                    <p>Fakultas Teknik Universitas Mulawarman bersama program sarjana angkatan 82.</p>
+                    <p>Fakultas Teknik Universitas Mulawarman bersama program sarjana angkatan 83.</p>
                 </div>
             </div>
         </div>
@@ -718,7 +718,7 @@
                         </li>
                         <li>
                             <i class="ti-time"></i>
-                            <span>Waktu pelaksanaan mengikuti jadwal yudisium periode 2 tahun 2026.</span>
+                            <span>Waktu pelaksanaan mengikuti jadwal yudisium periode 3 tahun 2026.</span>
                         </li>
                         <li>
                             <i class="ti-book"></i>

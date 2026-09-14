@@ -139,9 +139,7 @@
           <th>Check-in</th>
         @endif
         <th>Catatan</th>
-        @if ($type !== 'mahasiswa')
-          <th>Tanda Tangan / Paraf</th>
-        @endif
+        <th>{{ $type === 'mahasiswa' ? 'Tanda Tangan' : 'Tanda Tangan / Paraf' }}</th>
       </tr>
     </thead>
     <tbody>
@@ -161,16 +159,14 @@
             <td>{{ $row['checked_in'] ? 'Sudah check-in' : 'Belum check-in' }}<br>{{ $row['checked_in_at_label'] }}</td>
           @endif
           <td>{{ $row['note'] ?: '-' }}</td>
-          @if ($type !== 'mahasiswa')
-            <td>
-              @if (! empty($row['signature_data']))
-                <span class="signature-label">{{ $row['signature_label'] }}</span>
-                <img class="signature-print" src="{{ $row['signature_data'] }}" alt="{{ $row['signature_label'] }} {{ $row['name'] }}">
-              @else
-                -
-              @endif
-            </td>
-          @endif
+          <td>
+            @if (! empty($row['signature_data']))
+              <span class="signature-label">{{ $row['signature_label'] }}</span>
+              <img class="signature-print" src="{{ $row['signature_data'] }}" alt="{{ $row['signature_label'] }} {{ $row['name'] }}">
+            @else
+              -
+            @endif
+          </td>
         </tr>
       @endforeach
     </tbody>

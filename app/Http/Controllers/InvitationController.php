@@ -6,6 +6,7 @@ use App\Models\InvitationCategory;
 use App\Models\InvitationRecipient;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
+use App\Services\RecipientDirectory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -25,7 +26,9 @@ class InvitationController extends Controller
             ->orderByDesc('event_year')
             ->orderByDesc('event_date')
             ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->reject(fn (YudisiumPeriod $event) => $event->isLegacyPeriodTwo())
+            ->values();
 
         $hasInvitationContext = $slug !== null
             || $request->filled('event')
@@ -45,7 +48,7 @@ class InvitationController extends Controller
 
         $event = $this->resolveEvent($request, $slug);
 
-        if (! $event) {
+        if (! $event || $event->isLegacyPeriodTwo()) {
             abort(404);
         }
 
@@ -82,13 +85,10 @@ class InvitationController extends Controller
         }
 
         if ($recipient) {
+            $recipient = app(RecipientDirectory::class)->refreshCanonicalRoles($recipient);
             $canonicalCategory = $recipient->invitationCategory();
             if ($canonicalCategory && $canonicalCategory->slug !== $selectedCategory->slug) {
-                return redirect()->to(route('home', array_filter([
-                    'event' => $event->slug,
-                    'to' => $canonicalCategory->slug,
-                    'ref' => $recipient->token,
-                ])));
+                return redirect()->to($recipient->invitationUrl());
             }
         }
 
@@ -253,14 +253,10 @@ class InvitationController extends Controller
                 ->with('error', $label.' ditemukan lebih dari satu. Silakan hubungi panitia untuk membuka undangan yang sesuai.');
         }
 
-        $recipient = $matches->first();
+        $recipient = app(RecipientDirectory::class)->refreshCanonicalRoles($matches->first());
 
         return redirect()
-            ->to(route('home', [
-                'event' => $event->slug,
-                'to' => $recipient->invitationCategory()?->slug ?: $category->slug,
-                'ref' => $recipient->token,
-            ]))
+            ->to($recipient->invitationUrl())
             ->with('success', 'Data berhasil diverifikasi. Silakan lanjut membaca undangan dan isi konfirmasi kehadiran.');
     }
 

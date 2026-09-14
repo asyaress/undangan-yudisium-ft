@@ -87,9 +87,19 @@ class MonitoringController extends Controller
 
     public function signature(InvitationRecipient $recipient): Response
     {
-        abort_unless($recipient->category && in_array($recipient->category->access_mode, $this->recipientAccessModes(), true), 404);
+        abort_unless($recipient->invitationCategory() && in_array($recipient->invitationCategory()->access_mode, $this->recipientAccessModes(), true), 404);
 
         $png = $this->decodeSignature($recipient->rsvp_signature);
+        abort_unless($png !== null, 404);
+
+        return response($png)
+            ->header('Content-Type', 'image/png')
+            ->header('Cache-Control', 'private, max-age=300');
+    }
+
+    public function studentSignature(YudisiumParticipant $participant): Response
+    {
+        $png = $this->decodeSignature($participant->rsvp_signature);
         abort_unless($png !== null, 404);
 
         return response($png)
@@ -135,10 +145,10 @@ class MonitoringController extends Controller
     {
         return $filters['type'] === 'private'
             ? $this->privateRows($filters, $withSignatureData)
-            : $this->studentRows($filters);
+            : $this->studentRows($filters, $withSignatureData);
     }
 
-    private function studentRows(array $filters): Collection
+    private function studentRows(array $filters, bool $withSignatureData = false): Collection
     {
         return YudisiumParticipant::query()
             ->select('yudisium_participants.*')
@@ -153,40 +163,54 @@ class MonitoringController extends Controller
             ->orderBy('yudisium_participants.sequence_number')
             ->orderBy('yudisium_participants.name')
             ->get()
-            ->map(fn (YudisiumParticipant $participant) => [
-                'id' => 'student-'.$participant->id,
-                'event' => $participant->period?->name ?: '-',
-                'category' => 'Mahasiswa Yudisium',
-                'category_key' => $participant->study_program_id
-                    ? 'program-'.$participant->study_program_id
-                    : 'manual-'.str($participant->study_program ?: 'tanpa-prodi')->slug()->toString(),
-                'type' => 'Mahasiswa',
-                'sequence_number' => $participant->sequence_number,
-                'nim' => $participant->nim,
-                'name' => $participant->name,
-                'context' => $participant->studyProgram?->name ?: ($participant->study_program ?: '-'),
-                'study_program_id' => $participant->study_program_id,
-                'study_program_code' => $participant->studyProgram?->code ?: '',
-                'study_program_name' => $participant->studyProgram?->name ?: ($participant->study_program ?: 'Tanpa Program Studi'),
-                'study_program_key' => $participant->study_program_id
-                    ? 'program-'.$participant->study_program_id
-                    : 'manual-'.str($participant->study_program ?: 'tanpa-prodi')->slug()->toString(),
-                'study_program_sort' => $participant->studyProgram?->sort_order ?? 999999,
-                'note' => $participant->rsvp_note ?: '',
-                'rsvp_status' => $participant->rsvp_status ?: 'pending',
-                'rsvp_label' => $this->rsvpLabel($participant->rsvp_status ?: 'pending'),
-                'responded_at' => $participant->rsvp_responded_at?->toIso8601String(),
-                'responded_at_label' => $participant->rsvp_responded_at?->format('d/m/Y H:i') ?: '-',
-                'checked_in' => $participant->checked_in_at !== null,
-                'checkin_status' => $participant->checked_in_at ? 'checked_in' : 'not_checked_in',
-                'checked_in_at' => $participant->checked_in_at?->toIso8601String(),
-                'checked_in_at_label' => $participant->checked_in_at?->format('d/m/Y H:i') ?: '-',
-                'updated_marker' => max(
-                    $participant->rsvp_responded_at?->timestamp ?? 0,
-                    $participant->checked_in_at?->timestamp ?? 0,
-                    $participant->updated_at?->timestamp ?? 0,
-                ),
-            ]);
+            ->map(function (YudisiumParticipant $participant) use ($withSignatureData) {
+                $hasSignature = $this->decodeSignature($participant->rsvp_signature) !== null;
+                $row = [
+                    'id' => 'student-'.$participant->id,
+                    'event' => $participant->period?->name ?: '-',
+                    'category' => 'Mahasiswa Yudisium',
+                    'category_key' => $participant->study_program_id
+                        ? 'program-'.$participant->study_program_id
+                        : 'manual-'.str($participant->study_program ?: 'tanpa-prodi')->slug()->toString(),
+                    'type' => 'Mahasiswa',
+                    'sequence_number' => $participant->sequence_number,
+                    'nim' => $participant->nim,
+                    'name' => $participant->name,
+                    'context' => $participant->studyProgram?->name ?: ($participant->study_program ?: '-'),
+                    'study_program_id' => $participant->study_program_id,
+                    'study_program_code' => $participant->studyProgram?->code ?: '',
+                    'study_program_name' => $participant->studyProgram?->name ?: ($participant->study_program ?: 'Tanpa Program Studi'),
+                    'study_program_key' => $participant->study_program_id
+                        ? 'program-'.$participant->study_program_id
+                        : 'manual-'.str($participant->study_program ?: 'tanpa-prodi')->slug()->toString(),
+                    'study_program_sort' => $participant->studyProgram?->sort_order ?? 999999,
+                    'note' => $participant->rsvp_note ?: '',
+                    'rsvp_status' => $participant->rsvp_status ?: 'pending',
+                    'rsvp_label' => $this->rsvpLabel($participant->rsvp_status ?: 'pending'),
+                    'responded_at' => $participant->rsvp_responded_at?->toIso8601String(),
+                    'responded_at_label' => $participant->rsvp_responded_at?->format('d/m/Y H:i') ?: '-',
+                    'has_signature' => $hasSignature,
+                    'signature_label' => $this->signatureLabel($participant->rsvp_status ?: 'pending'),
+                    'signature_url' => $hasSignature
+                        ? route('monitoring.mahasiswa.signature', $participant)
+                        : null,
+                    'checked_in' => $participant->checked_in_at !== null,
+                    'checkin_status' => $participant->checked_in_at ? 'checked_in' : 'not_checked_in',
+                    'checked_in_at' => $participant->checked_in_at?->toIso8601String(),
+                    'checked_in_at_label' => $participant->checked_in_at?->format('d/m/Y H:i') ?: '-',
+                    'updated_marker' => max(
+                        $participant->rsvp_responded_at?->timestamp ?? 0,
+                        $participant->checked_in_at?->timestamp ?? 0,
+                        $participant->updated_at?->timestamp ?? 0,
+                    ),
+                ];
+
+                if ($withSignatureData) {
+                    $row['signature_data'] = $hasSignature ? $participant->rsvp_signature : null;
+                }
+
+                return $row;
+            });
     }
 
     private function categoryOptions(array $filters, string $type): Collection
@@ -351,6 +375,7 @@ class MonitoringController extends Controller
             array_splice($headers, 2, 0, ['no_urut', 'nim', 'prodi']);
             $headers[] = 'check_in';
             $headers[] = 'waktu_check_in';
+            $headers[] = 'tanda_tangan';
         } else {
             array_splice($headers, 2, 0, ['keterangan']);
             $headers[] = 'tanda_tangan_paraf';
@@ -374,6 +399,11 @@ class MonitoringController extends Controller
                 $row['note'],
                 $row['checked_in'] ? 'Sudah check-in' : 'Belum check-in',
                 $row['checked_in_at_label'],
+                [
+                    'type' => 'signature',
+                    'label' => $row['signature_label'] ?? 'Tanda tangan',
+                    'data' => $row['signature_data'] ?? null,
+                ],
             ];
         }
 

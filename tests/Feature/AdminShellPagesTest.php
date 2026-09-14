@@ -22,7 +22,8 @@ class AdminShellPagesTest extends TestCase
             ->get(route('admin.dashboard'))
             ->assertOk()
             ->assertSee('admin-app', false)
-            ->assertSee('Yudisium FT UNMUL');
+            ->assertSee('Universitas Mulawarman')
+            ->assertSee('Fakultas Teknik');
 
         foreach ([
             route('admin.events.index'),

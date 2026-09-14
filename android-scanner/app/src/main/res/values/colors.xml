@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="accent">#D97706</color>
+    <color name="accent">#1F7A3A</color>
+    <color name="event_orange">#E85D04</color>
     <color name="canvas">#F2F2F7</color>
     <color name="ink">#1C1C1E</color>
+    <color name="launcher_bg">#F2F2F7</color>
 </resources>

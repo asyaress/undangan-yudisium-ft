@@ -49,10 +49,36 @@
         .navbar-brand a {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             font-weight: 800;
             letter-spacing: 0;
             color: #1f2937;
+        }
+
+        .navbar-brand img {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+        }
+
+        .navbar-brand-copy {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.15;
+            min-width: 0;
+        }
+
+        .navbar-brand-copy strong {
+            font-size: 14px;
+            font-weight: 800;
+            color: #1c1c1e;
+        }
+
+        .navbar-brand-copy span {
+            font-size: 11px;
+            font-weight: 700;
+            color: #1F7A3A;
+            letter-spacing: 0.02em;
         }
 
         .navbar-right {
@@ -376,8 +402,11 @@
         }
 
         .sidebar .user-account img.user-photo {
-            border: 1px solid #fed7aa;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
             box-shadow: none;
+            object-fit: contain;
         }
 
         .admin-pagination {
@@ -522,7 +551,11 @@
                 <button type="button" class="btn-toggle-offcanvas"><i class="fa fa-bars"></i></button>
                 <button type="button" class="btn-toggle-fullwidth"><i class="fa fa-bars"></i></button>
                 <a href="{{ $isAuthenticated ? route('admin.dashboard') : route('checkin.form') }}">
-                    <span>Yudisium FT UNMUL</span>
+                    <img src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
+                    <span class="navbar-brand-copy">
+                        <strong>Universitas Mulawarman</strong>
+                        <span>Fakultas Teknik · Yudisium</span>
+                    </span>
                 </a>
             </div>
 
@@ -562,11 +595,11 @@
         <button type="button" class="btn-toggle-offcanvas"><i class="fa fa-arrow-left"></i></button>
         <div class="sidebar-scroll">
             <div class="user-account">
-                <img src="{{ asset('Unmul.png') }}" class="rounded-circle user-photo" alt="Universitas Mulawarman">
+                <img src="{{ asset('Unmul.png') }}" class="user-photo" alt="Lambang Universitas Mulawarman">
                 <div class="dropdown">
-                    <span>Welcome,</span>
+                    <span>Universitas Mulawarman</span>
                     <a href="javascript:void(0);" class="dropdown-toggle user-name" data-toggle="dropdown">
-                        <strong>{{ $isAuthenticated ? auth()->user()->email : 'Panitia Yudisium' }}</strong>
+                        <strong>{{ $isAuthenticated ? auth()->user()->email : 'Fakultas Teknik' }}</strong>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-right account">
                         <li><a href="{{ route('home') }}"><i class="fa fa-envelope-open-o"></i>Undangan Publik</a></li>

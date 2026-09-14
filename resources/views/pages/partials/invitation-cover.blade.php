@@ -1,16 +1,21 @@
 ﻿      <section class="panel cover" id="cover">
-        <p class="label">Undangan</p>
-        <h1>Yudisium Fakultas Teknik</h1>
-        <div class="logo-frame">
-          <img class="logo" id="logoImage" data-logo="unmul" src="{{ asset('Unmul.png') }}" alt="Logo Universitas Mulawarman" />
-          <span class="logo-fallback" id="logoFallback">Logo UNMUL belum terbaca.</span>
+        @include('pages.partials.cover-banner')
+        <div class="cover-identity">
+          <img src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
+          <div>
+            <strong>Universitas Mulawarman</strong>
+            <span>Fakultas Teknik</span>
+          </div>
         </div>
+        <p class="label">Undangan resmi</p>
+        <h1>Yudisium</h1>
         <p class="meta">{{ $coverText }}</p>
         <p class="guest-label">Kepada Yth.</p>
         <p class="guest" id="recipientText">{{ $recipientName }}</p>
-        @if ($isInvitationMode && ($recipient?->displayPosition() ?: $recipient?->position))
-          <p class="guest-role">{{ $recipient->displayPosition() ?: $recipient->position }}</p>
+        @if ($isInvitationMode && $recipient && $recipient->listedPositions())
+          @foreach ($recipient->listedPositions() as $position)
+            <p class="guest-role">{{ $position }}</p>
+          @endforeach
         @endif
         <button class="btn" id="openInvitation" type="button">Buka Undangan</button>
       </section>
-

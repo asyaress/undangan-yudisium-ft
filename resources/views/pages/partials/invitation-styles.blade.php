@@ -8,6 +8,8 @@
       --muted: #636366;
       --line: rgba(60, 60, 67, 0.12);
       --line-soft: rgba(242, 242, 247, 0.92);
+      --unmul: #1F7A3A;
+      --unmul-deep: #164E2C;
       --primary: #F5530D;
       --primary-deep: #D9450B;
       --primary-soft: #FFF3EE;
@@ -246,11 +248,11 @@
     }
 
     .cover .label {
-      font-size: 0.78rem;
-      letter-spacing: 0.14em;
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: var(--primary);
-      margin-bottom: 10px;
+      color: var(--unmul);
+      margin-bottom: 8px;
       font-weight: 800;
     }
 
@@ -263,12 +265,45 @@
       color: var(--text);
     }
 
+    .cover-identity {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0 auto 16px;
+      text-align: left;
+    }
+
+    .cover-identity img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+    }
+
+    .cover-identity strong {
+      display: block;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .cover-identity span {
+      display: block;
+      margin-top: 2px;
+      color: var(--unmul);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
     .logo-frame {
       width: min(42vw, 140px);
       aspect-ratio: 1;
       border-radius: 50%;
       margin: 12px auto 18px;
-      display: grid;
+      display: none;
       place-items: center;
       padding: 14px;
       border: 1px solid var(--line);
@@ -961,15 +996,40 @@
     }
 
     .mini-brand {
-      width: 66px;
-      margin: 0 auto 14px;
-      opacity: 0.95;
-      filter: drop-shadow(0 5px 10px rgba(161, 108, 27, 0.16));
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      width: auto;
+      margin: 0 0 16px;
+      text-align: left;
+      opacity: 1;
+      filter: none;
     }
 
     .mini-brand img {
-      width: 100%;
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
       display: block;
+    }
+
+    .mini-brand strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      color: var(--text);
+    }
+
+    .mini-brand span {
+      display: block;
+      margin-top: 2px;
+      color: var(--unmul);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
     .details {

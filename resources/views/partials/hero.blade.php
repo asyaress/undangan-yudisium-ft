@@ -4,7 +4,7 @@
             <div class="intro-hero__copy reveal">
                 <span class="hero-kicker">UNDANGAN</span>
                 <h1>Yudisium Fakultas Teknik</h1>
-                <p>Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Dibuat minimal, formal, dan modern dengan dominasi putih serta aksen oranye agar tetap terasa profesional.</p>
+                <p>Program Sarjana Angkatan 83 Periode 3 Tahun 2026. Dibuat minimal, formal, dan modern dengan identitas Universitas Mulawarman.</p>
 
                 <div class="hero-meta">
                     <div class="hero-meta__label">Kepada Yth.</div>

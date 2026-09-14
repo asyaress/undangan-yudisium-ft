@@ -84,6 +84,17 @@ class YudisiumPeriod extends Model
         return $this->hasMany(CheckinLog::class, 'period_id');
     }
 
+    public function isLegacyPeriodTwo(): bool
+    {
+        $text = strtolower(trim(($this->period_label ?? '').' '.$this->name));
+
+        if ($text === '' || preg_match('/periode\s*3\b/', $text)) {
+            return false;
+        }
+
+        return (bool) preg_match('/periode\s*2\b/', $text);
+    }
+
     public function getArchiveTitleAttribute(): string
     {
         if ($this->name) {

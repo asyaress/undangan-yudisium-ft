@@ -246,10 +246,11 @@
                                         <td>{{ $recipient->identifier ?: '-' }}</td>
                                     @endif
                                     <td>
-                                        <div>{{ $positionLabel }}</div>
-                                        @if ($recipient->extraPositionCount() > 0)
-                                            <div class="recipient-muted">+{{ $recipient->extraPositionCount() }} jabatan lain, RSVP mengikuti 1 undangan</div>
-                                        @endif
+                                        @forelse ($recipient->listedPositions() as $position)
+                                            <div>{{ $position }}</div>
+                                        @empty
+                                            <div>{{ $positionLabel }}</div>
+                                        @endforelse
                                     </td>
                                     <td>{{ $recipient->context_note ?: '-' }}</td>
                                     <td>

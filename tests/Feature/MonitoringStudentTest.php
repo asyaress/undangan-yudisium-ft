@@ -139,4 +139,56 @@ class MonitoringStudentTest extends TestCase
         $this->assertStringContainsString('tanda_tangan_paraf', $content);
         $this->assertStringContainsString('<img src="'.$signature, $content);
     }
+
+    public function test_student_monitoring_shows_signature_and_exports_it_to_excel(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $period = YudisiumPeriod::query()->create([
+            'name' => 'Yudisium Angkatan 83 Periode 3',
+            'slug' => 'yudisium-angkatan-83-periode-3',
+            'event_year' => 2026,
+            'event_date' => '2026-09-12',
+            'location' => 'Gedung Hexagon',
+            'is_active' => true,
+            'is_published' => true,
+        ]);
+        $signature = 'data:image/png;base64,'.base64_encode('fake-png');
+        $participant = YudisiumParticipant::query()->create([
+            'period_id' => $period->id,
+            'sequence_number' => 1,
+            'nim' => '2200000003',
+            'name' => 'Mahasiswa Tanda Tangan',
+            'study_program' => 'Informatika',
+            'rsvp_status' => 'attending',
+            'rsvp_signature' => $signature,
+            'rsvp_responded_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('monitoring.mahasiswa', ['period_id' => $period->id]))
+            ->assertOk()
+            ->assertSee('Tanda tangan')
+            ->assertSee('monitoring\/mahasiswa\/signature\/'.$participant->id, false);
+
+        $this->actingAs($admin)
+            ->getJson(route('monitoring.live', ['type' => 'mahasiswa', 'period_id' => $period->id]))
+            ->assertOk()
+            ->assertJsonPath('rows.0.has_signature', true)
+            ->assertJsonPath('rows.0.signature_label', 'Tanda tangan')
+            ->assertJsonPath('rows.0.signature_url', route('monitoring.mahasiswa.signature', $participant));
+
+        $this->actingAs($admin)
+            ->get(route('monitoring.mahasiswa.signature', $participant))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertContent('fake-png');
+
+        $export = $this->actingAs($admin)
+            ->get(route('monitoring.export', ['type' => 'mahasiswa', 'period_id' => $period->id, 'format' => 'xls']))
+            ->assertOk();
+
+        $content = $export->streamedContent();
+        $this->assertStringContainsString('tanda_tangan', $content);
+        $this->assertStringContainsString('<img src="'.$signature, $content);
+    }
 }

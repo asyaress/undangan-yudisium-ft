@@ -85,16 +85,38 @@ class InvitationRecipient extends Model
     {
         $this->loadMissing(['roles.category', 'category']);
 
-        return $this->roles->firstWhere('show_on_invitation', true)?->category
-            ?? $this->category;
+        $ranked = app(\App\Services\RecipientDirectory::class)->rankedRoles($this->roles)
+            ->first();
+
+        return $ranked?->category ?? $this->category;
     }
 
     public function displayPosition(): ?string
     {
-        $this->loadMissing('roles');
+        return $this->listedPositions()[0] ?? $this->position;
+    }
 
-        return $this->roles->firstWhere('show_on_invitation', true)?->position
-            ?: $this->position;
+    /**
+     * @return array<int, string>
+     */
+    public function listedPositions(): array
+    {
+        $this->loadMissing('roles.category');
+
+        $fromRoles = app(\App\Services\RecipientDirectory::class)->rankedRoles($this->roles)
+            ->map(fn (InvitationRecipientRole $role) => trim((string) $role->position))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($fromRoles !== []) {
+            return $fromRoles;
+        }
+
+        $fallback = trim((string) $this->position);
+
+        return $fallback !== '' ? [$fallback] : [];
     }
 
     public function positionFor(?InvitationCategory $category = null): ?string

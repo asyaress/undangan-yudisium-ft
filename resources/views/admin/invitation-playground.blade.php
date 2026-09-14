@@ -31,8 +31,9 @@
         'declined' => 'Berhalangan Hadir',
         'represented' => 'Diwakilkan',
     ];
-    $recipientAllowsRepresentative = $category->usesPrivateAccess();
-    $recipientUsesSignature = $category->usesPrivateAccess() || $category->usesNipAccess();
+    $canonicalCategory = $recipient?->invitationCategory() ?: $category;
+    $recipientAllowsRepresentative = $canonicalCategory->usesPrivateAccess();
+    $recipientUsesSignature = $canonicalCategory->usesPrivateAccess() || $canonicalCategory->usesNipAccess();
     $confirmationOptionsText = $participant || ! $recipientAllowsRepresentative ? 'hadir atau berhalangan' : 'hadir, berhalangan, atau diwakilkan';
     $rsvpClosed = $period->rsvpIsClosed();
     $rsvpDeadlineLabel = $period->rsvp_deadline?->locale('id')->translatedFormat('d F Y H:i');
@@ -136,31 +137,72 @@
         }
 
         .formal-cover-panel {
-            width: min(560px, 100%);
+            width: min(640px, 100%);
             max-height: calc(100vh - 44px);
             max-height: calc(100dvh - 44px);
-            padding: clamp(24px, 5vw, 44px);
-            overflow: hidden;
+            padding: clamp(18px, 4vw, 36px);
+            overflow: auto;
             border: 0;
             border-radius: 0;
             background: #fff;
             text-align: center;
         }
 
+        .formal-cover-identity {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0 auto 14px;
+            text-align: left;
+        }
+
+        .formal-cover-identity img {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+        }
+
+        .formal-cover-identity strong {
+            display: block;
+            color: #1c1c1e;
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .formal-cover-identity span {
+            display: block;
+            margin-top: 2px;
+            color: #1F7A3A;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
         .formal-cover-label {
             margin: 0 0 10px;
-            color: #e85d04;
+            color: #1F7A3A;
             font-size: 12px;
             font-weight: 850;
             letter-spacing: 0.16em;
             text-transform: uppercase;
         }
 
+        .formal-cover-panel .formal-cover-label {
+            color: #1F7A3A;
+            margin: 0 0 8px;
+        }
+
+        .formal-cover-panel .formal-cover-guest {
+            color: #111827;
+            margin: 0 0 22px;
+            max-width: none;
+        }
+
         .formal-cover-logo {
-            width: clamp(78px, 16vw, 96px);
-            height: clamp(78px, 16vw, 96px);
-            object-fit: contain;
-            margin: clamp(14px, 3vh, 20px) auto;
+            display: none;
         }
 
         .formal-cover-panel h2 {
@@ -255,13 +297,22 @@
             gap: 18px;
             align-items: center;
             padding-bottom: 20px;
-            border-bottom: 3px solid #e85d04;
+            border-bottom: 3px solid #1F7A3A;
         }
 
         .letter-logo {
             width: 82px;
             height: 82px;
             object-fit: contain;
+        }
+
+        .letter-university {
+            margin: 0 0 4px;
+            color: #1F7A3A;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
         }
 
         .letter-title {
@@ -1808,9 +1859,16 @@
 
     <section class="formal-cover" id="formalCover">
         <div class="formal-cover-panel">
-            <p class="formal-cover-label">Undangan</p>
-            <h2>Yudisium Fakultas Teknik</h2>
-            <img class="formal-cover-logo" src="{{ asset('Unmul.png') }}" alt="Logo Universitas Mulawarman">
+            @include('pages.partials.cover-banner')
+            <div class="formal-cover-identity">
+                <img src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
+                <div>
+                    <strong>Universitas Mulawarman</strong>
+                    <span>Fakultas Teknik</span>
+                </div>
+            </div>
+            <p class="formal-cover-label">Undangan resmi</p>
+            <h2>Yudisium</h2>
             <p>{{ $category->cover_text ?: 'Fakultas Teknik Universitas Mulawarman mengundang kehadiran pada prosesi yudisium.' }}</p>
             <span class="formal-cover-guest-label">Kepada Yth.</span>
             <p class="formal-cover-guest">{{ $guestName }}</p>
@@ -1841,20 +1899,27 @@
     <article class="letter-sheet">
         <div class="letter-content">
             <header class="letter-head">
-                <img class="letter-logo" src="{{ asset('Unmul.png') }}" alt="Logo Universitas Mulawarman">
+                <img class="letter-logo" src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
                 <div>
+                    <p class="letter-university">Universitas Mulawarman</p>
                     <h1 class="letter-title">{{ $period->archive_title }}</h1>
-                    <p class="letter-subtitle">Fakultas Teknik Universitas Mulawarman</p>
+                    <p class="letter-subtitle">Fakultas Teknik</p>
                 </div>
             </header>
 
             <div class="recipient-line letter-reveal" id="letterRecipient">
                 <span>Kepada Yth.</span>
                 <strong class="recipient-focus" id="letterRecipientName">{{ $guestName }}</strong>
-                @if ($recipient?->displayPosition())
-                    <span>{{ $recipient->displayPosition() }}</span>
-                @elseif ($recipient?->context_note)
-                    <span>{{ $recipient->context_note }}</span>
+                @if ($recipient)
+                    @forelse ($recipient->listedPositions() as $position)
+                        <span>{{ $position }}</span>
+                    @empty
+                        @if ($recipient->context_note)
+                            <span>{{ $recipient->context_note }}</span>
+                        @else
+                            <span>{{ $category->recipient_label }}</span>
+                        @endif
+                    @endforelse
                 @elseif ($participant?->studyProgram)
                     <span>{{ $participant->studyProgram->name }}</span>
                 @else
@@ -1978,7 +2043,9 @@
                                 <input type="hidden" name="return_to" value="{{ $playgroundReturnUrl }}">
                                 <div class="playground-rsvp-person">
                                     <strong>{{ $recipient->invitation_name }}</strong>
-                                    <span>{{ $recipient->displayPosition() ?: ($recipient->context_note ?: $recipient->category?->title) }}</span>
+                                    @foreach ($recipient->listedPositions() as $position)
+                                        <span>{{ $position }}</span>
+                                    @endforeach
                                 </div>
                                 <div class="playground-field">
                                     <label>Status Kehadiran</label>
@@ -2077,6 +2144,20 @@
                                 <div class="playground-field" data-playground-note-field hidden>
                                     <label for="playground-participant-note" data-playground-note-label>Catatan berhalangan</label>
                                     <textarea class="playground-note" id="playground-participant-note" name="note" data-declined-placeholder="Tuliskan alasan berhalangan hadir secara singkat." placeholder="Tuliskan alasan berhalangan hadir secara singkat.">{{ old('note') }}</textarea>
+                                </div>
+                                <div class="playground-field playground-signature-field" data-playground-signature-field hidden>
+                                    <div class="playground-signature-head">
+                                        <label for="playground-participant-signature" data-playground-signature-label>Tanda tangan</label>
+                                        <button type="button" class="playground-signature-clear" data-playground-signature-clear>Hapus</button>
+                                    </div>
+                                    <div class="playground-signature-pad">
+                                        <canvas id="playground-participant-signature" data-playground-signature-canvas aria-label="Area tanda tangan"></canvas>
+                                        <span class="playground-signature-placeholder" data-playground-signature-placeholder>Tulis di sini</span>
+                                    </div>
+                                    <input type="hidden" name="rsvp_signature" data-playground-signature-input>
+                                    <input type="hidden" name="signature_drawn" value="0" data-playground-signature-drawn>
+                                    <p class="playground-signature-help" data-playground-signature-help>Bubuhkan tanda tangan sebagai konfirmasi kehadiran.</p>
+                                    <p class="playground-signature-error" data-playground-signature-error hidden>Mohon isi tanda tangan terlebih dahulu.</p>
                                 </div>
                                 <button class="playground-submit" type="submit">Simpan Konfirmasi</button>
                             </form>

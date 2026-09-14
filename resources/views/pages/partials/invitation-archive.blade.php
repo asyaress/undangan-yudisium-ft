@@ -1,7 +1,14 @@
 ﻿        <article class="panel card">
+          <div class="cover-identity" style="margin: 0 0 16px;">
+            <img src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
+            <div>
+              <strong>Universitas Mulawarman</strong>
+              <span>Fakultas Teknik</span>
+            </div>
+          </div>
           <div class="section-kicker">Arsip Yudisium</div>
-          <h2 class="title">Rekam Event</h2>
-          <p class="line">Ringkasan singkat setiap event dan status kehadirannya.</p>
+          <h2 class="title">Event dari Periode 3</h2>
+          <p class="line">Ringkasan event yang dipublikasikan dan status kehadirannya.</p>
 
           <div class="archive-grid">
             @forelse ($events as $event)

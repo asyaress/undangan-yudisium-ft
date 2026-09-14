@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\InvitationCategory;
 use App\Models\InvitationRecipient;
+use App\Models\InvitationRecipientRole;
 use Illuminate\Support\Str;
 
 class RecipientDirectory
@@ -72,9 +73,7 @@ class RecipientDirectory
             $this->pruneOtherCategoryRoles($recipient, $category, $position);
         }
 
-        $this->refreshDisplay($recipient);
-
-        return $recipient->fresh(['roles.category', 'category', 'period']);
+        return $this->refreshCanonicalRoles($recipient);
     }
 
     /**
@@ -143,9 +142,8 @@ class RecipientDirectory
 
         $recipient->roles()->delete();
         $merged->each(fn (array $role) => $recipient->roles()->create($role));
-        $this->refreshDisplay($recipient);
 
-        return $recipient->fresh(['roles.category', 'category', 'period']);
+        return $this->refreshCanonicalRoles($recipient);
     }
 
     public function visibleInCategoryQuery(int $periodId, int $categoryId)
@@ -169,26 +167,137 @@ class RecipientDirectory
             return true;
         }
 
-        $this->refreshDisplay($recipient);
+        $this->refreshCanonicalRoles($recipient);
 
         return false;
     }
 
     public function invitationUrl(InvitationRecipient $recipient): string
     {
-        $recipient->loadMissing(['period', 'roles.category', 'category']);
+        $recipient = $this->refreshCanonicalRoles($recipient);
         $category = $recipient->invitationCategory();
 
-        $url = route('home', [
+        return route('home', [
             'event' => $recipient->period?->slug,
             'to' => $category?->slug,
+            'ref' => $recipient->token,
         ]);
+    }
 
-        if ($category?->usesPrivateAccess()) {
-            $url .= '&ref='.$recipient->token;
+    public function refreshCanonicalRoles(InvitationRecipient $recipient): InvitationRecipient
+    {
+        $recipient->loadMissing(['roles.category', 'category', 'period']);
+        $this->ensurePrimaryRole($recipient);
+        $this->promoteLeadershipRoles($recipient);
+        $this->refreshDisplay($recipient->fresh(['roles.category', 'category']));
+
+        return $recipient->fresh(['roles.category', 'category', 'period']);
+    }
+
+    public function roleRank(InvitationRecipientRole|\stdClass $role): int
+    {
+        $category = $role->category ?? null;
+        $slug = $category?->slug;
+
+        $slugRank = match ($slug) {
+            'pejabat' => 500,
+            'kps' => 480,
+            'kalab' => 460,
+            'ketuasenat' => 450,
+            'anggota-senat-fakultas-teknik', 'anggotasenat' => 400,
+            default => 0,
+        };
+
+        $accessRank = match ($category?->access_mode) {
+            InvitationCategory::ACCESS_PRIVATE => 300,
+            InvitationCategory::ACCESS_NIP => 100,
+            InvitationCategory::ACCESS_NAME => 50,
+            default => 0,
+        };
+
+        return $slugRank + $accessRank + ($this->isLeadershipPosition($role->position ?? null) ? 80 : 0);
+    }
+
+    public function rankedRoles($roles)
+    {
+        return collect($roles)
+            ->sortByDesc(fn (InvitationRecipientRole|\stdClass $role) => [$this->roleRank($role), (int) ($role->id ?? 0)])
+            ->values();
+    }
+
+    private function promoteLeadershipRoles(InvitationRecipient $recipient): void
+    {
+        $recipient->loadMissing('roles.category');
+
+        $hasPrivate = $recipient->roles->contains(
+            fn (InvitationRecipientRole $role) => $role->category?->usesPrivateAccess()
+        );
+
+        if ($hasPrivate) {
+            return;
         }
 
-        return $url;
+        $leadership = $recipient->roles->first(
+            fn (InvitationRecipientRole $role) => $this->isLeadershipPosition($role->position)
+        );
+
+        if (! $leadership) {
+            return;
+        }
+
+        $pejabat = InvitationCategory::query()
+            ->where('period_id', $recipient->period_id)
+            ->where('slug', 'pejabat')
+            ->where('access_mode', InvitationCategory::ACCESS_PRIVATE)
+            ->first()
+            ?: InvitationCategory::query()
+                ->where('period_id', $recipient->period_id)
+                ->where('access_mode', InvitationCategory::ACCESS_PRIVATE)
+                ->orderBy('sort_order')
+                ->first();
+
+        if (! $pejabat) {
+            return;
+        }
+
+        $recipient->roles()->firstOrCreate(
+            [
+                'category_id' => $pejabat->id,
+                'position' => $leadership->position,
+            ],
+            ['show_on_invitation' => false]
+        );
+        $recipient->unsetRelation('roles');
+        $recipient->load('roles.category');
+    }
+
+    private function isLeadershipPosition(?string $position): bool
+    {
+        $value = strtolower(trim((string) $position));
+
+        if ($value === '') {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '/kepala\s+bagian|kepala\s+sub\s*bagian|\bkabag\b|\bkasubbag\b|\bkasubag\b|wakil\s+dekan|\bdekan\b|koordinator|ketua\s+senat|ketua\s+komisi|ketua\s+sub\s+pokja|ketua\s+sub\s+kelompok|ketua\s+pokja|kepala\s+laboratorium|\bkalab\b|\bkps\b/i',
+            $value
+        );
+    }
+
+    private function ensurePrimaryRole(InvitationRecipient $recipient): void
+    {
+        if ($recipient->roles()->exists() || ! $recipient->category_id) {
+            return;
+        }
+
+        $recipient->roles()->create([
+            'category_id' => $recipient->category_id,
+            'position' => $this->cleanPosition($recipient->position),
+            'show_on_invitation' => true,
+        ]);
+        $recipient->unsetRelation('roles');
+        $recipient->load('roles.category');
     }
 
     private function pruneOtherCategoryRoles(InvitationRecipient $recipient, InvitationCategory $category, ?string $position): void
@@ -247,24 +356,33 @@ class RecipientDirectory
 
     private function refreshDisplay(InvitationRecipient $recipient): void
     {
-        $displayRole = $recipient->roles()
-            ->with('category')
-            ->where('show_on_invitation', true)
-            ->first()
-            ?? $recipient->roles()->with('category')->orderBy('id')->first();
+        $roles = $recipient->roles()->with('category')->get();
+        $displayRole = $this->rankedRoles($roles)->first();
 
         if (! $displayRole) {
             return;
         }
 
-        if (! $displayRole->show_on_invitation) {
-            $recipient->roles()->update(['show_on_invitation' => false]);
-            $displayRole->update(['show_on_invitation' => true]);
+        $position = $this->cleanPosition($displayRole->position)
+            ?: $this->rankedRoles($roles)
+                ->map(fn (InvitationRecipientRole $role) => $this->cleanPosition($role->position))
+                ->first(fn (?string $value) => $value !== null);
+
+        $alreadyCanonical = (int) $recipient->category_id === (int) $displayRole->category_id
+            && $recipient->position === $position
+            && (bool) $displayRole->show_on_invitation
+            && $roles->where('show_on_invitation', true)->count() === 1;
+
+        if ($alreadyCanonical) {
+            return;
         }
+
+        $recipient->roles()->update(['show_on_invitation' => false]);
+        $displayRole->update(['show_on_invitation' => true]);
 
         $recipient->forceFill([
             'category_id' => $displayRole->category_id,
-            'position' => $displayRole->position,
+            'position' => $position,
         ])->save();
     }
 

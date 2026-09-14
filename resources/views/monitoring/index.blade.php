@@ -700,7 +700,16 @@
               <div class="row-muted">${escapeHtml(row.context)}</div>
             </div>`;
         const lastColumn = monitorType === "mahasiswa"
-          ? `<div><span class="badge-soft ${row.checked_in ? "good" : ""}">${row.checked_in ? "Sudah check-in" : "Belum check-in"}</span><div class="row-muted">${escapeHtml(row.checked_in_at_label)}</div></div>`
+          ? `<div>
+              <span class="badge-soft ${row.checked_in ? "good" : ""}">${row.checked_in ? "Sudah check-in" : "Belum check-in"}</span>
+              <div class="row-muted">${escapeHtml(row.checked_in_at_label)}</div>
+              <div class="signature-preview">
+                <span class="signature-preview-label">${escapeHtml(row.signature_label || "Tanda tangan")}</span>
+                ${row.has_signature && row.signature_url
+                  ? `<a href="${escapeHtml(row.signature_url)}" target="_blank" rel="noopener" title="Buka ${escapeHtml(row.signature_label || "tanda tangan")}"><img src="${escapeHtml(row.signature_url)}" alt="${escapeHtml(row.signature_label || "Tanda tangan")} ${escapeHtml(row.name)}"></a>`
+                  : `<span class="signature-empty">Belum ada</span>`}
+              </div>
+            </div>`
           : `<div class="signature-preview">
               <span class="signature-preview-label">${escapeHtml(row.signature_label || "Tanda tangan")}</span>
               ${row.has_signature && row.signature_url

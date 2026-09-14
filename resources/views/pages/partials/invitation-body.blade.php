@@ -3,8 +3,9 @@
           $lookupNeedsRecipient = $isRecipientLookupCategory && ! $recipient;
           $recipientLookupLabel = $selectedCategory?->usesNipAccess() ? 'NIP' : 'Nama';
           $recipientLookupPlaceholder = $selectedCategory?->usesNipAccess() ? 'Contoh: 198001012010011001' : 'Tulis nama lengkap';
-          $recipientAllowsRepresentative = $selectedCategory?->usesPrivateAccess() ?? false;
-          $recipientUsesSignature = ($selectedCategory?->usesPrivateAccess() ?? false) || ($selectedCategory?->usesNipAccess() ?? false);
+          $canonicalCategory = $recipient?->invitationCategory() ?: $selectedCategory;
+          $recipientAllowsRepresentative = $canonicalCategory?->usesPrivateAccess() ?? false;
+          $recipientUsesSignature = ($canonicalCategory?->usesPrivateAccess() ?? false) || ($canonicalCategory?->usesNipAccess() ?? false);
         @endphp
         @unless (($isStudentCategory && ! $participant) || $lookupNeedsRecipient)
         <div class="invitation-details-section card--full">
@@ -17,7 +18,11 @@
             {{ $selectedCategory?->invitation_text ?: 'Dengan hormat, kami mengundang '.$invitationGreeting.' untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.' }}
           </p>
           <div class="mini-brand">
-            <img data-logo="unmul" src="{{ asset('Unmul.png') }}" alt="Logo Universitas Mulawarman" />
+            <img data-logo="unmul" src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman" />
+            <div>
+              <strong>Universitas Mulawarman</strong>
+              <span>Fakultas Teknik</span>
+            </div>
           </div>
           <div class="details">
             <div class="detail-item">
@@ -319,6 +324,20 @@
                 <label for="note" id="participantNoteLabel">Catatan berhalangan</label>
                 <textarea id="note" name="note" data-declined-placeholder="Tuliskan alasan berhalangan hadir secara singkat." placeholder="Tuliskan alasan berhalangan hadir secara singkat.">{{ old('note') }}</textarea>
               </div>
+              <div class="field signature-field" id="participantSignatureField" data-signature-field hidden>
+                <div class="signature-head">
+                  <label for="participantSignatureCanvas" data-signature-label>Tanda tangan</label>
+                  <button type="button" class="signature-clear" data-signature-clear>Hapus</button>
+                </div>
+                <div class="signature-pad">
+                  <canvas id="participantSignatureCanvas" data-signature-canvas aria-label="Area tanda tangan"></canvas>
+                  <span class="signature-placeholder" data-signature-placeholder>Tulis di sini</span>
+                </div>
+                <input type="hidden" name="rsvp_signature" data-signature-input>
+                <input type="hidden" name="signature_drawn" value="0" data-signature-drawn>
+                <p class="signature-help" data-signature-help>Bubuhkan tanda tangan sebagai konfirmasi kehadiran.</p>
+                <p class="signature-error" data-signature-error hidden>Mohon isi tanda tangan terlebih dahulu.</p>
+              </div>
               <div class="action-row">
                 <button class="btn" type="submit">Simpan Konfirmasi</button>
               </div>
@@ -356,6 +375,9 @@
               <div class="pill-row">
                 <span class="pill">{{ $recipient->invitation_name }}</span>
                 <span class="pill">{{ $recipient->displayPosition() ?: ($recipient->position ?: ($recipient->context_note ?: $recipient->category?->title)) }}</span>
+                @foreach (array_slice($recipient->listedPositions(), 1) as $position)
+                  <span class="pill">{{ $position }}</span>
+                @endforeach
                 <span class="pill {{ $rsvpStatus === 'attending' ? 'good' : ($rsvpStatus === 'declined' ? 'bad' : 'warn') }}">
                   {{ match ($rsvpStatus) { 'attending' => 'Sudah konfirmasi hadir', 'declined' => 'Berhalangan hadir', 'represented' => 'Diwakilkan', default => 'Belum konfirmasi' } }}
                 </span>

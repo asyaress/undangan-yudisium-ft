@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="id">
 <head>
-    <title>Login Admin Yudisium</title>
+    <title>Masuk · Yudisium Fakultas Teknik UNMUL</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Login admin Yudisium Fakultas Teknik Universitas Mulawarman">
@@ -17,6 +17,8 @@
         :root {
             --orange: #F5530D;
             --orange-dark: #D9450B;
+            --unmul: #1F7A3A;
+            --unmul-deep: #164E2C;
             --ink: #1c1c1e;
             --muted: #636366;
             --line: rgba(60, 60, 67, 0.16);
@@ -73,10 +75,10 @@
         }
 
         .login-card {
-            width: min(100%, 470px);
-            padding: 38px 42px 42px;
-            border-radius: 22px;
-            background: rgba(255, 255, 255, 0.78);
+            width: min(100%, 420px);
+            padding: 32px 32px 28px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.82);
             border: 1px solid rgba(255, 255, 255, 0.5);
             border-top-color: rgba(255, 255, 255, 0.88);
             box-shadow: 0 22px 70px rgba(17, 24, 39, 0.28);
@@ -85,40 +87,51 @@
         }
 
         .brand {
-            margin-bottom: 28px;
+            margin-bottom: 24px;
             text-align: center;
         }
 
         .brand-logo {
-            width: 86px;
-            height: 86px;
+            width: 72px;
+            height: 72px;
             object-fit: contain;
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
-        .brand-kicker {
-            margin: 0 0 10px;
-            color: var(--orange);
-            font-size: 13px;
+        .brand-university {
+            margin: 0;
+            color: var(--unmul);
+            font-size: 12px;
             font-weight: 800;
             letter-spacing: 0.16em;
             text-transform: uppercase;
         }
 
+        .brand-faculty {
+            margin: 6px 0 14px;
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .brand-kicker {
+            display: none;
+        }
+
         .brand h1 {
             margin: 0;
             color: #1c1c1e;
-            font-size: 30px;
+            font-size: 28px;
             font-weight: 800;
             line-height: 1.08;
             letter-spacing: -0.03em;
         }
 
         .brand-copy {
-            margin: 20px 0 0;
+            margin: 10px 0 0;
             color: var(--muted);
-            font-size: 16px;
-            line-height: 1.6;
+            font-size: 15px;
+            line-height: 1.5;
         }
 
         .alert {
@@ -172,8 +185,8 @@
         }
 
         .input-wrap .form-control:focus {
-            border-color: var(--orange);
-            box-shadow: 0 0 0 4px rgba(245, 83, 13, 0.12);
+            border-color: var(--unmul);
+            box-shadow: 0 0 0 4px rgba(31, 122, 58, 0.14);
             outline: none;
         }
 
@@ -215,7 +228,7 @@
             width: 20px;
             height: 20px;
             margin: 0;
-            accent-color: var(--orange);
+            accent-color: var(--unmul);
         }
 
         .login-button {
@@ -224,12 +237,12 @@
             height: 56px;
             padding: 0 26px;
             color: #fff;
-            background: var(--orange);
+            background: var(--unmul);
             border: 0;
             border-radius: 14px;
             font-size: 15px;
             font-weight: 800;
-            box-shadow: 0 10px 24px rgba(245, 83, 13, 0.26);
+            box-shadow: 0 10px 24px rgba(31, 122, 58, 0.22);
             transition: background-color 180ms var(--spring), transform var(--press), box-shadow 180ms var(--spring);
             touch-action: manipulation;
         }
@@ -237,8 +250,8 @@
         .login-button:hover,
         .login-button:focus {
             color: #fff;
-            background: var(--orange-dark);
-            box-shadow: 0 10px 22px rgba(245, 83, 13, 0.22);
+            background: var(--unmul-deep);
+            box-shadow: 0 10px 22px rgba(22, 78, 44, 0.22);
         }
 
         .login-button:active {
@@ -254,7 +267,7 @@
 
         .login-button:focus-visible,
         .public-link:focus-visible {
-            outline: 2px solid var(--orange);
+            outline: 2px solid var(--unmul);
             outline-offset: 3px;
         }
 
@@ -265,7 +278,7 @@
             gap: 8px;
             width: 100%;
             margin-top: 26px;
-            color: var(--orange-dark);
+            color: var(--unmul-deep);
             font-size: 14px;
             font-weight: 700;
             text-decoration: none;
@@ -273,7 +286,7 @@
 
         .public-link:hover,
         .public-link:focus {
-            color: #92400e;
+            color: var(--unmul);
             text-decoration: none;
         }
 
@@ -390,10 +403,11 @@
 
         <section class="login-card" aria-labelledby="login-title">
             <div class="brand">
-                <img class="brand-logo" src="{{ asset('Unmul.png') }}" alt="Universitas Mulawarman">
-                <p class="brand-kicker">Yudisium FT</p>
-                <h1 id="login-title">Masuk Admin</h1>
-                <p class="brand-copy">Masuk ke dashboard admin undangan Yudisium Fakultas Teknik Universitas Mulawarman.</p>
+                <img class="brand-logo" src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
+                <p class="brand-university">Universitas Mulawarman</p>
+                <p class="brand-faculty">Fakultas Teknik</p>
+                <h1 id="login-title">Yudisium</h1>
+                <p class="brand-copy">Masuk ke dashboard admin undangan.</p>
             </div>
 
             @if (session('success'))
@@ -431,7 +445,7 @@
                         <input type="checkbox" name="remember" value="1">
                         <span>Ingat saya</span>
                     </label>
-                    <button type="submit" class="login-button">Login</button>
+                    <button type="submit" class="login-button">Masuk</button>
                 </div>
 
                 <a class="public-link" href="{{ route('home') }}">

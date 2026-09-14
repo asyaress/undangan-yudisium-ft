@@ -21,24 +21,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.provider.Settings
+import kotlin.math.min
 
 val Canvas = Color(0xFFF2F2F7)
 val Ink = Color(0xFF1C1C1E)
 val Label = Color(0xFF8E8E93)
-val Accent = Color(0xFFD97706)
-val Good = Color(0xFF1F8A4C)
+val Accent = Color(0xFF1F7A3A)
+val EventOrange = Color(0xFFE85D04)
+val Gold = Color(0xFFC4A35A)
+val Good = Color(0xFF1F7A3A)
 val Warn = Color(0xFFB45309)
 val Bad = Color(0xFFB42318)
 val Panel = Color(0xFFFFFFFF)
-val Glass = Color(0xCCF2F2F7)
+val Glass = Color(0xE6F2F2F7)
 
 private val system = FontFamily.SansSerif
 
@@ -87,6 +92,41 @@ private val type = Typography(
     ),
 )
 
+data class AppLayout(
+    val compact: Boolean,
+    val landscape: Boolean,
+    val pagePad: Dp,
+    val contentMax: Dp,
+    val logo: Dp,
+    val hero: Dp,
+    val frame: Dp,
+    val columns: Int,
+)
+
+@Composable
+fun rememberAppLayout(): AppLayout {
+    val config = LocalConfiguration.current
+    val width = config.screenWidthDp
+    val height = config.screenHeightDp
+    val compact = width < 600
+    val landscape = width > height
+    val shortest = min(width, height)
+    return AppLayout(
+        compact = compact,
+        landscape = landscape,
+        pagePad = if (compact) 20.dp else 28.dp,
+        contentMax = if (compact) 560.dp else 720.dp,
+        logo = if (compact) 44.dp else 52.dp,
+        hero = when {
+            landscape -> 108.dp
+            compact -> 156.dp
+            else -> 188.dp
+        },
+        frame = (if (landscape) min(height * 0.52f, 300f) else min(shortest * 0.58f, 280f)).dp,
+        columns = if (width >= 840) 2 else 1,
+    )
+}
+
 @Composable
 fun ScannerTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = colors, typography = type, content = content)
@@ -122,7 +162,7 @@ fun Pressable(
     content(
         modifier
             .graphicsLayer { this.scaleX = scale; this.scaleY = scale }
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -141,9 +181,29 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
             modifier = pressModifier
-                .background(if (enabled) Accent else Accent.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-                .defaultMinSize(minWidth = 44.dp, minHeight = 52.dp)
-                .padding(PaddingValues(horizontal = 18.dp, vertical = 14.dp)),
+                .background(if (enabled) Accent else Accent.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                .defaultMinSize(minWidth = 44.dp, minHeight = 50.dp)
+                .padding(PaddingValues(horizontal = 16.dp, vertical = 13.dp)),
+        )
+    }
+}
+
+@Composable
+fun TextAction(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    color: Color = Accent,
+    enabled: Boolean = true,
+) {
+    Pressable(onClick = onClick, modifier = modifier, enabled = enabled) { pressModifier ->
+        Text(
+            text = text,
+            color = if (enabled) color else color.copy(alpha = 0.4f),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = pressModifier
+                .defaultMinSize(minWidth = 44.dp, minHeight = 44.dp)
+                .padding(horizontal = 8.dp, vertical = 10.dp),
         )
     }
 }

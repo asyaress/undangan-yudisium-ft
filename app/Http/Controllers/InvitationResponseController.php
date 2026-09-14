@@ -17,6 +17,8 @@ class InvitationResponseController extends Controller
             'participant_token' => ['required', 'string', 'max:255'],
             'attendance' => ['required', 'in:attending,declined'],
             'note' => ['nullable', 'required_if:attendance,declined', 'string', 'max:1000'],
+            'rsvp_signature' => ['nullable', 'string', 'max:600000'],
+            'signature_drawn' => ['nullable', 'string', 'max:5'],
             'return_to' => ['nullable', 'string', 'max:2000'],
         ]);
 
@@ -41,9 +43,18 @@ class InvitationResponseController extends Controller
             return back()->with('error', 'Konfirmasi kehadiran ditutup. Batas konfirmasi sudah berakhir.');
         }
 
+        if ($data['attendance'] === 'attending' && (! $request->boolean('signature_drawn') || ! $this->validSignatureData($data['rsvp_signature'] ?? null))) {
+            return back()
+                ->withInput($request->except(['rsvp_signature', 'signature_drawn']))
+                ->with('error', 'Mohon isi tanda tangan terlebih dahulu.');
+        }
+
         $participant->submitRsvp(
             $data['attendance'],
-            $this->rsvpNote($data)
+            $this->rsvpNote($data),
+            null,
+            null,
+            $data['attendance'] === 'attending' ? ($data['rsvp_signature'] ?? null) : null
         );
 
         $defaultReturnTo = route('home', [

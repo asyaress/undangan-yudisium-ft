@@ -10,7 +10,7 @@
             <div class="detail-item reveal">
                 <div class="detail-item__index">01</div>
                 <h3>Program</h3>
-                <p>Program Sarjana Angkatan 82 Periode 2 Tahun 2026.</p>
+                <p>Program Sarjana Angkatan 83 Periode 3 Tahun 2026.</p>
             </div>
             <div class="detail-item reveal reveal-delay-1">
                 <div class="detail-item__index">02</div>
@@ -82,7 +82,7 @@
 
                 <ul class="venue-list">
                     <li><i class="ti-location-pin"></i><span>Alamat ruang utama dan gedung acara akan diisi setelah data final tersedia.</span></li>
-                    <li><i class="ti-time"></i><span>Waktu pelaksanaan mengikuti jadwal resmi yudisium periode 2 tahun 2026.</span></li>
+                    <li><i class="ti-time"></i><span>Waktu pelaksanaan mengikuti jadwal resmi yudisium periode 3 tahun 2026.</span></li>
                     <li><i class="ti-check"></i><span>Format ini siap dipoles lagi per bagian tanpa mengubah struktur besarnya.</span></li>
                 </ul>
 

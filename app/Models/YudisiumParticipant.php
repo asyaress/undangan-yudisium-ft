@@ -27,6 +27,7 @@ class YudisiumParticipant extends Model
         'checkin_source',
         'rsvp_status',
         'rsvp_note',
+        'rsvp_signature',
         'rsvp_companion_count',
         'rsvp_whatsapp',
         'rsvp_proof_code',
@@ -100,12 +101,14 @@ class YudisiumParticipant extends Model
         string $status,
         ?string $note = null,
         ?int $companionCount = null,
-        ?string $whatsapp = null
+        ?string $whatsapp = null,
+        ?string $signature = null
     ): void
     {
         $this->forceFill([
             'rsvp_status' => $status,
             'rsvp_note' => $note,
+            'rsvp_signature' => $status === 'attending' ? $signature : null,
             'rsvp_companion_count' => $companionCount,
             'rsvp_whatsapp' => $whatsapp,
             'rsvp_proof_code' => $this->rsvp_proof_code ?: static::newProofCode(),

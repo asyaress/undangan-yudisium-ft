@@ -36,12 +36,33 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        $period = YudisiumPeriod::query()->where('is_active', true)->first()
+            ?: YudisiumPeriod::query()->first();
+
+        if (! $period) {
+            $period = YudisiumPeriod::query()->create([
+                'name' => 'Yudisium Tahun 2026 Angkatan 83 Periode 3',
+                'event_year' => 2026,
+                'cohort_label' => 'Angkatan 83',
+                'period_label' => 'Periode 3',
+                'event_date' => '2026-09-16',
+                'event_time' => '09.00 s/d Selesai',
+                'location' => 'Gedung utama Fakultas Teknik Universitas Mulawarman',
+                'address' => 'Jl. Sambaliung No.9, Gunung Kelua, Samarinda',
+                'is_active' => true,
+                'is_published' => true,
+            ]);
+        }
+
+        $periodId = $period->id;
+
+        $coverPrefix = 'Program Sarjana Angkatan 83 Periode 3 Tahun 2026.';
         $categories = [
             [
                 'slug' => 'yudisiawan',
                 'title' => 'Yudisiawan / Yudisiawati',
                 'recipient_label' => 'Yudisiawan / Yudisiawati',
-                'cover_text' => 'Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang kehadiran Bapak/Ibu/Saudara(i) pada prosesi yudisium.',
+                'cover_text' => $coverPrefix.' Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang kehadiran Bapak/Ibu/Saudara(i) pada prosesi yudisium.',
                 'invitation_text' => 'Dengan hormat, kami mengundang para Yudisiawan/Yudisiawati untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.',
                 'closing_text' => 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.',
                 'sort_order' => 1,
@@ -52,7 +73,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'orangtua',
                 'title' => 'Orangtua Yudisiawan',
                 'recipient_label' => 'Orang Tua/Wali Yudisiawan / Yudisiawati',
-                'cover_text' => 'Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang kehadiran Bapak/Ibu/Wali pada prosesi yudisium.',
+                'cover_text' => $coverPrefix.' Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang kehadiran Bapak/Ibu/Wali pada prosesi yudisium.',
                 'invitation_text' => 'Dengan hormat, kami mengundang Bapak/Ibu Orang Tua/Wali Yudisiawan/Yudisiawati untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.',
                 'closing_text' => 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.',
                 'sort_order' => 2,
@@ -63,7 +84,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'pejabat',
                 'title' => 'Pejabat Fakultas dan Universitas',
                 'recipient_label' => 'Pejabat Fakultas dan Universitas',
-                'cover_text' => 'Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang para pejabat fakultas dan universitas pada prosesi yudisium.',
+                'cover_text' => $coverPrefix.' Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang para pejabat fakultas dan universitas pada prosesi yudisium.',
                 'invitation_text' => 'Dengan hormat, kami mengundang Bapak/Ibu Pejabat Fakultas Teknik Universitas Mulawarman untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.',
                 'closing_text' => 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.',
                 'sort_order' => 3,
@@ -74,7 +95,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'ketuasenat',
                 'title' => 'Ketua Senat Fakultas Teknik',
                 'recipient_label' => 'Ketua Senat Fakultas Teknik',
-                'cover_text' => 'Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang Ketua Senat Fakultas Teknik pada prosesi yudisium.',
+                'cover_text' => $coverPrefix.' Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang Ketua Senat Fakultas Teknik pada prosesi yudisium.',
                 'invitation_text' => 'Dengan hormat, kami mengundang Bapak Ketua Senat Fakultas Teknik untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.',
                 'closing_text' => 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.',
                 'sort_order' => 4,
@@ -85,7 +106,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'anggotasenat',
                 'title' => 'Seluruh Anggota Senat Fakultas Teknik',
                 'recipient_label' => 'Seluruh Anggota Senat Fakultas Teknik',
-                'cover_text' => 'Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang seluruh anggota senat pada prosesi yudisium.',
+                'cover_text' => $coverPrefix.' Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang seluruh anggota senat pada prosesi yudisium.',
                 'invitation_text' => 'Dengan hormat, kami mengundang Bapak/Ibu Anggota Senat Fakultas Teknik untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.',
                 'closing_text' => 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.',
                 'sort_order' => 5,
@@ -96,7 +117,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'tendik',
                 'title' => 'Staf Tenaga Kependidikan',
                 'recipient_label' => 'Staf Tenaga Kependidikan Fakultas Teknik',
-                'cover_text' => 'Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang staf tenaga kependidikan pada prosesi yudisium.',
+                'cover_text' => $coverPrefix.' Dengan hormat, Fakultas Teknik Universitas Mulawarman mengundang staf tenaga kependidikan pada prosesi yudisium.',
                 'invitation_text' => 'Dengan hormat, kami mengundang Bapak/Ibu Staf Tenaga Kependidikan Fakultas Teknik untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.',
                 'closing_text' => 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.',
                 'sort_order' => 6,
@@ -107,7 +128,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'satpam',
                 'title' => 'Tenaga Satpam',
                 'recipient_label' => 'Tenaga Satpam Fakultas Teknik',
-                'cover_text' => 'Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Fakultas Teknik Universitas Mulawarman mengundang tenaga satpam pada prosesi yudisium.',
+                'cover_text' => $coverPrefix.' Fakultas Teknik Universitas Mulawarman mengundang tenaga satpam pada prosesi yudisium.',
                 'invitation_text' => 'Dengan hormat, kami mengundang tenaga satpam Fakultas Teknik Universitas Mulawarman untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.',
                 'closing_text' => 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.',
                 'sort_order' => 7,
@@ -118,7 +139,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'cs',
                 'title' => 'Tenaga Cleaning Service',
                 'recipient_label' => 'Tenaga Cleaning Service Fakultas Teknik',
-                'cover_text' => 'Program Sarjana Angkatan 82 Periode 2 Tahun 2026. Fakultas Teknik Universitas Mulawarman mengundang tenaga cleaning service pada prosesi yudisium.',
+                'cover_text' => $coverPrefix.' Fakultas Teknik Universitas Mulawarman mengundang tenaga cleaning service pada prosesi yudisium.',
                 'invitation_text' => 'Dengan hormat, kami mengundang tenaga cleaning service Fakultas Teknik Universitas Mulawarman untuk menghadiri acara Yudisium Fakultas Teknik Universitas Mulawarman.',
                 'closing_text' => 'Atas kehadiran Bapak/Ibu/Saudara(i), kami ucapkan terima kasih.',
                 'sort_order' => 8,
@@ -126,9 +147,6 @@ class DatabaseSeeder extends Seeder
                 'rsvp_enabled' => true,
             ],
         ];
-
-        $periodId = YudisiumPeriod::query()->where('is_active', true)->value('id')
-            ?: YudisiumPeriod::query()->value('id');
 
         if ($periodId) {
             foreach ($categories as $category) {

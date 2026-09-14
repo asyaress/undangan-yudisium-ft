@@ -118,6 +118,7 @@ class InvitationRoutingTest extends TestCase
             ->assertOk()
             ->assertSee('formalPreviewStage')
             ->assertSee($participant->name)
+            ->assertSee('Tanda tangan')
             ->assertDontSee('Unduh PNG')
             ->assertDontSee('QR Buku Tamu')
             ->assertDontSee('Kartu Registrasi Mahasiswa');
@@ -150,6 +151,66 @@ class InvitationRoutingTest extends TestCase
             ->assertSee('Berhalangan Hadir')
             ->assertDontSee('Unduh PNG')
             ->assertDontSee('Unduh kartu konfirmasi ini', false);
+    }
+
+    public function test_student_attending_requires_signature(): void
+    {
+        $period = $this->period();
+        $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+
+        $this->post(route('rsvp.participant'), [
+            'event_id' => $period->id,
+            'participant_token' => $participant->invitation_token,
+            'attendance' => 'attending',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Mohon isi tanda tangan terlebih dahulu.');
+
+        $this->assertSame('pending', $participant->fresh()->rsvp_status);
+        $this->assertNull($participant->fresh()->rsvp_signature);
+    }
+
+    public function test_student_attending_saves_signature(): void
+    {
+        $period = $this->period();
+        $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+        $signature = $this->signatureData();
+
+        $this->post(route('rsvp.participant'), [
+            'event_id' => $period->id,
+            'participant_token' => $participant->invitation_token,
+            'attendance' => 'attending',
+            'rsvp_signature' => $signature,
+            'signature_drawn' => '1',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Konfirmasi hadir berhasil disimpan.');
+
+        $participant->refresh();
+        $this->assertSame('attending', $participant->rsvp_status);
+        $this->assertSame($signature, $participant->rsvp_signature);
+    }
+
+    public function test_student_declined_does_not_require_signature(): void
+    {
+        $period = $this->period();
+        $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+
+        $this->post(route('rsvp.participant'), [
+            'event_id' => $period->id,
+            'participant_token' => $participant->invitation_token,
+            'attendance' => 'declined',
+            'note' => 'Berhalangan hadir.',
+        ])
+            ->assertRedirect()
+            ->assertSessionHas('success', 'Konfirmasi berhalangan hadir berhasil disimpan.');
+
+        $participant->refresh();
+        $this->assertSame('declined', $participant->rsvp_status);
+        $this->assertNull($participant->rsvp_signature);
     }
 
     public function test_private_recipient_attending_requires_signature(): void
@@ -369,6 +430,66 @@ class InvitationRoutingTest extends TestCase
             ->assertSessionHas('error', 'Konfirmasi diwakilkan tidak tersedia untuk kategori undangan ini.');
 
         $this->assertSame('pending', $recipient->fresh()->rsvp_status);
+    }
+
+    public function test_archive_hides_period_two_and_keeps_period_three(): void
+    {
+        $periodTwo = YudisiumPeriod::query()->create([
+            'name' => 'Yudisium Tahun 2026 Angkatan 82 Periode 2',
+            'slug' => 'yudisium-angkatan-82-periode-2',
+            'event_year' => 2026,
+            'cohort_label' => 'Angkatan 82',
+            'period_label' => 'Periode 2',
+            'event_date' => '2026-06-18',
+            'location' => 'Gedung Fakultas Teknik',
+            'is_active' => false,
+            'is_published' => true,
+        ]);
+        $periodThree = YudisiumPeriod::query()->create([
+            'name' => 'Yudisium Tahun 2026 Angkatan 83 Periode 3',
+            'slug' => 'yudisium-angkatan-83-periode-3',
+            'event_year' => 2026,
+            'cohort_label' => 'Angkatan 83',
+            'period_label' => 'Periode 3',
+            'event_date' => '2026-09-16',
+            'location' => 'Gedung Fakultas Teknik',
+            'is_active' => true,
+            'is_published' => true,
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Universitas Mulawarman')
+            ->assertSee($periodThree->name)
+            ->assertDontSee($periodTwo->name);
+    }
+
+    public function test_period_two_invitation_is_not_found(): void
+    {
+        $period = YudisiumPeriod::query()->create([
+            'name' => 'Yudisium Angkatan 82 Periode 2',
+            'slug' => 'undangan-periode-2',
+            'event_year' => 2026,
+            'period_label' => 'Periode 2',
+            'event_date' => '2026-06-18',
+            'location' => 'Gedung Fakultas Teknik',
+            'is_active' => true,
+            'is_published' => true,
+        ]);
+        $this->category($period, 'umum', InvitationCategory::ACCESS_PUBLIC);
+
+        $this->get('/?event='.$period->slug.'&to=umum')->assertNotFound();
+        $this->get('/undangan/'.$period->slug.'?to=umum')->assertNotFound();
+    }
+
+    public function test_login_shows_universitas_mulawarman_identity(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('Universitas Mulawarman')
+            ->assertSee('Fakultas Teknik')
+            ->assertSee('Yudisium')
+            ->assertSee('Masuk');
     }
 
     private function period(): YudisiumPeriod
