@@ -10,10 +10,18 @@ Aplikasi panitia untuk scan QR kehadiran. Bisa dipakai **offline**, lalu otomati
 
 ## Pasang di HP
 
-1. Buka folder `android-scanner` di Android Studio.
-2. Tunggu Gradle sync.
-3. Sambungkan HP (USB debugging) atau pakai beberapa HP sekaligus.
-4. Run ke masing-masing HP.
+**APK siap pasang (disarankan):** `android-scanner/Yudisium-FT-1.2.1.apk` — release sudah ditandatangani (bisa di-install langsung).
+
+1. Salin APK ke HP, buka file, izinkan instal dari sumber tidak dikenal jika diminta.
+2. Atau: buka folder `android-scanner` di Android Studio → Run ke HP (USB debugging).
+
+Build ulang release (setelah ubah kode):
+
+```bash
+cd android-scanner
+./gradlew assembleRelease
+copy app\build\outputs\apk\release\app-release.apk Yudisium-FT-1.2.1.apk
+```
 
 Aplikasi langsung memakai server produksi. Cukup login akun panitia; tidak perlu isi alamat server.
 
