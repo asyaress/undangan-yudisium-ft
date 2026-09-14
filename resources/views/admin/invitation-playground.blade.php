@@ -69,7 +69,31 @@
 @endsection
 
 @push('head')
-    <link rel="stylesheet" href="{{ asset('css/formal-invitation.css') }}?v=1">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="color-scheme" content="light">
+    <style id="formal-critical">
+        html, body { margin: 0; background: #fff; color: #1c1c1e; }
+        .formal-preview-stage:not(.is-open) .formal-bg-video,
+        .formal-preview-stage:not(.is-open) .formal-bg-overlay {
+            display: none !important;
+            visibility: hidden !important;
+        }
+        .formal-preview-stage:not(.is-open) {
+            background: #fff !important;
+            min-height: 100dvh;
+        }
+        .formal-cover {
+            position: relative;
+            z-index: 3;
+            display: grid;
+            place-items: center;
+            min-height: 100dvh;
+            background: #fff;
+            text-align: center;
+        }
+    </style>
+    <link rel="preload" href="{{ asset('css/formal-invitation.css') }}?v=2" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ asset('css/formal-invitation.css') }}?v=2"></noscript>
 @endpush
 
 @section('content')
@@ -122,10 +146,10 @@
 @endunless
 
 <div class="formal-preview-stage" id="formalPreviewStage">
-    <video class="formal-bg-video" autoplay muted loop playsinline preload="auto">
-        <source src="{{ asset('video-back.mp4') }}" type="video/mp4">
+    <video class="formal-bg-video" muted loop playsinline preload="none" hidden>
+        <source data-src="{{ asset('video-back.mp4') }}" type="video/mp4">
     </video>
-    <div class="formal-bg-overlay" aria-hidden="true"></div>
+    <div class="formal-bg-overlay" aria-hidden="true" hidden></div>
 
     <section class="formal-cover" id="formalCover">
         <div class="formal-cover-panel">
@@ -586,8 +610,28 @@
                 document.documentElement.classList.remove('formal-cover-locked');
             }
 
+            function startFormalBackgroundVideo() {
+                var video = stage ? stage.querySelector('.formal-bg-video') : null;
+                var overlay = stage ? stage.querySelector('.formal-bg-overlay') : null;
+                if (!video || video.dataset.started === '1') {
+                    return;
+                }
+                video.dataset.started = '1';
+                video.hidden = false;
+                if (overlay) {
+                    overlay.hidden = false;
+                }
+                var source = video.querySelector('source[data-src]');
+                if (source && !source.getAttribute('src')) {
+                    source.setAttribute('src', source.dataset.src || '');
+                    video.load();
+                }
+                video.play().catch(function () {});
+            }
+
             function openInvitation(options) {
                 options = options || {};
+                startFormalBackgroundVideo();
                 stage.classList.add('is-open');
                 cover.classList.add('is-hidden');
                 unlockCoverScroll();

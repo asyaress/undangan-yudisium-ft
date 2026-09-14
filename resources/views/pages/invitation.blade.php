@@ -89,6 +89,8 @@
         $bodyClasses = trim($bodyClasses.' opened invitation-postback');
     }
 
+    $deferBackgroundVideo = $isInvitationMode && ! str_contains($bodyClasses, 'opened');
+
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -96,6 +98,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="color-scheme" content="light" />
   @include('partials.social-share-meta')
   <title>{{ $pageTitle ?? 'Undangan Yudisium FT UNMUL' }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -107,12 +111,14 @@
 </head>
 
 <body class="{{ $bodyClasses }}">
-  <div class="bg-video-layer" aria-hidden="true">
-    <video class="bg-video" id="backgroundVideo" muted loop playsinline webkit-playsinline="true" preload="none" data-poster="{{ asset('backdrop-poster.webp') }}">
-      <source data-src="{{ asset('video-back.mp4') }}" type="video/mp4" />
-    </video>
-  </div>
-  <div class="bg-video-overlay" aria-hidden="true"></div>
+  @unless ($deferBackgroundVideo)
+    <div class="bg-video-layer" aria-hidden="true">
+      <video class="bg-video" id="backgroundVideo" muted loop playsinline webkit-playsinline="true" preload="none" data-poster="{{ asset('backdrop-poster.webp') }}">
+        <source data-src="{{ asset('video-back.mp4') }}" type="video/mp4" />
+      </video>
+    </div>
+    <div class="bg-video-overlay" aria-hidden="true"></div>
+  @endunless
   <div class="transition-layer" aria-hidden="true"></div>
 
   <main>

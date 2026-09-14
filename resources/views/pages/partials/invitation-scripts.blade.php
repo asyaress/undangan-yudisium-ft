@@ -8,7 +8,9 @@
             asset('unmul.png'),
             asset('UNMUL.png'),
         ],
+        'videoSrc' => asset('video-back.mp4'),
+        'posterUrl' => asset('backdrop-poster.webp'),
     ];
 @endphp
 <script type="application/json" id="invitation-boot">@json($invitationBoot)</script>
-<script src="{{ asset('js/invitation.js') }}?v=1" defer></script>
+<script src="{{ asset('js/invitation.js') }}?v=2" defer></script>

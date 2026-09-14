@@ -1,7 +1,7 @@
 @php
     $shareTitle = $shareTitle ?? $pageTitle ?? 'Undangan Yudisium FT UNMUL';
     $shareDescription = $shareDescription ?? $pageTitle ?? 'Undangan Yudisium Fakultas Teknik Universitas Mulawarman';
-    $shareImageUrl = $shareImageUrl ?? secure_url('backdrop-fix.png');
+    $shareImageUrl = $shareImageUrl ?? secure_url('backdrop-poster.jpg');
     $shareUrl = $shareUrl ?? url()->current();
 @endphp
 <meta name="description" content="{{ $shareDescription }}" />

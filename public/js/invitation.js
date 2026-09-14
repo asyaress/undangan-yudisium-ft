@@ -14,7 +14,6 @@ const openButton = document.getElementById("openInvitation");
     const rsvpSpotlight = document.getElementById("rsvpSpotlight");
     const rsvpTutorialSteps = boot.rsvpTutorialSteps || [];
     const showRsvpTutorialOnOpen = Boolean(boot.showRsvpTutorialOnOpen);
-    const backgroundVideo = document.getElementById("backgroundVideo");
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const INVITATION_OPEN_MS = 860;
     const revealItems = content ? Array.from(content.children) : [];
@@ -927,7 +926,53 @@ const openButton = document.getElementById("openInvitation");
     }
 
     let backgroundVideoStarted = false;
+    const ensureBackgroundVideo = () => {
+      let video = document.getElementById("backgroundVideo");
+      if (video) {
+        return video;
+      }
+
+      const videoSrc = boot.videoSrc;
+      if (!videoSrc) {
+        return null;
+      }
+
+      const layer = document.createElement("div");
+      layer.className = "bg-video-layer";
+      layer.setAttribute("aria-hidden", "true");
+
+      video = document.createElement("video");
+      video.className = "bg-video";
+      video.id = "backgroundVideo";
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.setAttribute("webkit-playsinline", "true");
+      video.preload = "none";
+      if (boot.posterUrl) {
+        video.dataset.poster = boot.posterUrl;
+      }
+
+      const source = document.createElement("source");
+      source.type = "video/mp4";
+      source.dataset.src = videoSrc;
+      video.appendChild(source);
+      layer.appendChild(video);
+
+      const overlay = document.createElement("div");
+      overlay.className = "bg-video-overlay";
+      overlay.setAttribute("aria-hidden", "true");
+
+      const main = document.querySelector("main");
+      document.body.insertBefore(layer, document.body.firstChild);
+      document.body.insertBefore(overlay, main || layer.nextSibling);
+
+      return video;
+    };
+
     const startBackgroundVideo = () => {
+      const backgroundVideo = ensureBackgroundVideo();
       if (!backgroundVideo || backgroundVideoStarted) return;
       backgroundVideoStarted = true;
 

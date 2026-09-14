@@ -27,12 +27,22 @@
             background: #fff;
         }
 
+        .formal-preview-stage:not(.is-open) .formal-bg-video,
+        .formal-preview-stage:not(.is-open) .formal-bg-overlay {
+            display: none !important;
+        }
+
         .formal-bg-video,
         .formal-bg-overlay {
             position: absolute;
             inset: 0;
             width: 100%;
             height: 100%;
+        }
+
+        .formal-preview-stage.is-open .formal-bg-video,
+        .formal-preview-stage.is-open .formal-bg-overlay {
+            display: block;
         }
 
         .formal-bg-video {
