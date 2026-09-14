@@ -92,9 +92,7 @@ class MonitoringController extends Controller
         $png = $this->decodeSignature($recipient->rsvp_signature);
         abort_unless($png !== null, 404);
 
-        return response($png)
-            ->header('Content-Type', 'image/png')
-            ->header('Cache-Control', 'private, max-age=300');
+        return $this->pngResponse($png, $this->signatureFilename('private', $recipient->invitation_name, $recipient->id));
     }
 
     public function studentSignature(YudisiumParticipant $participant): Response
@@ -102,9 +100,7 @@ class MonitoringController extends Controller
         $png = $this->decodeSignature($participant->rsvp_signature);
         abort_unless($png !== null, 404);
 
-        return response($png)
-            ->header('Content-Type', 'image/png')
-            ->header('Cache-Control', 'private, max-age=300');
+        return $this->pngResponse($png, $this->signatureFilename('mahasiswa', $participant->nim, $participant->id));
     }
 
     private function page(Request $request, string $type): View
@@ -446,14 +442,47 @@ class MonitoringController extends Controller
 
     private function decodeSignature(?string $signature): ?string
     {
-        if (! is_string($signature) || ! str_starts_with($signature, 'data:image/png;base64,')) {
+        if (! is_string($signature)) {
             return null;
         }
 
-        $payload = substr($signature, strlen('data:image/png;base64,'));
+        $signature = trim($signature);
+
+        if (! preg_match('/^data:image\/png;base64,(.+)$/i', $signature, $matches)) {
+            return null;
+        }
+
+        $payload = preg_replace('/\s+/', '', $matches[1]) ?? '';
+        if ($payload === '') {
+            return null;
+        }
+
         $decoded = base64_decode($payload, true);
 
-        return $decoded === false ? null : $decoded;
+        return $decoded === false || $decoded === '' ? null : $decoded;
+    }
+
+    private function pngResponse(string $png, string $filename): Response
+    {
+        return response($png)
+            ->header('Content-Type', 'image/png')
+            ->header('Content-Disposition', 'inline; filename="'.$filename.'"')
+            ->header('Cache-Control', 'private, max-age=300');
+    }
+
+    private function signatureFilename(string $scope, ?string $label, int $id): string
+    {
+        $slug = str($label ?: $scope.'-'.$id)
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '-')
+            ->trim('-')
+            ->toString();
+
+        if ($slug === '') {
+            $slug = $scope.'-'.$id;
+        }
+
+        return 'ttd-'.$slug.'.png';
     }
 
     private function recipientAccessModes(): array

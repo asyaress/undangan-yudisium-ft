@@ -343,8 +343,39 @@
         padding: 12px;
     }
 
+    .monitor-row.is-student {
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.95fr) minmax(0, 0.82fr) minmax(0, 0.82fr) minmax(148px, 0.9fr);
+    }
+
     .monitor-row.is-private {
         grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.9fr) minmax(0, 0.82fr) minmax(128px, 0.7fr);
+    }
+
+    .monitor-columns-head {
+        display: grid;
+        gap: 10px;
+        padding: 0 12px 4px;
+        color: #6b7280;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+    }
+
+    .monitor-columns-head.is-student {
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.95fr) minmax(0, 0.82fr) minmax(0, 0.82fr) minmax(148px, 0.9fr);
+    }
+
+    .signature-download-link {
+        color: #D9450B;
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-decoration: none;
+    }
+
+    .signature-download-link:hover,
+    .signature-download-link:focus-visible {
+        text-decoration: underline;
     }
 
     .monitor-row.is-new {
@@ -452,14 +483,20 @@
             grid-template-columns: 1fr 1fr;
         }
 
+        .monitor-row.is-student,
         .monitor-row.is-private {
             grid-template-columns: 1fr 1fr;
+        }
+
+        .monitor-columns-head.is-student {
+            display: none;
         }
     }
 
     @media (max-width: 640px) {
         .monitor-stat-grid,
         .monitor-row,
+        .monitor-row.is-student,
         .monitor-row.is-private {
             grid-template-columns: 1fr;
         }
@@ -689,6 +726,34 @@
         return Array.from(groups.values());
       };
 
+      const signatureFileName = (row) => {
+        const slug = String(row.nim || row.id || "mahasiswa")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+
+        return `ttd-${slug || "mahasiswa"}.png`;
+      };
+
+      const signaturePreviewHtml = (row) => {
+        if (!row.has_signature || !row.signature_url) {
+          return `<span class="signature-empty">Belum ada</span>`;
+        }
+
+        const fileName = signatureFileName(row);
+        const label = escapeHtml(row.signature_label || "Tanda tangan");
+
+        return `
+          <div class="signature-preview">
+            <span class="signature-preview-label">${label}</span>
+            <a href="${escapeHtml(row.signature_url)}" target="_blank" rel="noopener" title="Buka ${label}" download="${escapeHtml(fileName)}">
+              <img src="${escapeHtml(row.signature_url)}" alt="${label} ${escapeHtml(row.name)}">
+            </a>
+            <a class="signature-download-link" href="${escapeHtml(row.signature_url)}" download="${escapeHtml(fileName)}">Unduh PNG</a>
+          </div>
+        `;
+      };
+
       const rowHtml = (row, changed) => {
         const secondary = monitorType === "mahasiswa"
           ? `<div>
@@ -699,29 +764,20 @@
               <span class="badge-soft">${escapeHtml(row.category)}</span>
               <div class="row-muted">${escapeHtml(row.context)}</div>
             </div>`;
-        const lastColumn = monitorType === "mahasiswa"
+        const checkinColumn = monitorType === "mahasiswa"
           ? `<div>
               <span class="badge-soft ${row.checked_in ? "good" : ""}">${row.checked_in ? "Sudah check-in" : "Belum check-in"}</span>
               <div class="row-muted">${escapeHtml(row.checked_in_at_label)}</div>
-              <div class="signature-preview">
-                <span class="signature-preview-label">${escapeHtml(row.signature_label || "Tanda tangan")}</span>
-                ${row.has_signature && row.signature_url
-                  ? `<a href="${escapeHtml(row.signature_url)}" target="_blank" rel="noopener" title="Buka ${escapeHtml(row.signature_label || "tanda tangan")}"><img src="${escapeHtml(row.signature_url)}" alt="${escapeHtml(row.signature_label || "Tanda tangan")} ${escapeHtml(row.name)}"></a>`
-                  : `<span class="signature-empty">Belum ada</span>`}
-              </div>
             </div>`
-          : `<div class="signature-preview">
-              <span class="signature-preview-label">${escapeHtml(row.signature_label || "Tanda tangan")}</span>
-              ${row.has_signature && row.signature_url
-                ? `<a href="${escapeHtml(row.signature_url)}" target="_blank" rel="noopener" title="Buka ${escapeHtml(row.signature_label || "tanda tangan")}"><img src="${escapeHtml(row.signature_url)}" alt="${escapeHtml(row.signature_label || "Tanda tangan")} ${escapeHtml(row.name)}"></a>`
-                : `<span class="signature-empty">Belum ada</span>`}
-            </div>`;
+          : "";
+        const signatureColumn = signaturePreviewHtml(row);
         const meta = monitorType === "mahasiswa"
           ? `${row.sequence_number || "-"} / ${escapeHtml(row.nim || "-")}`
           : escapeHtml(row.context || "-");
+        const rowClass = monitorType === "mahasiswa" ? "is-student" : "is-private";
 
         return `
-          <div class="monitor-row ${monitorType !== "mahasiswa" ? "is-private" : ""} ${changed.has(row.id) ? "is-new" : ""}">
+          <div class="monitor-row ${rowClass} ${changed.has(row.id) ? "is-new" : ""}">
             <div class="row-name">
               <strong>${escapeHtml(row.name)}</strong>
               <small class="d-block">${meta}</small>
@@ -731,7 +787,8 @@
               <span class="badge-soft ${statusClass(row.rsvp_status)}">${escapeHtml(row.rsvp_label)}</span>
               <div class="row-muted">${escapeHtml(row.responded_at_label)}</div>
             </div>
-            ${lastColumn}
+            ${checkinColumn}
+            ${signatureColumn}
           </div>
         `;
       };
@@ -766,6 +823,13 @@
                 </div>
               </div>
               <div class="program-section-body">
+                <div class="monitor-columns-head is-student" aria-hidden="true">
+                  <span>Nama</span>
+                  <span>Program studi</span>
+                  <span>Konfirmasi</span>
+                  <span>Check-in</span>
+                  <span>Tanda tangan PNG</span>
+                </div>
                 ${group.rows.map((row) => rowHtml(row, changed)).join("")}
               </div>
             </section>
