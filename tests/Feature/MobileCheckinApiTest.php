@@ -258,7 +258,7 @@ class MobileCheckinApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('result.status', 'accepted')
             ->assertJsonPath('result.participant.nim', $participant->nim)
-            ->assertJsonPath('summary.checked_in', 1)
+            ->assertJsonMissingPath('summary')
             ->assertJsonMissingPath('checked_in');
 
         $this->withToken($token)

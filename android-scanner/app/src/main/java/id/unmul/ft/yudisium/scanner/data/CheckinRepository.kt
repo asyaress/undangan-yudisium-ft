@@ -207,6 +207,7 @@ class CheckinRepository(
         database.pendingScans().findUnsyncedCode(periodId, code)?.let { return it.clientScanId }
 
         val match = matchParticipant(periodId, code)
+        val wasCheckedIn = match?.checkedIn == true
         val now = Instant.now().toString()
         val claimed = if (match != null) {
             database.participants().claimCheckin(match.id, now, "mobile")
@@ -218,6 +219,9 @@ class CheckinRepository(
             claimed == 0 -> "duplicate"
             else -> "accepted"
         }
+        val awaitingFirstSync = match?.id?.let { database.pendingScans().hasUnsyncedAccepted(periodId, it) } == true
+        val skipServerSync = status == "duplicate" && wasCheckedIn && !awaitingFirstSync
+        val pending = !skipServerSync && status != "not_found"
         val scan = PendingScanEntity(
             clientScanId = UUID.randomUUID().toString(),
             periodId = periodId,
@@ -227,8 +231,8 @@ class CheckinRepository(
             participantId = match?.id,
             participantName = match?.name,
             participantNim = match?.nim,
-            message = messageFor(status, pending = true),
-            synced = false,
+            message = messageFor(status, pending = pending),
+            synced = skipServerSync,
             lastError = null,
         )
         database.pendingScans().insert(scan)
@@ -316,7 +320,7 @@ class CheckinRepository(
     private fun messageFor(status: String, pending: Boolean, fallback: String? = null): String {
         return when (status) {
             "accepted" -> if (pending) "Tersimpan di HP. Akan dikirim saat online." else "Check-in tersimpan."
-            "duplicate" -> "Mahasiswa ini sudah check-in. Tidak dihitung dua kali."
+            "duplicate" -> if (pending) "Sudah check-in." else "Sudah check-in sebelumnya."
             "not_found" -> "QR atau NIM tidak ada di data event ini."
             else -> fallback ?: "Tidak bisa memproses scan."
         }

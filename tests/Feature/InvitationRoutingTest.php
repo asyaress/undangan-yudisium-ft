@@ -7,6 +7,7 @@ use App\Models\InvitationRecipient;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class InvitationRoutingTest extends TestCase
@@ -377,6 +378,83 @@ class InvitationRoutingTest extends TestCase
                 'to' => $category->slug,
                 'ref' => $recipient->token,
             ]));
+    }
+
+    public function test_recipient_lookup_uses_a_light_query_budget(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'tenaga-cs', InvitationCategory::ACCESS_NAME, true);
+        $this->recipient($period, $category, ['name' => 'Cleaning Service Satu', 'position' => 'CS']);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->post(route('undangan.verify-recipient'), [
+            'event_id' => $period->id,
+            'category_slug' => $category->slug,
+            'lookup_value' => 'Cleaning Service Satu',
+        ])->assertRedirect();
+
+        $this->assertLessThanOrEqual(
+            12,
+            count(DB::getQueryLog()),
+            'Lookup penerima (CS/keamanan/dll.) seharusnya tidak memuat refresh jabatan berat.',
+        );
+    }
+
+    public function test_student_nim_verify_uses_a_light_query_budget(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->post(route('undangan.verify-nim'), [
+            'event_id' => $period->id,
+            'category_slug' => $category->slug,
+            'nim' => $participant->nim,
+        ])->assertRedirect();
+
+        $this->assertLessThanOrEqual(
+            10,
+            count(DB::getQueryLog()),
+            'Verifikasi NIM mahasiswa seharusnya ringan (tanpa muat semua event).',
+        );
+    }
+
+    public function test_student_gate_page_does_not_load_all_published_events(): void
+    {
+        $period = $this->period();
+        $other = YudisiumPeriod::query()->create([
+            'name' => 'Event Lain Uji',
+            'slug' => 'event-lain-uji',
+            'event_year' => 2025,
+            'event_date' => '2025-06-18',
+            'location' => 'FT UNMUL',
+            'is_active' => false,
+            'is_published' => true,
+        ]);
+        $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->get('/?event='.$period->slug.'&to=yudisiawan')
+            ->assertOk()
+            ->assertSee('NIM Mahasiswa');
+
+        $periodQueries = collect(DB::getQueryLog())->filter(function (array $entry) use ($other) {
+            return str_contains($entry['query'], 'yudisium_periods')
+                && str_contains($entry['query'], (string) $other->id);
+        });
+
+        $this->assertCount(
+            0,
+            $periodQueries,
+            'Halaman gate mahasiswa tidak perlu memuat daftar lengkap event arsip.',
+        );
     }
 
     public function test_nip_recipient_attending_requires_signature(): void

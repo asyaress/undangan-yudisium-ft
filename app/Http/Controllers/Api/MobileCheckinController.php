@@ -65,7 +65,6 @@ class MobileCheckinController extends Controller
             'ok' => true,
             'server_time' => now()->toIso8601String(),
             'result' => $this->syncOne($request, $period, $scan, $deviceName),
-            'summary' => $this->desk->summary($period),
         ]);
     }
 

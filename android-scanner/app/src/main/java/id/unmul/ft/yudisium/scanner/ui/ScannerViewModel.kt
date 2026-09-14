@@ -183,7 +183,8 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
         syncJob = viewModelScope.launch {
             while (isActive) {
                 runCatching { repository.sync(session.periodId) }
-                delay(15_000)
+                val pending = _uiState.value.pendingCount
+                delay(if (pending > 0) 3_000L else 12_000L)
             }
         }
     }

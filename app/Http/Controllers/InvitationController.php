@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\InvitationCategory;
 use App\Models\InvitationRecipient;
+use App\Models\InvitationRecipientRole;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
 use App\Services\RecipientDirectory;
@@ -16,26 +17,14 @@ class InvitationController extends Controller
 {
     public function show(Request $request, ?string $slug = null): View|RedirectResponse
     {
-        $events = YudisiumPeriod::query()
-            ->where('is_published', true)
-            ->withCount('participants')
-            ->withCount([
-                'participants as checked_in_participants_count' => fn ($query) => $query->whereNotNull('checked_in_at'),
-            ])
-            ->withCount('recipients')
-            ->orderByDesc('event_year')
-            ->orderByDesc('event_date')
-            ->orderByDesc('id')
-            ->get()
-            ->reject(fn (YudisiumPeriod $event) => $event->isLegacyPeriodTwo())
-            ->values();
-
         $hasInvitationContext = $slug !== null
             || $request->filled('event')
             || $request->filled('to')
             || $request->filled('ref');
 
         if (! $hasInvitationContext) {
+            $events = $this->publishedEventsForArchive();
+
             $activeEvent = $events->firstWhere('is_active', true) ?: $events->first();
 
             return view('pages.invitation', [
@@ -116,7 +105,7 @@ class InvitationController extends Controller
 
         return view('pages.invitation', [
             'mode' => 'invitation',
-            'events' => $events,
+            'events' => collect([$event]),
             'activeEvent' => $event,
             'categories' => $categories,
             'selectedCategory' => $selectedCategory,
@@ -164,7 +153,7 @@ class InvitationController extends Controller
         $participant = YudisiumParticipant::query()
             ->where('period_id', $event->id)
             ->where('nim', trim($data['nim']))
-            ->first();
+            ->first(['id', 'invitation_token']);
 
         if (! $participant) {
             return redirect()
@@ -216,24 +205,27 @@ class InvitationController extends Controller
                 ->with('error', 'Masukkan NIP dengan angka.');
         }
 
+        $roleRecipientIds = InvitationRecipientRole::query()
+            ->where('category_id', $category->id)
+            ->pluck('recipient_id');
+
         $query = InvitationRecipient::query()
             ->where('period_id', $event->id)
-            ->where(function ($inner) use ($category) {
-                $inner->where('category_id', $category->id)
-                    ->orWhereHas('roles', fn ($roles) => $roles->where('category_id', $category->id));
+            ->where(function ($inner) use ($category, $roleRecipientIds) {
+                $inner->where('category_id', $category->id);
+                if ($roleRecipientIds->isNotEmpty()) {
+                    $inner->orWhereIn('id', $roleRecipientIds);
+                }
             });
 
         if ($category->usesNipAccess()) {
             $query->where('identifier', $lookupValue);
         } else {
-            $normalizedName = Str::lower($lookupValue);
-            $query->where(function ($inner) use ($normalizedName) {
-                $inner->whereRaw('LOWER(name) = ?', [$normalizedName])
-                    ->orWhereRaw('LOWER(display_name) = ?', [$normalizedName]);
-            });
+            $normalizedName = InvitationRecipient::normalizeLookupName($lookupValue);
+            $query->where('name_lookup_key', $normalizedName);
         }
 
-        $matches = $query->limit(2)->get();
+        $matches = $query->limit(2)->get(['id', 'token']);
 
         if ($matches->isEmpty()) {
             $label = $category->usesNipAccess() ? 'NIP' : 'nama';
@@ -253,10 +245,14 @@ class InvitationController extends Controller
                 ->with('error', $label.' ditemukan lebih dari satu. Silakan hubungi panitia untuk membuka undangan yang sesuai.');
         }
 
-        $recipient = app(RecipientDirectory::class)->refreshCanonicalRoles($matches->first());
+        $recipient = $matches->first();
 
         return redirect()
-            ->to($recipient->invitationUrl())
+            ->to(route('home', [
+                'event' => $event->slug,
+                'to' => $category->slug,
+                'ref' => $recipient->token,
+            ]))
             ->with('success', 'Data berhasil diverifikasi. Silakan lanjut membaca undangan dan isi konfirmasi kehadiran.');
     }
 
@@ -349,7 +345,6 @@ class InvitationController extends Controller
         }
 
         $participant = YudisiumParticipant::query()
-            ->with(['period', 'studyProgram'])
             ->where('period_id', $event->id)
             ->where('invitation_token', $token)
             ->first();
@@ -403,6 +398,26 @@ class InvitationController extends Controller
             ->where('period_id', $event->id)
             ->orderBy('sort_order')
             ->orderBy('id');
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, YudisiumPeriod>
+     */
+    private function publishedEventsForArchive()
+    {
+        return YudisiumPeriod::query()
+            ->where('is_published', true)
+            ->withCount('participants')
+            ->withCount([
+                'participants as checked_in_participants_count' => fn ($query) => $query->whereNotNull('checked_in_at'),
+            ])
+            ->withCount('recipients')
+            ->orderByDesc('event_year')
+            ->orderByDesc('event_date')
+            ->orderByDesc('id')
+            ->get()
+            ->reject(fn (YudisiumPeriod $event) => $event->isLegacyPeriodTwo())
+            ->values();
     }
 
     private function invitationUrl(YudisiumPeriod $event, InvitationCategory $category): string

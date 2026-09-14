@@ -17,6 +17,7 @@ class InvitationRecipient extends Model
         'salutation',
         'name',
         'display_name',
+        'name_lookup_key',
         'email',
         'phone',
         'context_note',
@@ -46,6 +47,7 @@ class InvitationRecipient extends Model
 
         static::saving(function (self $recipient): void {
             $recipient->display_name = $recipient->name;
+            $recipient->name_lookup_key = self::normalizeLookupName((string) $recipient->name);
         });
 
         static::created(function (self $recipient): void {
@@ -197,5 +199,12 @@ class InvitationRecipient extends Model
         } while (static::query()->where('token', $token)->exists());
 
         return $token;
+    }
+
+    public static function normalizeLookupName(string $value): ?string
+    {
+        $normalized = Str::lower(trim(preg_replace('/\s+/', ' ', $value)));
+
+        return $normalized === '' ? null : $normalized;
     }
 }

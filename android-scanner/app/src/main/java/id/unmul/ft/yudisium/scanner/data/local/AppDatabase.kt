@@ -118,6 +118,11 @@ interface PendingScanDao {
     @Query("SELECT participantId FROM pending_scans WHERE periodId = :periodId AND synced = 0 AND localStatus = 'accepted' AND participantId IS NOT NULL")
     suspend fun unsyncedAcceptedIds(periodId: Int): List<Int>
 
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM pending_scans WHERE periodId = :periodId AND participantId = :participantId AND synced = 0 AND localStatus = 'accepted')",
+    )
+    suspend fun hasUnsyncedAccepted(periodId: Int, participantId: Int): Boolean
+
     @Query("SELECT * FROM pending_scans WHERE periodId = :periodId AND synced = 0 ORDER BY scannedAt ASC")
     suspend fun unsynced(periodId: Int): List<PendingScanEntity>
 

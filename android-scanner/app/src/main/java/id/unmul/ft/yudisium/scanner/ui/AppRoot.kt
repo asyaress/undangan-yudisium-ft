@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -119,6 +120,13 @@ fun AppRoot(
     onDismissResult: () -> Unit,
     onDismissNotice: () -> Unit,
 ) {
+    BackHandler(enabled = state.result != null) {
+        onDismissResult()
+    }
+    BackHandler(enabled = state.result == null && state.session.periodId != 0) {
+        onLeaveEvent()
+    }
+
     when (state.session.periodId) {
         0 -> EventsScreen(state, onRefreshEvents, onOpenEvent, onClearLocalData, onDismissNotice)
         else -> ScanScreen(state, onScan, onSync, onLeaveEvent, onDismissResult)
@@ -690,7 +698,7 @@ private fun ScanBottomDock(
         ) {
             TextAction("‹ Ganti event", onLeaveEvent, color = Accent)
             Text(
-                if (state.pendingCount > 0) "Sync otomatis aktif" else "Auto-sync ~15 detik",
+                if (state.pendingCount > 0) "Sync otomatis aktif (~3 detik)" else "Auto-sync ~12 detik",
                 style = MaterialTheme.typography.labelSmall,
                 color = Label,
             )
@@ -841,7 +849,7 @@ private fun ResultSheet(result: LocalScanResult, onDismiss: () -> Unit, modifier
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(top = 4.dp),
         )
-        if (result.message.isNotBlank() && result.nim != null) {
+        if (result.status != "duplicate" && result.message.isNotBlank() && result.nim != null) {
             Text(result.message, color = Label, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
         }
         Spacer(Modifier.height(18.dp))
