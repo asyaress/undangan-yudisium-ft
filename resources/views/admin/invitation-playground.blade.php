@@ -240,22 +240,6 @@
             line-height: 1.45;
         }
 
-        .formal-cover-guest.has-roles {
-            margin-bottom: 8px;
-        }
-
-        .formal-cover-role {
-            margin: 0 0 6px;
-            color: #667085;
-            font-size: clamp(13px, 2.8vw, 15px);
-            font-weight: 650;
-            line-height: 1.4;
-        }
-
-        .formal-cover-role:last-of-type {
-            margin-bottom: 22px;
-        }
-
         .formal-open-btn {
             border: 0;
             border-radius: 999px;
@@ -1886,12 +1870,7 @@
             <h2>Yudisium</h2>
             <p>{{ $category->cover_text ?: 'Fakultas Teknik Universitas Mulawarman mengundang kehadiran pada prosesi yudisium.' }}</p>
             <span class="formal-cover-guest-label">Kepada Yth.</span>
-            <p class="formal-cover-guest{{ $recipient && $recipient->listedPositions() ? ' has-roles' : '' }}">{{ $guestName }}</p>
-            @if ($recipient)
-                @foreach ($recipient->listedPositions() as $position)
-                    <p class="formal-cover-role">{{ $position }}</p>
-                @endforeach
-            @endif
+            <p class="formal-cover-guest">{{ $guestName }}</p>
             <button class="formal-open-btn" type="button" id="formalOpenButton">Buka Undangan</button>
         </div>
     </section>
