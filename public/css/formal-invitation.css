@@ -1732,4 +1732,88 @@
                     padding: 18px 10px;
                 }
             }
-    </style>
+
+        .ui-spinner {
+            width: 28px;
+            height: 28px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #e85d04;
+            border-radius: 50%;
+            animation: ui-spin 0.75s linear infinite;
+        }
+
+        @keyframes ui-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .ui-load-state {
+            display: grid;
+            justify-items: center;
+            gap: 10px;
+            padding: 24px 12px;
+            color: #667085;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .ui-load-state--error {
+            color: #b42318;
+        }
+
+        .ui-load-retry {
+            border: 0;
+            background: none;
+            color: #e85d04;
+            font: inherit;
+            font-weight: 700;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .student-qr-frame[data-qr-state="ready"] [data-qr-loading],
+        .student-qr-frame[data-qr-state="ready"] [data-qr-error] {
+            display: none;
+        }
+
+        .student-qr-frame[data-qr-state="ready"] .student-qr-canvas {
+            display: block;
+        }
+
+        .student-qr-frame[data-qr-state="error"] [data-qr-loading] {
+            display: none;
+        }
+
+        .student-qr-frame[data-qr-state="error"] [data-qr-error] {
+            display: grid;
+        }
+
+        .playground-submit.is-loading,
+        .student-qr-download.is-loading {
+            position: relative;
+            color: transparent !important;
+            pointer-events: none;
+        }
+
+        .playground-submit.is-loading::after,
+        .student-qr-download.is-loading::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(232, 93, 4, 0.25);
+            border-top-color: #e85d04;
+            border-radius: 50%;
+            animation: ui-spin 0.75s linear infinite;
+        }
+
+        body.is-ui-busy {
+            cursor: progress;
+        }
+
+        body.is-ui-busy .playground-submit:not(.is-loading) {
+            opacity: 0.72;
+        }

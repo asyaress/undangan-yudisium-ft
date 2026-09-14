@@ -233,6 +233,8 @@ var stage = document.getElementById('formalPreviewStage');
             }
 
             function openTutorial(customSteps, options) {
+                if (!tutorial || !tutorialCard) return;
+
                 options = options || {};
                 tutorialSteps = customSteps || defaultTutorialSteps;
                 tutorialFinalLabel = options.finalLabel || 'Mulai baca';
@@ -292,17 +294,21 @@ var stage = document.getElementById('formalPreviewStage');
                 });
             }
 
-            tutorialNext.addEventListener('click', function () {
-                if (tutorialIndex >= tutorialSteps.length - 1) {
-                    closeTutorial();
-                    return;
-                }
+            if (tutorialNext) {
+                tutorialNext.addEventListener('click', function () {
+                    if (tutorialIndex >= tutorialSteps.length - 1) {
+                        closeTutorial();
+                        return;
+                    }
 
-                tutorialIndex += 1;
-                showTutorialStep();
-            });
+                    tutorialIndex += 1;
+                    showTutorialStep();
+                });
+            }
 
-            tutorialSkip.addEventListener('click', closeTutorial);
+            if (tutorialSkip) {
+                tutorialSkip.addEventListener('click', closeTutorial);
+            }
 
             window.addEventListener('resize', function () {
                 if (tutorial.classList.contains('is-visible') && highlightedTarget) {
@@ -464,27 +470,90 @@ var stage = document.getElementById('formalPreviewStage');
                 downloadCanvas(canvas, fileName);
             }
 
-            document.querySelectorAll('[data-student-qr-card]').forEach(function (card) {
-                var qrCanvas = card.querySelector('[data-qr-canvas]');
-                if (!qrCanvas || !window.QRCode) return;
+            function setQrFrameState(frame, state) {
+                if (!frame) return;
+                frame.dataset.qrState = state;
+            }
 
-                window.QRCode.toCanvas(qrCanvas, card.dataset.qrPayload || '', {
-                    errorCorrectionLevel: 'M',
-                    margin: 2,
-                    scale: 8,
-                    color: {
-                        dark: '#111827',
-                        light: '#ffffff'
+            function whenQrLibraryReady(onReady, onTimeout) {
+                if (window.QRCode) {
+                    onReady();
+                    return;
+                }
+
+                var attempts = 0;
+                var timer = window.setInterval(function () {
+                    attempts += 1;
+                    if (window.QRCode) {
+                        window.clearInterval(timer);
+                        onReady();
+                    } else if (attempts >= 80) {
+                        window.clearInterval(timer);
+                        if (onTimeout) onTimeout();
                     }
-                });
+                }, 100);
+            }
+
+            function renderStudentQrCard(card) {
+                var frame = card.querySelector('[data-qr-frame]');
+                var qrCanvas = card.querySelector('[data-qr-canvas]');
+                var retryButton = card.querySelector('[data-qr-retry]');
+
+                if (!frame || !qrCanvas) return;
+
+                var drawQr = function () {
+                    setQrFrameState(frame, 'loading');
+                    qrCanvas.hidden = true;
+
+                    whenQrLibraryReady(function () {
+                        var payload = card.dataset.qrPayload || '';
+                        var options = {
+                            errorCorrectionLevel: 'M',
+                            margin: 2,
+                            scale: 6,
+                            width: 220,
+                            color: {
+                                dark: '#111827',
+                                light: '#ffffff'
+                            }
+                        };
+
+                        try {
+                            var result = window.QRCode.toCanvas(qrCanvas, payload, options);
+                            Promise.resolve(result).then(function () {
+                                qrCanvas.hidden = false;
+                                setQrFrameState(frame, 'ready');
+                            }).catch(function () {
+                                setQrFrameState(frame, 'error');
+                            });
+                        } catch (error) {
+                            setQrFrameState(frame, 'error');
+                        }
+                    }, function () {
+                        setQrFrameState(frame, 'error');
+                    });
+                };
+
+                drawQr();
+
+                if (retryButton) {
+                    retryButton.addEventListener('click', drawQr);
+                }
 
                 var button = card.querySelector('[data-download-qr-card]');
                 if (button) {
                     button.addEventListener('click', function () {
-                        drawQrCard(card, qrCanvas, button.dataset.fileName || 'qr-buku-tamu.png');
+                        if (!qrCanvas.width) return;
+                        button.classList.add('is-loading');
+                        drawQrCard(card, qrCanvas, button.dataset.fileName || 'qr-buku-tamu.png')
+                            .finally(function () {
+                                button.classList.remove('is-loading');
+                            });
                     });
                 }
-            });
+            }
+
+            document.querySelectorAll('[data-student-qr-card]').forEach(renderStudentQrCard);
 
             if (shouldShowStudentQrGuide) {
                 window.setTimeout(openStudentQrGuide, 720);
@@ -813,8 +882,10 @@ var stage = document.getElementById('formalPreviewStage');
                     if (submitButton && !submitButton.disabled) {
                         submitButton.disabled = true;
                         submitButton.setAttribute('aria-busy', 'true');
+                        submitButton.classList.add('is-loading');
                         submitButton.dataset.originalLabel = submitButton.textContent || '';
                         submitButton.textContent = 'Menyimpan...';
+                        document.body.classList.add('is-ui-busy');
                     }
                 });
 

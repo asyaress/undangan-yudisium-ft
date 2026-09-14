@@ -86,6 +86,44 @@
     color: #1c1c1e;
   }
 
+  .ui-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #f5530d;
+    border-radius: 50%;
+    animation: invitation-spin 0.75s linear infinite;
+  }
+
+  @keyframes invitation-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .btn.is-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+  }
+
+  .btn.is-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(245, 83, 13, 0.25);
+    border-top-color: #f5530d;
+    border-radius: 50%;
+    animation: invitation-spin 0.75s linear infinite;
+  }
+
+  body.is-ui-busy {
+    cursor: progress;
+  }
+
   .cover .btn {
     display: inline-flex;
     align-items: center;

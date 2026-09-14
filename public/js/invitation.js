@@ -215,6 +215,7 @@ const openButton = document.getElementById("openInvitation");
           button.textContent = "Memproses...";
           button.disabled = true;
           button.classList.add("is-loading");
+          document.body.classList.add("is-ui-busy");
         }, 0);
       });
     });

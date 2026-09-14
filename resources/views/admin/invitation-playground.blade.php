@@ -508,13 +508,21 @@
                             </div>
                         </div>
                         <div class="student-qr-panel">
-                            <div class="student-qr-frame">
+                            <div class="student-qr-frame" data-qr-frame data-qr-state="loading">
+                                <div class="ui-load-state" data-qr-loading aria-live="polite">
+                                    <span class="ui-spinner" aria-hidden="true"></span>
+                                    <span class="ui-load-label">Memuat QR...</span>
+                                </div>
+                                <p class="ui-load-state ui-load-state--error" data-qr-error hidden>
+                                    QR belum tampil. <button type="button" class="ui-load-retry" data-qr-retry>Coba lagi</button>
+                                </p>
                                 <canvas
                                     class="student-qr-canvas"
                                     width="220"
                                     height="220"
                                     aria-label="QR buku tamu mahasiswa"
-                                    data-qr-canvas></canvas>
+                                    data-qr-canvas
+                                    hidden></canvas>
                             </div>
                             <span class="student-qr-code">Kode: {{ strtoupper(substr($participant->invitation_token, -8)) }}</span>
                             <button
@@ -556,5 +564,5 @@
         <script src="{{ asset('vendor/qrcode/qrcode.min.js') }}" defer></script>
     @endif
     <script type="application/json" id="formal-invitation-boot">@json($formalInvitationBoot)</script>
-    <script src="{{ asset('js/formal-invitation.js') }}?v=2" defer></script>
+    <script src="{{ asset('js/formal-invitation.js') }}?v=3" defer></script>
 @endpush

@@ -542,7 +542,7 @@ class InvitationController extends Controller
     private function formalInvitationPreloadLinkHeader(): string
     {
         $css = '<'.asset('css/formal-invitation.css').'?v=3>; rel=preload; as=style';
-        $js = '<'.asset('js/formal-invitation.js').'?v=2>; rel=preload; as=script';
+        $js = '<'.asset('js/formal-invitation.js').'?v=3>; rel=preload; as=script';
 
         return $css.', '.$js;
     }
