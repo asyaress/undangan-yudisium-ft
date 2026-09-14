@@ -4,10 +4,10 @@
         ?? $category->recipient_label
         ?? 'Tamu Undangan';
     $recipientSalutation = trim((string) $recipient?->salutation);
-    $tutorialGreeting = $recipientSalutation
-        ?: ($participant ? ($category->recipient_label ?: 'Yudisiawan/Yudisiawati') : ($category->recipient_label ?: 'Tamu Undangan'));
-    $invitationGreeting = $recipientSalutation
-        ?: ($participant ? ($category->recipient_label ?: 'Yudisiawan/Yudisiawati') : ($category->recipient_label ?: 'Tamu Undangan'));
+    $tutorialGreeting = $recipient
+        ? $recipient->politeAddress()
+        : ($participant ? ($category->recipient_label ?: 'Yudisiawan/Yudisiawati') : ($category->recipient_label ?: 'Tamu Undangan'));
+    $invitationGreeting = $tutorialGreeting;
     $eventDateLabel = $period->event_date?->locale('id')->translatedFormat('l, d F Y') ?? 'Tanggal menunggu konfirmasi';
     $eventDateShort = $period->event_date?->locale('id')->translatedFormat('d F Y') ?? 'Tanggal menunggu konfirmasi';
     $eventTime = $period->event_time ?: '09.00 s/d Selesai';

@@ -172,6 +172,24 @@ class InvitationRecipient extends Model
             ->implode(' '));
     }
 
+    /** Sapaan untuk teks undangan/panduan (bukan label kategori seperti "Pejabat"). */
+    public function politeAddress(): string
+    {
+        $salutation = trim((string) $this->salutation);
+
+        if ($salutation !== '') {
+            return $salutation;
+        }
+
+        $name = trim((string) $this->name);
+
+        if ($name !== '') {
+            return $name;
+        }
+
+        return 'Bapak/Ibu/Saudara(i)';
+    }
+
     private static function newToken(): string
     {
         do {

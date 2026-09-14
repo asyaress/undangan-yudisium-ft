@@ -41,8 +41,8 @@
     $mapQuery = rawurlencode($eventLocation.' '.$eventAddress);
     $eventSubtitle = trim(($eventProgram !== '' ? $eventProgram : 'Program Sarjana').' Tahun '.$eventYear);
     $coverText = $selectedCategory?->cover_text ?: $eventSubtitle;
-    $tutorialGreeting = $recipient?->salutation ?: 'Bapak/Ibu/Saudara';
-    $invitationGreeting = $recipient?->salutation ?: 'Bapak/Ibu/Saudara(i)';
+    $tutorialGreeting = $recipient?->politeAddress() ?? 'Bapak/Ibu/Saudara';
+    $invitationGreeting = $recipient?->politeAddress() ?? 'Bapak/Ibu/Saudara(i)';
     $agendaItems = $activeEvent?->agenda_list ?? [];
     $eventNotes = $activeEvent?->event_note_list ?? [];
     $signatureCity = $activeEvent?->signature_city ?: 'Samarinda';
