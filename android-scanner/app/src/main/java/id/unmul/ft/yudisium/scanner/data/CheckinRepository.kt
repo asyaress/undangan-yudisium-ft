@@ -31,6 +31,12 @@ data class LocalScanResult(
     val pending: Boolean,
 )
 
+data class EventCacheStats(
+    val rosterDownloaded: Boolean,
+    val checkedIn: Int,
+    val localTotal: Int,
+)
+
 class CheckinRepository(
     private val sessionStore: SessionStore,
     private val database: AppDatabase,
@@ -152,6 +158,15 @@ class CheckinRepository(
     }
 
     suspend fun event(periodId: Int): EventEntity? = database.events().find(periodId)
+
+    suspend fun cacheStats(periodId: Int): EventCacheStats = withContext(io) {
+        val localTotal = database.participants().countTotal(periodId)
+        EventCacheStats(
+            rosterDownloaded = localTotal > 0,
+            checkedIn = database.participants().countCheckedIn(periodId),
+            localTotal = localTotal,
+        )
+    }
 
     fun apiError(error: Throwable): String {
         if (error is HttpException) {

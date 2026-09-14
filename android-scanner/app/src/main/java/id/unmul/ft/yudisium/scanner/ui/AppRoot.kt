@@ -2,6 +2,7 @@ package id.unmul.ft.yudisium.scanner.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -9,15 +10,13 @@ import android.os.VibratorManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -33,20 +32,30 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.OfflineBolt
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -60,18 +69,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import id.unmul.ft.yudisium.scanner.R
+import id.unmul.ft.yudisium.scanner.data.DEFAULT_SERVER_URL
+import id.unmul.ft.yudisium.scanner.data.EventCacheStats
 import id.unmul.ft.yudisium.scanner.data.LocalScanResult
 import id.unmul.ft.yudisium.scanner.data.local.EventEntity
 import id.unmul.ft.yudisium.scanner.scan.CameraPreview
@@ -80,17 +91,23 @@ import id.unmul.ft.yudisium.scanner.ui.theme.Bad
 import id.unmul.ft.yudisium.scanner.ui.theme.Canvas
 import id.unmul.ft.yudisium.scanner.ui.theme.EventOrange
 import id.unmul.ft.yudisium.scanner.ui.theme.Glass
-import id.unmul.ft.yudisium.scanner.ui.theme.Gold
 import id.unmul.ft.yudisium.scanner.ui.theme.Good
 import id.unmul.ft.yudisium.scanner.ui.theme.Ink
+import id.unmul.ft.yudisium.scanner.ui.theme.InverseOnSurface
+import id.unmul.ft.yudisium.scanner.ui.theme.InverseSurface
 import id.unmul.ft.yudisium.scanner.ui.theme.Label
+import id.unmul.ft.yudisium.scanner.ui.theme.OnPrimary
 import id.unmul.ft.yudisium.scanner.ui.theme.Panel
-import id.unmul.ft.yudisium.scanner.ui.theme.Pressable
 import id.unmul.ft.yudisium.scanner.ui.theme.PrimaryButton
+import id.unmul.ft.yudisium.scanner.ui.theme.PrimaryContainer
+import id.unmul.ft.yudisium.scanner.ui.theme.Pressable
+import id.unmul.ft.yudisium.scanner.ui.theme.SurfaceContainer
+import id.unmul.ft.yudisium.scanner.ui.theme.SurfaceContainerLow
 import id.unmul.ft.yudisium.scanner.ui.theme.TextAction
 import id.unmul.ft.yudisium.scanner.ui.theme.Warn
 import id.unmul.ft.yudisium.scanner.ui.theme.rememberAppLayout
 import id.unmul.ft.yudisium.scanner.ui.theme.rememberReduceMotion
+import androidx.compose.foundation.Image
 
 @Composable
 fun AppRoot(
@@ -103,11 +120,12 @@ fun AppRoot(
     onLeaveEvent: () -> Unit,
     onLogout: () -> Unit,
     onDismissResult: () -> Unit,
+    onDismissNotice: () -> Unit,
 ) {
     val session = state.session
     when {
-        session.token.isBlank() -> LoginScreen(state, onLogin)
-        session.periodId == 0 -> EventsScreen(state, onRefreshEvents, onOpenEvent, onLogout)
+        session.token.isBlank() -> LoginScreen(state, onLogin, onDismissNotice)
+        session.periodId == 0 -> EventsScreen(state, onRefreshEvents, onOpenEvent, onLogout, onDismissNotice)
         else -> ScanScreen(state, onScan, onSync, onLeaveEvent, onDismissResult)
     }
 }
@@ -116,10 +134,19 @@ fun AppRoot(
 private fun LoginScreen(
     state: ScanUiState,
     onLogin: (String, String) -> Unit,
+    onDismissNotice: () -> Unit,
 ) {
     val layout = rememberAppLayout()
     var email by remember { mutableStateOf(state.session.email) }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var dismissedError by remember { mutableStateOf(false) }
+    val host = remember { Uri.parse(DEFAULT_SERVER_URL).host ?: DEFAULT_SERVER_URL }
+
+    LaunchedEffect(state.notice) {
+        if (state.notice != null) dismissedError = false
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -130,48 +157,48 @@ private fun LoginScreen(
     ) {
         Column(
             modifier = Modifier
-                .align(Alignment.Center)
+                .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .widthIn(max = 440.dp)
+                .widthIn(max = layout.contentMax)
                 .padding(horizontal = layout.pagePad)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            EventBackdrop(height = layout.hero)
+            Spacer(Modifier.height(8.dp))
+            HeroBanner(height = layout.hero)
             Spacer(Modifier.height(16.dp))
             BrandIdentity(logo = layout.logo)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(12.dp))
             Text("Yudisium", style = MaterialTheme.typography.displaySmall)
-            Text("Check-in kehadiran", color = Label, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(18.dp))
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Panel),
-            ) {
-                Field(email, { email = it }, "Email", keyboardType = KeyboardType.Email)
-                Box(Modifier.fillMaxWidth().height(0.5.dp).padding(start = 16.dp).background(Color(0x147C7C80)))
-                Field(
-                    password,
-                    { password = it },
-                    "Password",
-                    password = true,
-                    imeAction = ImeAction.Done,
-                    onDone = { onLogin(email, password) },
-                )
-            }
-            state.notice?.let {
-                Spacer(Modifier.height(12.dp))
-                Text(it, color = Bad, style = MaterialTheme.typography.bodyMedium)
-            }
+            Text("Check-in kehadiran panitia", color = Label, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(8.dp))
+            ServerHostChip(host)
             Spacer(Modifier.height(16.dp))
-            PrimaryButton(
-                text = if (state.loading) "Masuk..." else "Masuk",
-                onClick = { onLogin(email, password) },
-                enabled = !state.loading,
-                modifier = Modifier.fillMaxWidth(),
+            if (state.notice != null && !dismissedError) {
+                ErrorBanner(state.notice, onDismiss = {
+                    dismissedError = true
+                    onDismissNotice()
+                })
+                Spacer(Modifier.height(12.dp))
+            }
+            GroupedCredentialCard(
+                email = email,
+                onEmailChange = { email = it },
+                password = password,
+                onPasswordChange = { password = it },
+                passwordVisible = passwordVisible,
+                onTogglePassword = { passwordVisible = !passwordVisible },
+                onSubmit = { onLogin(email, password) },
             )
+            Spacer(Modifier.height(16.dp))
+            LoginPrimaryButton(
+                loading = state.loading,
+                enabled = email.isNotBlank() && password.isNotBlank(),
+                onClick = { onLogin(email, password) },
+            )
+            Spacer(Modifier.height(14.dp))
+            OperationalFooterNote()
         }
     }
 }
@@ -182,134 +209,343 @@ private fun EventsScreen(
     onRefreshEvents: () -> Unit,
     onOpenEvent: (Int) -> Unit,
     onLogout: () -> Unit,
+    onDismissNotice: () -> Unit,
 ) {
     val layout = rememberAppLayout()
+    val active = state.events.filter { it.isActive }
+    val archives = state.events.filterNot { it.isActive }
+    val operator = state.session.name.ifBlank { state.session.email }
+    val anyOffline = state.eventStats.values.any { it.rosterDownloaded }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Canvas)
             .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = layout.pagePad),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .navigationBarsPadding(),
     ) {
-        Column(
-            Modifier
-                .fillMaxHeight()
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
                 .widthIn(max = layout.contentMax)
-                .fillMaxWidth(),
+                .align(Alignment.CenterHorizontally)
+                .padding(horizontal = layout.pagePad),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Spacer(Modifier.height(if (layout.landscape) 8.dp else 12.dp))
-            EventBackdrop(height = layout.hero)
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Pilih event", style = MaterialTheme.typography.displaySmall)
-                    Text(
-                        "Universitas Mulawarman",
-                        color = Accent,
-                        style = MaterialTheme.typography.labelLarge,
-                    )
-                    Text(
-                        state.session.name.ifBlank { state.session.email },
-                        color = Label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+            item {
+                Spacer(Modifier.height(8.dp))
+                OperatorPanel(operator, onRefreshEvents, onLogout, state.loading)
+            }
+            item {
+                EventsHeroBanner()
+            }
+            if (state.notice != null) {
+                item {
+                    ErrorBanner(state.notice, onDismiss = onDismissNotice)
                 }
-                TextAction("Perbarui", onRefreshEvents, enabled = !state.loading)
-                TextAction("Keluar", onLogout, color = Bad)
             }
-            Spacer(Modifier.height(12.dp))
-            state.notice?.let {
-                Text(it, color = Bad, style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(10.dp))
+            items(active, key = { it.id }) { event ->
+                ActiveEventCard(
+                    event = event,
+                    stats = state.eventStats[event.id],
+                    loading = state.loading,
+                    onOpen = { onOpenEvent(event.id) },
+                )
             }
-            if (layout.columns == 1) {
-                LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(state.events, key = { it.id }) { event ->
-                        EventCard(event, enabled = !state.loading) { onOpenEvent(event.id) }
+            if (anyOffline) {
+                item { OfflineRosterBanner(state.eventStats, state.events) }
+            }
+            if (archives.isNotEmpty()) {
+                item {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Arsip acara", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("Hanya baca", style = MaterialTheme.typography.labelSmall, color = Label)
                     }
                 }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    gridItems(state.events, key = { it.id }) { event ->
-                        EventCard(event, enabled = !state.loading) { onOpenEvent(event.id) }
+                items(archives, key = { it.id }) { event ->
+                    ArchiveEventCard(
+                        event = event,
+                        stats = state.eventStats[event.id],
+                        enabled = !state.loading,
+                        onOpen = { onOpenEvent(event.id) },
+                    )
+                }
+            }
+            item {
+                Pressable(onClick = onRefreshEvents, enabled = !state.loading, modifier = Modifier.fillMaxWidth()) { mod ->
+                    Row(
+                        mod
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Panel),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.Sync, contentDescription = null, tint = Ink, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.size(8.dp))
+                        Text("Perbarui daftar event", style = MaterialTheme.typography.titleMedium)
                     }
                 }
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
 }
 
 @Composable
-private fun EventCard(event: EventEntity, enabled: Boolean, onClick: () -> Unit) {
-    Pressable(onClick = onClick, enabled = enabled) { modifier ->
-        Column(
-            modifier
-                .fillMaxWidth()
-                .background(Panel, RoundedCornerShape(14.dp))
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-        ) {
-            Text(
-                if (event.isActive) "Aktif" else "Arsip",
-                style = MaterialTheme.typography.labelLarge,
-                color = if (event.isActive) EventOrange else Label,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(event.name, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                listOfNotNull(event.eventDate, event.location, "${event.participantCount} mahasiswa").joinToString(" · "),
-                color = Label,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
-    }
-}
-
-@Composable
-private fun EventBackdrop(height: Dp, modifier: Modifier = Modifier) {
-    Box(
-        modifier
+private fun OperatorPanel(operator: String, onRefresh: () -> Unit, onLogout: () -> Unit, loading: Boolean) {
+    Column(
+        Modifier
             .fillMaxWidth()
-            .height(height)
-            .clip(RoundedCornerShape(18.dp)),
+            .clip(RoundedCornerShape(14.dp))
+            .background(Panel)
+            .padding(14.dp),
+    ) {
+        Text(
+            "Universitas Mulawarman · Fakultas Teknik",
+            style = MaterialTheme.typography.labelSmall,
+            color = Label,
+        )
+        Text(
+            operator,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 4.dp),
+        )
+        Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pressable(onClick = onRefresh, enabled = !loading) { mod ->
+                Row(
+                    mod
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(SurfaceContainerLow)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Sync, contentDescription = null, tint = Ink, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.size(4.dp))
+                    Text("Perbarui", style = MaterialTheme.typography.labelLarge, color = Ink)
+                }
+            }
+            Pressable(onClick = onLogout, enabled = !loading) { mod ->
+                Row(
+                    mod
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(id.unmul.ft.yudisium.scanner.ui.theme.ErrorContainer)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Logout, contentDescription = null, tint = Bad, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.size(4.dp))
+                    Text("Keluar", style = MaterialTheme.typography.labelLarge, color = Bad)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventsHeroBanner() {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(112.dp)
+            .clip(RoundedCornerShape(14.dp)),
     ) {
         Image(
             painter = painterResource(R.drawable.backdrop_yudisium),
-            contentDescription = "Yudisium Fakultas Teknik Universitas Mulawarman",
+            contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
-            alignment = Alignment.Center,
         )
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(InverseSurface.copy(alpha = 0.45f))
+                .padding(14.dp),
+            contentAlignment = Alignment.BottomStart,
+        ) {
+            Column {
+                Text("Pilih acara", style = MaterialTheme.typography.labelSmall, color = EventOrange)
+                Text("Yudisium", style = MaterialTheme.typography.headlineSmall, color = Panel)
+            }
+        }
     }
 }
 
 @Composable
-private fun BrandIdentity(logo: Dp) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+private fun ActiveEventCard(
+    event: EventEntity,
+    stats: EventCacheStats?,
+    loading: Boolean,
+    onOpen: () -> Unit,
+) {
+    val total = stats?.localTotal?.takeIf { it > 0 } ?: event.participantCount
+    val checked = stats?.checkedIn ?: 0
+    val progress = if (total > 0) checked.toFloat() / total else 0f
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Panel),
     ) {
-        Image(
-            painter = painterResource(R.drawable.logo_unmul),
-            contentDescription = "Lambang Universitas Mulawarman",
-            modifier = Modifier.size(logo),
-            contentScale = ContentScale.Fit,
-        )
+        Column(Modifier.padding(14.dp)) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Aktif",
+                    Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(EventOrange.copy(alpha = 0.12f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = EventOrange,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                if (stats?.rosterDownloaded == true) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CloudDone, contentDescription = null, tint = Label, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.size(4.dp))
+                        Text("Roster siap", style = MaterialTheme.typography.labelSmall, color = Label)
+                    }
+                }
+            }
+            Text(
+                event.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+            EventMetaBlock(event)
+            if (total > 0) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(SurfaceContainerLow)
+                        .padding(10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Check-in terverifikasi", style = MaterialTheme.typography.labelSmall, color = Label)
+                    Text(
+                        "$checked/$total",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Ink,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(999.dp)),
+                    color = EventOrange,
+                    trackColor = SurfaceContainer,
+                )
+            }
+            Pressable(onClick = onOpen, enabled = !loading, modifier = Modifier.fillMaxWidth().padding(top = 14.dp)) { mod ->
+                Row(
+                    mod
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(PrimaryContainer),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Buka scanner check-in", color = OnPrimary, style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.size(6.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ArchiveEventCard(
+    event: EventEntity,
+    stats: EventCacheStats?,
+    enabled: Boolean,
+    onOpen: () -> Unit,
+) {
+    val total = stats?.localTotal?.takeIf { it > 0 } ?: event.participantCount
+    val checked = stats?.checkedIn ?: 0
+    Pressable(onClick = onOpen, enabled = enabled, modifier = Modifier.fillMaxWidth()) { mod ->
+        Column(
+            mod
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(Panel)
+                .padding(14.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    "Arsip",
+                    Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(SurfaceContainer)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Label,
+                )
+                if (total > 0) {
+                    Text("$checked/$total hadir", style = MaterialTheme.typography.labelSmall, color = Label)
+                }
+            }
+            Text(event.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            EventMetaBlock(event, compact = true)
+        }
+    }
+}
+
+@Composable
+private fun EventMetaBlock(event: EventEntity, compact: Boolean = false) {
+    Column(Modifier.padding(top = if (compact) 6.dp else 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        event.eventDate?.let { MetaLine(Icons.Default.CalendarToday, it) }
+        event.location?.let { MetaLine(Icons.Default.LocationOn, it) }
+        MetaLine(Icons.Default.Groups, "${event.participantCount} mahasiswa")
+    }
+}
+
+@Composable
+private fun MetaLine(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(icon, contentDescription = null, tint = Label, modifier = Modifier.size(17.dp))
+        Text(text, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun OfflineRosterBanner(stats: Map<Int, EventCacheStats>, events: List<EventEntity>) {
+    val downloaded = events.filter { stats[it.id]?.rosterDownloaded == true }
+    val totalStudents = downloaded.sumOf { stats[it.id]?.localTotal ?: 0 }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(SurfaceContainerLow)
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Icon(Icons.Default.OfflineBolt, contentDescription = null, tint = EventOrange, modifier = Modifier.size(22.dp))
         Column {
-            Text("Universitas Mulawarman", style = MaterialTheme.typography.titleMedium)
-            Text("Fakultas Teknik", color = Accent, style = MaterialTheme.typography.labelLarge)
+            Text("Mode offline", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Ink)
+            Text(
+                "Data $totalStudents mahasiswa tersimpan di HP. Scan tetap jalan saat sinyal terputus.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Label,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
@@ -341,122 +577,55 @@ private fun ScanScreen(
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         if (hasCamera) {
-            CameraPreview(
-                enabled = true,
-                modifier = Modifier.fillMaxSize(),
-                onBarcode = onScan,
-            )
+            CameraPreview(enabled = true, modifier = Modifier.fillMaxSize(), onBarcode = onScan)
         }
-        Column(
+        Box(
             Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(chromePad),
-        ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Glass)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
-                        painter = painterResource(R.drawable.logo_unmul),
-                        contentDescription = null,
-                        modifier = Modifier.size(if (layout.landscape) 22.dp else 26.dp),
-                        contentScale = ContentScale.Fit,
-                    )
-                    Spacer(Modifier.size(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            state.eventName.ifBlank { "Scan" },
-                            color = Ink,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text("${state.checkedIn}/${state.total} hadir", color = Label, style = MaterialTheme.typography.bodyMedium)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.42f), Color.Transparent, Color.Black.copy(alpha = 0.62f)),
+                    ),
+                ),
+        )
+        if (layout.landscape) {
+            Row(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    ScanCameraChrome(state, layout, onSync)
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        ScanViewfinder(layout.frame)
                     }
                 }
-                StatusChip(
-                    text = if (state.pendingCount > 0) "${state.pendingCount}" else "Siap",
-                    tone = if (state.pendingCount > 0) Warn else Ink,
-                    onClick = onSync,
-                )
+                ScanSidePanel(state, nim, { nim = it }, onScan, onLeaveEvent, onSync)
             }
-            state.notice?.let {
-                Spacer(Modifier.height(8.dp))
-                Text(it, color = Color.White, style = MaterialTheme.typography.bodyMedium)
-            }
-            Box(
+        } else {
+            Column(
                 Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center,
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(chromePad),
             ) {
-                Box(
-                    Modifier
-                        .size(layout.frame)
-                        .border(1.5.dp, Gold.copy(alpha = 0.92f), RoundedCornerShape(28.dp)),
-                )
-            }
-            if (layout.landscape) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    NimField(
-                        nim = nim,
-                        onNimChange = { nim = it },
-                        onSubmit = {
-                            if (nim.isNotBlank()) {
-                                onScan(nim.trim())
-                                nim = ""
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextAction("‹ Event", onLeaveEvent, color = Color.White.copy(alpha = 0.92f))
+                ScanCameraChrome(state, layout, onSync)
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    ScanViewfinder(layout.frame)
                 }
-            } else {
-                NimField(
-                    nim = nim,
-                    onNimChange = { nim = it },
-                    onSubmit = {
-                        if (nim.isNotBlank()) {
-                            onScan(nim.trim())
-                            nim = ""
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
+                NimSearchRow(nim, { nim = it }, onScan)
+                TextAction("‹ Event", onLeaveEvent, color = InverseOnSurface.copy(alpha = 0.92f))
+                Text(
+                    "Auto-sync aktif (~15 detik)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = InverseOnSurface.copy(alpha = 0.65f),
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                 )
-                TextAction("‹ Event", onLeaveEvent, color = Color.White.copy(alpha = 0.92f))
             }
         }
 
         AnimatedVisibility(
             visible = state.result != null,
-            enter = if (reduceMotion) {
-                fadeIn()
-            } else {
-                fadeIn(spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium)) +
-                    slideInVertically(spring(dampingRatio = 1f, stiffness = 380f)) { it }
-            },
-            exit = if (reduceMotion) {
-                fadeOut()
-            } else {
-                fadeOut(spring(dampingRatio = 1f, stiffness = Spring.StiffnessMedium)) +
-                    slideOutVertically(spring(dampingRatio = 1f, stiffness = 380f)) { it }
-            },
+            enter = if (reduceMotion) fadeIn() else fadeIn(spring(dampingRatio = 1f)) + slideInVertically(spring(stiffness = 380f)) { it / 2 },
+            exit = if (reduceMotion) fadeOut() else fadeOut(spring(dampingRatio = 1f)) + slideOutVertically(spring(stiffness = 380f)) { it / 2 },
             modifier = Modifier.fillMaxSize(),
         ) {
             state.result?.let { result ->
@@ -464,7 +633,7 @@ private fun ScanScreen(
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.28f))
+                            .background(Color.Black.copy(alpha = 0.32f))
                             .clickable { onDismissResult() },
                     )
                     ResultSheet(
@@ -482,78 +651,201 @@ private fun ScanScreen(
         if (state.loading) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.TopCenter).padding(top = 88.dp),
-                color = Accent,
+                color = EventOrange,
+                strokeWidth = 2.dp,
             )
         }
     }
 }
 
 @Composable
+private fun ScanCameraChrome(
+    state: ScanUiState,
+    layout: id.unmul.ft.yudisium.scanner.ui.theme.AppLayout,
+    onSync: () -> Unit,
+) {
+    Column {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Glass)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.logo_unmul),
+                    contentDescription = null,
+                    modifier = Modifier.size(if (layout.landscape) 22.dp else 26.dp),
+                    contentScale = ContentScale.Fit,
+                )
+                Spacer(Modifier.size(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        state.eventName.ifBlank { "Scan" },
+                        color = Ink,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text("${state.checkedIn}/${state.total} hadir", color = Label, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            if (state.pendingCount > 0) {
+                StatusChip(text = "${state.pendingCount}", tone = Warn, onClick = onSync)
+            } else {
+                StatusChip(text = "Siap", tone = InverseSurface, onClick = onSync)
+            }
+        }
+        state.notice?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, color = InverseOnSurface, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun ScanSidePanel(
+    state: ScanUiState,
+    nim: String,
+    onNimChange: (String) -> Unit,
+    onScan: (String) -> Unit,
+    onLeaveEvent: () -> Unit,
+    onSync: () -> Unit,
+) {
+    Column(
+        Modifier
+            .widthIn(min = 260.dp, max = 300.dp)
+            .fillMaxHeight()
+            .background(Glass)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column {
+            Text(state.eventName, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                "${state.checkedIn} / ${state.total} hadir",
+                style = MaterialTheme.typography.headlineSmall,
+                color = Ink,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            if (state.pendingCount > 0) {
+                Text("${state.pendingCount} menunggu kirim", style = MaterialTheme.typography.labelSmall, color = Warn, modifier = Modifier.padding(top = 6.dp))
+            }
+            HorizontalDivider(Modifier.padding(vertical = 12.dp), color = SurfaceContainer)
+            NimSearchRow(nim, onNimChange, onScan)
+        }
+        Column {
+            TextAction("‹ Event", onLeaveEvent, color = Accent)
+            Pressable(onClick = onSync, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { mod ->
+                Row(
+                    mod
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(EventOrange)
+                        .padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Icon(Icons.Default.Sync, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(6.dp))
+                    Text("Sinkron sekarang", color = OnPrimary, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NimSearchRow(nim: String, onNimChange: (String) -> Unit, onScan: (String) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = nim,
+            onValueChange = onNimChange,
+            placeholder = { Text("NIM jika QR rusak") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                if (nim.isNotBlank()) {
+                    onScan(nim.trim())
+                    onNimChange("")
+                }
+            }),
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(12.dp),
+            colors = scanFieldColors(),
+        )
+        Pressable(onClick = {
+            if (nim.isNotBlank()) {
+                onScan(nim.trim())
+                onNimChange("")
+            }
+        }) { mod ->
+            Row(
+                mod
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(EventOrange)
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(4.dp))
+                Text("Cari", color = OnPrimary, style = MaterialTheme.typography.labelLarge)
+            }
+        }
+    }
+}
+
+@Composable
 private fun ResultSheet(result: LocalScanResult, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
-    val tone = when (result.status) {
-        "accepted" -> Good
-        "duplicate" -> Warn
-        else -> Bad
+    val (tone, title, icon) = when (result.status) {
+        "accepted" -> Triple(
+            Good,
+            if (result.pending) "Hadir · menunggu" else "Hadir",
+            Icons.Default.Badge,
+        )
+        "duplicate" -> Triple(Warn, "Sudah check-in", Icons.Default.Sync)
+        else -> Triple(Bad, "Tidak ditemukan", Icons.Default.Search)
     }
     Column(
         modifier
-            .fillMaxWidth()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(Panel)
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-            ) {}
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
+            .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Box(
             Modifier
                 .align(Alignment.CenterHorizontally)
                 .size(width = 36.dp, height = 5.dp)
                 .clip(RoundedCornerShape(99.dp))
-                .background(Color(0x337C7C80)),
+                .background(SurfaceContainer),
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(icon, contentDescription = null, tint = tone, modifier = Modifier.size(20.dp))
+            Text(title, style = MaterialTheme.typography.labelLarge, color = tone, fontWeight = FontWeight.Bold)
+        }
         Text(
-            when (result.status) {
-                "accepted" -> if (result.pending) "Hadir · menunggu" else "Hadir"
-                "duplicate" -> "Sudah check-in"
-                else -> "Tidak ditemukan"
-            },
-            style = MaterialTheme.typography.labelLarge,
-            color = tone,
+            result.name ?: "QR tidak dikenali",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(top = 8.dp),
         )
-        Text(result.name ?: "QR tidak dikenali", style = MaterialTheme.typography.headlineSmall)
         Text(
             listOfNotNull(result.nim, result.program).joinToString(" · ").ifBlank { result.message },
             color = Label,
             style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(top = 4.dp),
         )
+        if (result.message.isNotBlank() && result.nim != null) {
+            Text(result.message, color = Label, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
+        }
         Spacer(Modifier.height(18.dp))
-        PrimaryButton("Lanjut", onDismiss, modifier = Modifier.fillMaxWidth())
+        PrimaryButton("Lanjut scan", onDismiss, modifier = Modifier.fillMaxWidth())
     }
-}
-
-@Composable
-private fun NimField(
-    nim: String,
-    onNimChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    OutlinedTextField(
-        value = nim,
-        onValueChange = onNimChange,
-        placeholder = { Text("NIM jika QR rusak") },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        colors = scanFieldColors(),
-    )
 }
 
 @Composable
@@ -561,39 +853,14 @@ private fun StatusChip(text: String, tone: Color, onClick: () -> Unit) {
     Pressable(onClick = onClick) { modifier ->
         Text(
             text,
-            color = Color.White,
+            color = OnPrimary,
             modifier = modifier
-                .background(tone.copy(alpha = 0.92f), RoundedCornerShape(999.dp))
-                .defaultMinSize(minWidth = 44.dp, minHeight = 44.dp)
+                .background(tone.copy(alpha = 0.94f), RoundedCornerShape(999.dp))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
         )
     }
-}
-
-@Composable
-private fun Field(
-    value: String,
-    onChange: (String) -> Unit,
-    label: String,
-    placeholder: String? = null,
-    password: Boolean = false,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    imeAction: ImeAction = ImeAction.Next,
-    onDone: (() -> Unit)? = null,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        label = { Text(label) },
-        placeholder = placeholder?.let { { Text(it) } },
-        singleLine = true,
-        visualTransformation = if (password) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
-        keyboardActions = KeyboardActions(onDone = { onDone?.invoke() }),
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(0.dp),
-        colors = fieldColors(),
-    )
 }
 
 @Composable
@@ -607,17 +874,6 @@ private fun scanFieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedContainerColor = Glass,
     focusedPlaceholderColor = Label,
     unfocusedPlaceholderColor = Label,
-)
-
-@Composable
-private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = Color.Transparent,
-    unfocusedBorderColor = Color.Transparent,
-    focusedLabelColor = Label,
-    unfocusedLabelColor = Label,
-    cursorColor = Ink,
-    focusedContainerColor = Color.Transparent,
-    unfocusedContainerColor = Color.Transparent,
 )
 
 private fun vibrateFor(context: android.content.Context, status: String) {

@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
                     onLeaveEvent = viewModel::leaveEvent,
                     onLogout = viewModel::logout,
                     onDismissResult = viewModel::dismissResult,
+                    onDismissNotice = viewModel::consumeNotice,
                 )
             }
         }

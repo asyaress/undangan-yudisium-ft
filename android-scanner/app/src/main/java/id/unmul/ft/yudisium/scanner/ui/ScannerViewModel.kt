@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import id.unmul.ft.yudisium.scanner.ScannerApp
 import id.unmul.ft.yudisium.scanner.data.DEFAULT_SERVER_URL
+import id.unmul.ft.yudisium.scanner.data.EventCacheStats
 import id.unmul.ft.yudisium.scanner.data.LocalScanResult
 import id.unmul.ft.yudisium.scanner.data.Session
 import id.unmul.ft.yudisium.scanner.data.local.EventEntity
@@ -29,6 +30,7 @@ data class ScanUiState(
     val loading: Boolean = false,
     val notice: String? = null,
     val result: LocalScanResult? = null,
+    val eventStats: Map<Int, EventCacheStats> = emptyMap(),
 )
 
 class ScannerViewModel(application: Application) : AndroidViewModel(application) {
@@ -61,7 +63,17 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
                         eventName = events.firstOrNull { it.id == state.session.periodId }?.name.orEmpty(),
                     )
                 }
+                refreshEventStats(events)
             }
+        }
+    }
+
+    private fun refreshEventStats(events: List<EventEntity> = _uiState.value.events) {
+        viewModelScope.launch {
+            val stats = events.associate { event ->
+                event.id to repository.cacheStats(event.id)
+            }
+            _uiState.update { it.copy(eventStats = stats) }
         }
     }
 
@@ -69,10 +81,14 @@ class ScannerViewModel(application: Application) : AndroidViewModel(application)
         repository.login(DEFAULT_SERVER_URL, email, password)
     }
 
-    fun refreshEvents() = runAction { repository.refreshEvents() }
+    fun refreshEvents() = runAction {
+        repository.refreshEvents()
+        refreshEventStats()
+    }
 
     fun openEvent(periodId: Int) = runAction {
         repository.downloadRoster(periodId)
+        refreshEventStats()
     }
 
     fun syncNow() = runAction {

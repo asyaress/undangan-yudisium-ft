@@ -33,27 +33,47 @@ import androidx.compose.ui.unit.sp
 import android.provider.Settings
 import kotlin.math.min
 
-val Canvas = Color(0xFFF2F2F7)
+val Canvas = Color(0xFFF5F5F7)
 val Ink = Color(0xFF1C1C1E)
 val Label = Color(0xFF8E8E93)
+val LabelVariant = Color(0xFF636366)
 val Accent = Color(0xFF1F7A3A)
+val PrimaryContainer = Color(0xFF1F7A3A)
+val OnPrimary = Color.White
+/** Aksen oranye FT — viewfinder, status aktif, antrian sync (bukan emas). */
 val EventOrange = Color(0xFFE85D04)
-val Gold = Color(0xFFC4A35A)
 val Good = Color(0xFF1F7A3A)
-val Warn = Color(0xFFB45309)
+val Warn = EventOrange
 val Bad = Color(0xFFB42318)
+val ErrorContainer = Color(0xFFFEE2E2)
+val OnErrorContainer = Color(0xFF991B1B)
 val Panel = Color(0xFFFFFFFF)
-val Glass = Color(0xE6F2F2F7)
+val SurfaceContainer = Color(0xFFEAEAEC)
+val SurfaceContainerLow = Color(0xFFF0F0F2)
+val Glass = Color(0xF5FFFFFF)
+val InverseSurface = Color(0xFF2C2C2E)
+val InverseOnSurface = Color(0xFFF2F2F7)
 
 private val system = FontFamily.SansSerif
 
 private val colors = lightColorScheme(
     primary = Accent,
-    onPrimary = Color.White,
+    onPrimary = OnPrimary,
+    primaryContainer = PrimaryContainer,
+    onPrimaryContainer = OnPrimary,
+    secondary = EventOrange,
+    secondaryContainer = EventOrange,
+    error = Bad,
+    errorContainer = ErrorContainer,
+    onErrorContainer = OnErrorContainer,
     background = Canvas,
     surface = Panel,
+    surfaceContainer = SurfaceContainer,
+    surfaceContainerLow = SurfaceContainerLow,
     onBackground = Ink,
     onSurface = Ink,
+    onSurfaceVariant = Label,
+    outline = Label,
 )
 
 private val type = Typography(
@@ -62,14 +82,14 @@ private val type = Typography(
         fontSize = 34.sp,
         fontWeight = FontWeight.Bold,
         letterSpacing = (-0.7).sp,
-        lineHeight = 38.sp,
+        lineHeight = 41.sp,
         color = Ink,
     ),
     headlineSmall = TextStyle(
         fontFamily = system,
         fontSize = 22.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.4).sp,
+        letterSpacing = (-0.33).sp,
         lineHeight = 28.sp,
         color = Ink,
     ),
@@ -81,13 +101,20 @@ private val type = Typography(
         lineHeight = 22.sp,
         color = Ink,
     ),
-    bodyLarge = TextStyle(fontFamily = system, fontSize = 17.sp, lineHeight = 24.sp, color = Ink),
-    bodyMedium = TextStyle(fontFamily = system, fontSize = 15.sp, lineHeight = 21.sp, color = Ink),
+    bodyLarge = TextStyle(fontFamily = system, fontSize = 17.sp, lineHeight = 22.sp, color = Ink),
+    bodyMedium = TextStyle(fontFamily = system, fontSize = 15.sp, lineHeight = 20.sp, color = Ink),
     labelLarge = TextStyle(
         fontFamily = system,
         fontSize = 13.sp,
         fontWeight = FontWeight.Medium,
         letterSpacing = 0.2.sp,
+        color = Label,
+    ),
+    labelSmall = TextStyle(
+        fontFamily = system,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.22.sp,
         color = Label,
     ),
 )
@@ -114,15 +141,15 @@ fun rememberAppLayout(): AppLayout {
     return AppLayout(
         compact = compact,
         landscape = landscape,
-        pagePad = if (compact) 20.dp else 28.dp,
-        contentMax = if (compact) 560.dp else 720.dp,
+        pagePad = if (compact) 16.dp else 24.dp,
+        contentMax = if (compact) 440.dp else 560.dp,
         logo = if (compact) 44.dp else 52.dp,
         hero = when {
             landscape -> 108.dp
             compact -> 156.dp
-            else -> 188.dp
+            else -> 172.dp
         },
-        frame = (if (landscape) min(height * 0.52f, 300f) else min(shortest * 0.58f, 280f)).dp,
+        frame = (if (landscape) min(height * 0.52f, 300f) else min(shortest * 0.62f, 270f)).dp,
         columns = if (width >= 840) 2 else 1,
     )
 }
@@ -155,13 +182,13 @@ fun Pressable(
     val reduceMotion = rememberReduceMotion()
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (!reduceMotion && pressed) 0.97f else 1f,
+        targetValue = if (!reduceMotion && pressed && enabled) 0.97f else 1f,
         animationSpec = spring(dampingRatio = 1f, stiffness = 900f),
         label = "press",
     )
     content(
         modifier
-            .graphicsLayer { this.scaleX = scale; this.scaleY = scale }
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = interaction,
@@ -173,15 +200,24 @@ fun Pressable(
 }
 
 @Composable
-fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun PrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    leading: (@Composable () -> Unit)? = null,
+) {
     Pressable(onClick = onClick, modifier = modifier, enabled = enabled) { pressModifier ->
         Text(
             text = text,
-            color = Color.White,
+            color = OnPrimary,
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
             modifier = pressModifier
-                .background(if (enabled) Accent else Accent.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
+                .background(
+                    if (enabled) PrimaryContainer else PrimaryContainer.copy(alpha = 0.35f),
+                    RoundedCornerShape(14.dp),
+                )
                 .defaultMinSize(minWidth = 44.dp, minHeight = 50.dp)
                 .padding(PaddingValues(horizontal = 16.dp, vertical = 13.dp)),
         )

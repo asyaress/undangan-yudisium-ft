@@ -85,6 +85,12 @@ interface ParticipantDao {
     @Query("SELECT COUNT(*) FROM participants WHERE periodId = :periodId AND checkedIn = 1")
     fun observeCheckedIn(periodId: Int): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM participants WHERE periodId = :periodId")
+    suspend fun countTotal(periodId: Int): Int
+
+    @Query("SELECT COUNT(*) FROM participants WHERE periodId = :periodId AND checkedIn = 1")
+    suspend fun countCheckedIn(periodId: Int): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<ParticipantEntity>)
 
