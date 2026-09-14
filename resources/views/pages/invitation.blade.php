@@ -100,14 +100,15 @@
   <title>{{ $pageTitle ?? 'Undangan Yudisium FT UNMUL' }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="preload" as="image" href="{{ asset('backdrop-fix.png') }}" />
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" /></noscript>
   @include('pages.partials.invitation-styles')
+  <link rel="preload" href="{{ asset('Unmul.png') }}" as="image" />
 </head>
 
 <body class="{{ $bodyClasses }}">
   <div class="bg-video-layer" aria-hidden="true">
-    <video class="bg-video" id="backgroundVideo" autoplay muted loop playsinline webkit-playsinline="true" preload="none" poster="{{ asset('backdrop-fix.png') }}">
+    <video class="bg-video" id="backgroundVideo" muted loop playsinline webkit-playsinline="true" preload="none" data-poster="{{ asset('backdrop-poster.webp') }}">
       <source data-src="{{ asset('video-back.mp4') }}" type="video/mp4" />
     </video>
   </div>

@@ -318,24 +318,22 @@ class InvitationController extends Controller
     private function resolveEvent(Request $request, ?string $slug = null): ?YudisiumPeriod
     {
         if ($slug) {
-            return YudisiumPeriod::query()
-                ->where('slug', $slug)
-                ->where('is_published', true)
-                ->first();
+            return $this->cachedPublishedPeriodBySlug($slug);
         }
 
         if ($request->filled('event')) {
-            return YudisiumPeriod::query()
-                ->where('slug', $request->string('event')->toString())
-                ->where('is_published', true)
-                ->first();
+            return $this->cachedPublishedPeriodBySlug($request->string('event')->toString());
         }
 
-        return YudisiumPeriod::query()
-            ->where('is_active', true)
-            ->where('is_published', true)
-            ->latest('updated_at')
-            ->first();
+        return Cache::remember(
+            'yudisium.invitation.active_period',
+            now()->addMinutes(15),
+            fn () => YudisiumPeriod::query()
+                ->where('is_active', true)
+                ->where('is_published', true)
+                ->latest('updated_at')
+                ->first(),
+        );
     }
 
     private function resolveParticipant(Request $request, YudisiumPeriod $event, InvitationCategory $category): array
@@ -418,7 +416,6 @@ class InvitationController extends Controller
                     ->withCount([
                         'participants as checked_in_participants_count' => fn ($query) => $query->whereNotNull('checked_in_at'),
                     ])
-                    ->withCount('recipients')
                     ->orderByDesc('event_year')
                     ->orderByDesc('event_date')
                     ->orderByDesc('id')
@@ -438,6 +435,18 @@ class InvitationController extends Controller
             'yudisium.invitation.categories.'.$event->id,
             now()->addMinutes(30),
             fn () => $this->categoriesForEvent($event)->get(),
+        );
+    }
+
+    private function cachedPublishedPeriodBySlug(string $slug): ?YudisiumPeriod
+    {
+        return Cache::remember(
+            'yudisium.invitation.period.'.$slug,
+            now()->addMinutes(15),
+            fn () => YudisiumPeriod::query()
+                ->where('slug', $slug)
+                ->where('is_published', true)
+                ->first(),
         );
     }
 

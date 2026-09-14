@@ -2,7 +2,7 @@
         <p class="label">Undangan</p>
         <h1>Yudisium Fakultas Teknik</h1>
         <div class="logo-frame">
-          <img class="logo" id="logoImage" data-logo="unmul" src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
+          <img class="logo" id="logoImage" data-logo="unmul" src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman" width="120" height="120" decoding="async" fetchpriority="high">
           <span class="logo-fallback" id="logoFallback">Logo UNMUL belum terbaca.</span>
         </div>
         <p class="meta">{{ $coverText }}</p>

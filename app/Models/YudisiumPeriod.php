@@ -64,13 +64,21 @@ class YudisiumPeriod extends Model
             }
         });
 
-        static::saved(function (): void {
+        static::saved(function (self $period): void {
             Cache::forget('yudisium.invitation.archive_events');
+            Cache::forget('yudisium.invitation.active_period');
+            if ($period->slug) {
+                Cache::forget('yudisium.invitation.period.'.$period->slug);
+            }
             \App\Support\AdminDashboardCache::forgetLists();
         });
 
-        static::deleted(function (): void {
+        static::deleted(function (self $period): void {
             Cache::forget('yudisium.invitation.archive_events');
+            Cache::forget('yudisium.invitation.active_period');
+            if ($period->slug) {
+                Cache::forget('yudisium.invitation.period.'.$period->slug);
+            }
             \App\Support\AdminDashboardCache::forgetLists();
         });
     }
