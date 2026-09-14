@@ -67,6 +67,7 @@ class YudisiumPeriod extends Model
         static::saved(function (self $period): void {
             Cache::forget('yudisium.invitation.archive_events');
             Cache::forget('yudisium.invitation.active_period');
+            Cache::forget('yudisium.invitation.period_id.'.$period->id);
             if ($period->slug) {
                 Cache::forget('yudisium.invitation.period.'.$period->slug);
             }
@@ -76,6 +77,7 @@ class YudisiumPeriod extends Model
         static::deleted(function (self $period): void {
             Cache::forget('yudisium.invitation.archive_events');
             Cache::forget('yudisium.invitation.active_period');
+            Cache::forget('yudisium.invitation.period_id.'.$period->id);
             if ($period->slug) {
                 Cache::forget('yudisium.invitation.period.'.$period->slug);
             }

@@ -73,6 +73,29 @@ class InvitationPerformanceTest extends TestCase
         $this->assertLessThanOrEqual(700, $metrics['ms'], 'Render arsip (ms): '.$metrics['ms']);
     }
 
+    public function test_verify_nim_post_stays_within_performance_budget(): void
+    {
+        $period = $this->period();
+        $category = $this->category($period, 'yudisiawan', InvitationCategory::ACCESS_NIM, true);
+        $participant = $this->participant($period);
+
+        $this->cachedCategoriesForEventWarmup($period);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $start = hrtime(true);
+        $this->post(route('undangan.verify-nim'), [
+            'event_id' => $period->id,
+            'category_slug' => $category->slug,
+            'nim' => $participant->nim,
+        ])->assertRedirect();
+        $ms = round((hrtime(true) - $start) / 1_000_000, 2);
+
+        $this->assertLessThanOrEqual(3, count(DB::getQueryLog()), 'Query verifikasi NIM: '.count(DB::getQueryLog()));
+        $this->assertLessThanOrEqual(400, $ms, 'Verifikasi NIM (ms): '.$ms);
+    }
+
     public function test_static_invitation_assets_are_compact_on_disk(): void
     {
         $cssPath = public_path('css/invitation.css');
@@ -123,5 +146,10 @@ class InvitationPerformanceTest extends TestCase
             'study_program' => 'Teknik Informatika',
             'faculty' => 'Fakultas Teknik',
         ]);
+    }
+
+    private function cachedCategoriesForEventWarmup(YudisiumPeriod $period): void
+    {
+        $this->get('/?event='.$period->slug.'&to=yudisiawan')->assertOk();
     }
 }

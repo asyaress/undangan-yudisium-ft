@@ -46,11 +46,7 @@ class CheckinController extends Controller
             return $this->publicView($event, ['step' => 'blocked', 'checkinStatus' => $checkinStatus]);
         }
 
-        $participant = YudisiumParticipant::query()
-            ->with(['period', 'studyProgram'])
-            ->where('period_id', $event->id)
-            ->where('nim', $data['nim'])
-            ->first();
+        $participant = $this->participantByNim($event, $data['nim']);
 
         if (! $participant) {
             return $this->publicView($event, [
@@ -520,6 +516,30 @@ class CheckinController extends Controller
             'rejected_rsvp' => 'RSVP berhalangan',
             default => 'Ditolak',
         };
+    }
+
+    private function participantByNim(YudisiumPeriod $event, string $nim): ?YudisiumParticipant
+    {
+        return YudisiumParticipant::query()
+            ->select([
+                'id',
+                'period_id',
+                'study_program_id',
+                'nim',
+                'name',
+                'study_program',
+                'faculty',
+                'rsvp_status',
+                'checkin_status',
+                'checked_in_at',
+            ])
+            ->with([
+                'period:id,name,slug,checkin_opens_at,checkin_closes_at,checkin_latitude,checkin_longitude,checkin_radius_meter,checkin_location_required',
+                'studyProgram' => fn ($query) => $query->select('id', 'name', 'code'),
+            ])
+            ->where('period_id', $event->id)
+            ->where('nim', $nim)
+            ->first();
     }
 
     private function logAttempt(Request $request, YudisiumPeriod $event, ?YudisiumParticipant $participant, array $payload): void

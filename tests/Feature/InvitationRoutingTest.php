@@ -418,7 +418,7 @@ class InvitationRoutingTest extends TestCase
         ])->assertRedirect();
 
         $this->assertLessThanOrEqual(
-            10,
+            4,
             count(DB::getQueryLog()),
             'Verifikasi NIM mahasiswa seharusnya ringan (tanpa muat semua event).',
         );

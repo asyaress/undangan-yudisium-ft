@@ -43,11 +43,15 @@ class AdminParticipantController extends Controller
             ->when($period, fn ($query) => $query->where('period_id', $period->id))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('yudisium_participants.nim', 'like', "%{$search}%")
-                        ->orWhere('yudisium_participants.name', 'like', "%{$search}%")
-                        ->orWhere('yudisium_participants.study_program', 'like', "%{$search}%")
-                        ->orWhere('study_programs.name', 'like', "%{$search}%")
-                        ->orWhere('study_programs.code', 'like', "%{$search}%");
+                    if (preg_match('/^\d+$/', $search) === 1) {
+                        $inner->where('yudisium_participants.nim', 'like', $search.'%');
+                    } else {
+                        $like = '%'.$search.'%';
+                        $inner->where('yudisium_participants.name', 'like', $like)
+                            ->orWhere('yudisium_participants.study_program', 'like', $like)
+                            ->orWhere('study_programs.name', 'like', $like)
+                            ->orWhere('study_programs.code', 'like', $like);
+                    }
                 });
             })
             ->orderByRaw('study_programs.sort_order is null')

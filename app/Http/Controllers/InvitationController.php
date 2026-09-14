@@ -128,13 +128,12 @@ class InvitationController extends Controller
 
     public function verifyNim(Request $request): RedirectResponse
     {
-        $request->merge([
-            'nim' => trim((string) $request->input('nim', '')),
-        ]);
+        $nim = trim((string) $request->input('nim', ''));
+        $request->merge(['nim' => $nim]);
 
         $data = $request->validate([
-            'event_id' => ['required', 'integer', 'exists:yudisium_periods,id'],
-            'category_slug' => ['required', 'string'],
+            'event_id' => ['required', 'integer', 'min:1'],
+            'category_slug' => ['required', 'string', 'max:100'],
             'nim' => ['bail', 'required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
         ], [
             'nim.required' => 'NIM wajib diisi terlebih dahulu.',
@@ -142,19 +141,23 @@ class InvitationController extends Controller
             'nim.regex' => 'Masukkan NIM dalam format angka.',
         ]);
 
-        $event = YudisiumPeriod::query()
-            ->whereKey($data['event_id'])
-            ->where('is_published', true)
-            ->firstOrFail();
-        $category = InvitationCategory::query()
-            ->where('period_id', $event->id)
-            ->where('slug', $data['category_slug'])
-            ->where('access_mode', InvitationCategory::ACCESS_NIM)
-            ->firstOrFail();
+        $event = $this->cachedPublishedPeriodById((int) $data['event_id']);
+        if (! $event) {
+            abort(404);
+        }
+
+        $category = $this->resolveCategory(
+            $this->cachedCategoriesForEvent($event),
+            $data['category_slug'],
+        );
+
+        if (! $category?->usesNimAccess()) {
+            abort(404);
+        }
 
         $participant = YudisiumParticipant::query()
             ->where('period_id', $event->id)
-            ->where('nim', trim($data['nim']))
+            ->where('nim', $nim)
             ->first(['id', 'invitation_token']);
 
         if (! $participant) {
@@ -345,10 +348,32 @@ class InvitationController extends Controller
         }
 
         $participant = YudisiumParticipant::query()
-            ->with('studyProgram')
+            ->select([
+                'id',
+                'period_id',
+                'study_program_id',
+                'sequence_number',
+                'nim',
+                'name',
+                'study_program',
+                'faculty',
+                'invitation_token',
+                'rsvp_status',
+                'rsvp_note',
+                'rsvp_signature',
+                'rsvp_responded_at',
+                'rsvp_companion_count',
+                'rsvp_whatsapp',
+            ])
             ->where('period_id', $event->id)
             ->where('invitation_token', $token)
             ->first();
+
+        if ($participant && $participant->study_program_id) {
+            $participant->load([
+                'studyProgram' => fn ($query) => $query->select('id', 'name', 'code'),
+            ]);
+        }
 
         return [$participant, $participant ? null : 'Token undangan mahasiswa tidak valid untuk event ini.'];
     }
@@ -445,6 +470,18 @@ class InvitationController extends Controller
             now()->addMinutes(15),
             fn () => YudisiumPeriod::query()
                 ->where('slug', $slug)
+                ->where('is_published', true)
+                ->first(),
+        );
+    }
+
+    private function cachedPublishedPeriodById(int $id): ?YudisiumPeriod
+    {
+        return Cache::remember(
+            'yudisium.invitation.period_id.'.$id,
+            now()->addMinutes(15),
+            fn () => YudisiumPeriod::query()
+                ->whereKey($id)
                 ->where('is_published', true)
                 ->first(),
         );
