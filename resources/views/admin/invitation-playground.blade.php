@@ -2291,12 +2291,15 @@
                 {
                     text: @js("Berikutnya, {$tutorialGreeting} bisa melihat susunan acara. Bagian ini menunjukkan alur prosesi dari pembukaan sampai sesi penutup."),
                     target: 'letterAgenda'
-                },
-                {
-                    text: @js("Di bagian akhir, mohon isi konfirmasi kehadiran sesuai kondisi sebenarnya: {$confirmationOptionsText}."),
-                    target: '{{ $category->requiresRsvp() ? 'letterRsvp' : 'letterNotes' }}'
                 }
             ];
+
+            @if ($canonicalCategory->requiresRsvp())
+            defaultTutorialSteps.push({
+                text: @js("Di bagian akhir, mohon isi konfirmasi kehadiran sesuai kondisi sebenarnya: {$confirmationOptionsText}."),
+                target: 'letterRsvp'
+            });
+            @endif
             var tutorialSteps = defaultTutorialSteps;
             var studentQrGuideSteps = @json($studentQrGuideSteps);
 
