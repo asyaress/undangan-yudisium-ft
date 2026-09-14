@@ -13,4 +13,4 @@
     ];
 @endphp
 <script type="application/json" id="invitation-boot">@json($invitationBoot)</script>
-<script src="{{ asset('js/invitation.js') }}?v=3" defer></script>
+<script src="{{ asset('js/invitation.js') }}?v=4" defer></script>

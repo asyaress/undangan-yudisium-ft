@@ -78,9 +78,20 @@ var stage = document.getElementById('formalPreviewStage');
                 video.play().catch(function () {});
             }
 
+            function scheduleFormalBackgroundVideo() {
+                var start = function () {
+                    startFormalBackgroundVideo();
+                };
+                if (window.requestIdleCallback) {
+                    window.requestIdleCallback(start, { timeout: 2200 });
+                } else {
+                    window.setTimeout(start, 800);
+                }
+            }
+
             function openInvitation(options) {
                 options = options || {};
-                startFormalBackgroundVideo();
+                scheduleFormalBackgroundVideo();
                 stage.classList.add('is-open');
                 cover.classList.add('is-hidden');
                 unlockCoverScroll();

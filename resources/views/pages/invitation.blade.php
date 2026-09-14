@@ -93,7 +93,7 @@
 
 @endphp
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="app-booting" data-app-boot="invitation">
 
 <head>
   <meta charset="UTF-8" />
@@ -102,19 +102,17 @@
   <meta name="color-scheme" content="light" />
   @include('partials.social-share-meta')
   <title>{{ $pageTitle ?? 'Undangan Yudisium FT UNMUL' }}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" href="{{ asset('css/invitation.css') }}?v=6" as="style" />
+  <link rel="preload" href="{{ asset('Unmul.png') }}" as="image" />
+  <link rel="preload" href="{{ asset('js/invitation.js') }}?v=4" as="script" />
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" /></noscript>
   @include('pages.partials.invitation-styles')
-  <link rel="preload" href="{{ asset('Unmul.png') }}" as="image" />
-  @if ($isStudentCategory && ! $participant && $selectedCategory)
-    <link rel="prefetch" href="{{ asset('css/formal-invitation.css') }}?v=3" as="style" />
-    <link rel="prefetch" href="{{ asset('js/formal-invitation.js') }}?v=3" as="script" />
-  @endif
+  @include('partials.app-boot-inline')
 </head>
 
 <body class="{{ $bodyClasses }}">
+  @include('partials.app-boot-screen')
   @unless ($deferBackgroundVideo)
     <div class="bg-video-layer" aria-hidden="true">
       <video class="bg-video" id="backgroundVideo" muted loop playsinline webkit-playsinline="true" preload="none" data-poster="{{ asset('backdrop-poster.webp') }}">

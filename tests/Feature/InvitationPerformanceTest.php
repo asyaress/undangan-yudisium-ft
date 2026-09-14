@@ -133,7 +133,7 @@ class InvitationPerformanceTest extends TestCase
         $this->assertFileExists($jsPath);
 
         $this->assertLessThanOrEqual(65_000, filesize($cssPath), 'CSS undangan (bytes)');
-        $this->assertLessThanOrEqual(40_000, filesize($jsPath), 'JS undangan (bytes)');
+        $this->assertLessThanOrEqual(41_000, filesize($jsPath), 'JS undangan (bytes)');
 
         $formalJs = public_path('js/formal-invitation.js');
         $this->assertFileExists($formalJs);

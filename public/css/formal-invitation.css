@@ -1814,6 +1814,15 @@
             cursor: progress;
         }
 
+        body.is-ui-busy::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 10040;
+            background: rgba(255, 255, 255, 0.78);
+            pointer-events: all;
+        }
+
         body.is-ui-busy .playground-submit:not(.is-loading) {
             opacity: 0.72;
         }

@@ -843,8 +843,17 @@ const openButton = document.getElementById("openInvitation");
       startRsvpTutorial(options);
     };
 
+    const scheduleBackgroundVideo = () => {
+      const start = () => startBackgroundVideo();
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(start, { timeout: 2200 });
+      } else {
+        window.setTimeout(start, 800);
+      }
+    };
+
     const openInvitation = () => {
-      startBackgroundVideo();
+      scheduleBackgroundVideo();
       if (document.body.classList.contains("opening") || document.body.classList.contains("opened")) {
         return;
       }

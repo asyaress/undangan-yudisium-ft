@@ -89,7 +89,31 @@
     <meta name="theme-color" content="#ffffff">
     <meta name="color-scheme" content="light">
     <style id="formal-critical">
-        html, body { margin: 0; background: #fff; color: #1c1c1e; }
+        html, body { margin: 0; background: #fff; color: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+        .app-boot-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 10050;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+        html.app-booting .app-boot-screen { display: flex; }
+        html.app-booting .formal-preview-stage { visibility: hidden; }
+        .app-boot-screen__inner { display: grid; justify-items: center; gap: 12px; text-align: center; }
+        .app-boot-spinner {
+            width: 28px;
+            height: 28px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #e85d04;
+            border-radius: 50%;
+            animation: formal-boot-spin 0.75s linear infinite;
+        }
+        @keyframes formal-boot-spin { to { transform: rotate(360deg); } }
+        .app-boot-screen__text { margin: 0; font-size: 14px; font-weight: 600; color: #667085; }
         .formal-preview-stage:not(.is-open) .formal-bg-video,
         .formal-preview-stage:not(.is-open) .formal-bg-overlay {
             display: none !important;
@@ -109,10 +133,10 @@
             text-align: center;
         }
     </style>
-    <link rel="preload" href="{{ asset('css/formal-invitation.css') }}?v=3" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{ asset('css/formal-invitation.css') }}?v=3"></noscript>
+    <link rel="preload" href="{{ asset('css/formal-invitation.css') }}?v=4" as="style" />
+    <link rel="stylesheet" href="{{ asset('css/formal-invitation.css') }}?v=4">
     @if ($standalone ?? false)
-        <link rel="preload" href="{{ asset('js/formal-invitation.js') }}?v=2" as="script">
+        <link rel="preload" href="{{ asset('js/formal-invitation.js') }}?v=4" as="script">
     @endif
 @endpush
 
@@ -564,5 +588,5 @@
         <script src="{{ asset('vendor/qrcode/qrcode.min.js') }}" defer></script>
     @endif
     <script type="application/json" id="formal-invitation-boot">@json($formalInvitationBoot)</script>
-    <script src="{{ asset('js/formal-invitation.js') }}?v=3" defer></script>
+    <script src="{{ asset('js/formal-invitation.js') }}?v=4" defer></script>
 @endpush

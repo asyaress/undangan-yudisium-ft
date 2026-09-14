@@ -4,7 +4,52 @@
     margin: 0;
     background: #ffffff;
     color: #1c1c1e;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     -webkit-text-size-adjust: 100%;
+  }
+
+  .app-boot-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    padding: 24px;
+    box-sizing: border-box;
+  }
+
+  html.app-booting .app-boot-screen {
+    display: flex;
+  }
+
+  html.app-booting body > main,
+  html.app-booting body > .transition-layer {
+    visibility: hidden;
+  }
+
+  .app-boot-screen__inner {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .app-boot-spinner {
+    width: 28px;
+    height: 28px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #f5530d;
+    border-radius: 50%;
+    animation: invitation-spin 0.75s linear infinite;
+  }
+
+  .app-boot-screen__text {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #636366;
   }
 
   .bg-video-layer,
@@ -127,6 +172,15 @@
 
   body.is-ui-busy {
     cursor: progress;
+  }
+
+  body.is-ui-busy::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 10040;
+    background: rgba(255, 255, 255, 0.78);
+    pointer-events: all;
   }
 
   .cover .btn {
