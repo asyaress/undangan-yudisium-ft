@@ -248,11 +248,11 @@
     }
 
     .cover .label {
-      font-size: 0.72rem;
-      letter-spacing: 0.16em;
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: var(--unmul);
-      margin-bottom: 8px;
+      color: var(--primary);
+      margin-bottom: 10px;
       font-weight: 800;
     }
 
@@ -303,7 +303,7 @@
       aspect-ratio: 1;
       border-radius: 50%;
       margin: 12px auto 18px;
-      display: none;
+      display: grid;
       place-items: center;
       padding: 14px;
       border: 1px solid var(--line);

@@ -137,72 +137,31 @@
         }
 
         .formal-cover-panel {
-            width: min(640px, 100%);
+            width: min(560px, 100%);
             max-height: calc(100vh - 44px);
             max-height: calc(100dvh - 44px);
-            padding: clamp(18px, 4vw, 36px);
-            overflow: auto;
+            padding: clamp(24px, 5vw, 44px);
+            overflow: hidden;
             border: 0;
             border-radius: 0;
             background: #fff;
             text-align: center;
         }
 
-        .formal-cover-identity {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            margin: 0 auto 14px;
-            text-align: left;
-        }
-
-        .formal-cover-identity img {
-            width: 44px;
-            height: 44px;
-            object-fit: contain;
-        }
-
-        .formal-cover-identity strong {
-            display: block;
-            color: #1c1c1e;
-            font-size: 15px;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            line-height: 1.2;
-        }
-
-        .formal-cover-identity span {
-            display: block;
-            margin-top: 2px;
-            color: #1F7A3A;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-
         .formal-cover-label {
             margin: 0 0 10px;
-            color: #1F7A3A;
+            color: #e85d04;
             font-size: 12px;
             font-weight: 850;
             letter-spacing: 0.16em;
             text-transform: uppercase;
         }
 
-        .formal-cover-panel .formal-cover-label {
-            color: #1F7A3A;
-            margin: 0 0 8px;
-        }
-
-        .formal-cover-panel .formal-cover-guest {
-            color: #111827;
-            margin: 0 0 22px;
-            max-width: none;
-        }
-
         .formal-cover-logo {
-            display: none;
+            width: clamp(78px, 16vw, 96px);
+            height: clamp(78px, 16vw, 96px);
+            object-fit: contain;
+            margin: clamp(14px, 3vh, 20px) auto;
         }
 
         .formal-cover-panel h2 {
@@ -1859,15 +1818,9 @@
 
     <section class="formal-cover" id="formalCover">
         <div class="formal-cover-panel">
-            <div class="formal-cover-identity">
-                <img src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
-                <div>
-                    <strong>Universitas Mulawarman</strong>
-                    <span>Fakultas Teknik</span>
-                </div>
-            </div>
-            <p class="formal-cover-label">Undangan resmi</p>
-            <h2>Yudisium</h2>
+            <p class="formal-cover-label">Undangan</p>
+            <h2>Yudisium Fakultas Teknik</h2>
+            <img class="formal-cover-logo" src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
             <p>{{ $category->cover_text ?: 'Fakultas Teknik Universitas Mulawarman mengundang kehadiran pada prosesi yudisium.' }}</p>
             <span class="formal-cover-guest-label">Kepada Yth.</span>
             <p class="formal-cover-guest">{{ $guestName }}</p>
