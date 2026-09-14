@@ -101,10 +101,27 @@
     font-size: 1rem;
   }
 
+  .cover .logo-frame {
+    width: min(42vw, 140px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    margin: 12px auto 18px;
+    display: grid;
+    place-items: center;
+    padding: 14px;
+    border: 1px solid rgba(60, 60, 67, 0.12);
+    background: #fff;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
   .cover .logo {
-    width: 120px;
-    height: 120px;
-    margin: 0 0 16px;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0;
     object-fit: contain;
+    display: block;
   }
 </style>
