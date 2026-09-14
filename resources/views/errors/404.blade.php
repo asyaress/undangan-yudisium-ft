@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  @include('partials.social-share-meta', [
+      'shareTitle' => 'Undangan Yudisium FT UNMUL',
+      'shareDescription' => 'Undangan resmi Yudisium Fakultas Teknik Universitas Mulawarman. Program Sarjana Angkatan 83 Periode 3 Tahun 2026.',
+  ])
   <title>Halaman Tidak Ditemukan - Undangan Yudisium FT UNMUL</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
