@@ -89,10 +89,6 @@
         $bodyClasses = trim($bodyClasses.' opened invitation-postback');
     }
 
-    $shareTitle = $pageTitle ?? 'Undangan Yudisium FT UNMUL';
-    $shareDescription = $pageTitle ?? 'Undangan Yudisium Fakultas Teknik Universitas Mulawarman';
-    $shareImageUrl = asset('backdrop-fix.png');
-    $shareUrl = url()->current();
 @endphp
 <!DOCTYPE html>
 <html lang="id">
@@ -100,19 +96,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="{{ $shareDescription }}" />
-  <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Undangan Yudisium FT UNMUL" />
-  <meta property="og:title" content="{{ $shareTitle }}" />
-  <meta property="og:description" content="{{ $shareDescription }}" />
-  <meta property="og:image" content="{{ $shareImageUrl }}" />
-  <meta property="og:url" content="{{ $shareUrl }}" />
-  <meta property="og:locale" content="id_ID" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="{{ $shareTitle }}" />
-  <meta name="twitter:description" content="{{ $shareDescription }}" />
-  <meta name="twitter:image" content="{{ $shareImageUrl }}" />
-  <title>{{ $shareTitle }}</title>
+  @include('partials.social-share-meta')
+  <title>{{ $pageTitle ?? 'Undangan Yudisium FT UNMUL' }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
