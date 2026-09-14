@@ -108,6 +108,10 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" /></noscript>
   @include('pages.partials.invitation-styles')
   <link rel="preload" href="{{ asset('Unmul.png') }}" as="image" />
+  @if ($isStudentCategory && ! $participant && $selectedCategory)
+    <link rel="prefetch" href="{{ asset('css/formal-invitation.css') }}?v=3" as="style" />
+    <link rel="prefetch" href="{{ asset('js/formal-invitation.js') }}?v=1" as="script" />
+  @endif
 </head>
 
 <body class="{{ $bodyClasses }}">

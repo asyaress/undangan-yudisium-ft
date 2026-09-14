@@ -12,11 +12,13 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class InvitationController extends Controller
 {
-    public function show(Request $request, ?string $slug = null): View|RedirectResponse
+    public function show(Request $request, ?string $slug = null): View|RedirectResponse|HttpResponse
     {
         $hasInvitationContext = $slug !== null
             || $request->filled('event')
@@ -167,13 +169,18 @@ class InvitationController extends Controller
                 ->with('error', 'NIM tidak ditemukan. Periksa kembali angka NIM sesuai KTM/KRS. Jika masih gagal, hubungi panitia.');
         }
 
+        $targetUrl = route('home', [
+            'event' => $event->slug,
+            'to' => $category->slug,
+            'ref' => $participant->invitation_token,
+        ]);
+
         return redirect()
-            ->to(route('home', [
-                'event' => $event->slug,
-                'to' => $category->slug,
-                'ref' => $participant->invitation_token,
-            ]))
-            ->with('success', 'NIM berhasil diverifikasi. Silakan lanjut membaca undangan dan isi konfirmasi kehadiran.');
+            ->to($targetUrl, Response::HTTP_SEE_OTHER)
+            ->with('success', 'NIM berhasil diverifikasi. Silakan lanjut membaca undangan dan isi konfirmasi kehadiran.')
+            ->withHeaders([
+                'Link' => $this->formalInvitationPreloadLinkHeader(),
+            ]);
     }
 
     public function verifyRecipient(Request $request): RedirectResponse
@@ -499,7 +506,7 @@ class InvitationController extends Controller
         InvitationCategory $category,
         ?InvitationRecipient $recipient,
         ?YudisiumParticipant $participant
-    ): View {
+    ): View|HttpResponse {
         $periods = collect([$period]);
         $recipientOptions = collect();
         $participantOptions = collect();
@@ -511,7 +518,7 @@ class InvitationController extends Controller
         $standalone = true;
         $pageTitle = $period->archive_title.' - Undangan Yudisium FT UNMUL';
 
-        return view('admin.invitation-playground', compact(
+        $response = response()->view('admin.invitation-playground', compact(
             'periods',
             'period',
             'categories',
@@ -524,5 +531,19 @@ class InvitationController extends Controller
             'standalone',
             'pageTitle',
         ));
+
+        if ($standalone) {
+            $response->headers->set('Link', $this->formalInvitationPreloadLinkHeader(), false);
+        }
+
+        return $response;
+    }
+
+    private function formalInvitationPreloadLinkHeader(): string
+    {
+        $css = '<'.asset('css/formal-invitation.css').'?v=3>; rel=preload; as=style';
+        $js = '<'.asset('js/formal-invitation.js').'?v=1>; rel=preload; as=script';
+
+        return $css.', '.$js;
     }
 }

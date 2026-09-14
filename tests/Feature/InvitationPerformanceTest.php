@@ -57,7 +57,7 @@ class InvitationPerformanceTest extends TestCase
         $metrics = $this->measureGet('/?event='.$period->slug.'&to='.$category->slug.'&ref='.$participant->invitation_token);
 
         $this->assertLessThanOrEqual(18, $metrics['queries'], 'Query undangan formal: '.$metrics['queries']);
-        $this->assertLessThanOrEqual(160_000, $metrics['bytes'], 'HTML undangan formal (bytes): '.$metrics['bytes']);
+        $this->assertLessThanOrEqual(95_000, $metrics['bytes'], 'HTML undangan formal (bytes): '.$metrics['bytes']);
         $this->assertLessThanOrEqual(900, $metrics['ms'], 'Render undangan formal (ms): '.$metrics['ms']);
     }
 
@@ -106,6 +106,10 @@ class InvitationPerformanceTest extends TestCase
 
         $this->assertLessThanOrEqual(65_000, filesize($cssPath), 'CSS undangan (bytes)');
         $this->assertLessThanOrEqual(40_000, filesize($jsPath), 'JS undangan (bytes)');
+
+        $formalJs = public_path('js/formal-invitation.js');
+        $this->assertFileExists($formalJs);
+        $this->assertLessThanOrEqual(40_000, filesize($formalJs), 'JS undangan formal (bytes)');
     }
 
     private function period(): YudisiumPeriod
