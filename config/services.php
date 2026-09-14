@@ -38,6 +38,6 @@ return [
     /*
     | Bearer token untuk APK scanner panitia (tanpa login akun). Samakan dengan konstanta di aplikasi Android.
     */
-    'mobile_scanner_key' => env('MOBILE_SCANNER_KEY', 'YFT-SCANNER-FT-INTERNAL-83P3'),
+    'mobile_scanner_key' => env('MOBILE_SCANNER_KEY') ?: 'YFT-SCANNER-FT-INTERNAL-83P3',
 
 ];

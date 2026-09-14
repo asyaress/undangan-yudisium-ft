@@ -37,7 +37,7 @@ class AuthenticateMobileAdmin
 
         if (! $user || ! $user->is_admin) {
             return response()->json([
-                'message' => 'Sesi aplikasi tidak valid. Silakan masuk ulang.',
+                'message' => 'Akses scanner ditolak server. Pastikan kode terbaru sudah di-deploy dan MOBILE_SCANNER_KEY=YFT-SCANNER-FT-INTERNAL-83P3 (lalu php artisan config:clear).',
             ], 401);
         }
 

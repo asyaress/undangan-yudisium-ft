@@ -149,7 +149,10 @@ fun rememberAppLayout(): AppLayout {
             compact -> 156.dp
             else -> 172.dp
         },
-        frame = (if (landscape) min(height * 0.52f, 300f) else min(shortest * 0.62f, 270f)).dp,
+        frame = when {
+            landscape -> minOf(height * 0.82f, width * 0.42f, 420f).dp
+            else -> minOf(width * 0.94f, height * 0.58f, 420f).dp
+        },
         columns = if (width >= 840) 2 else 1,
     )
 }

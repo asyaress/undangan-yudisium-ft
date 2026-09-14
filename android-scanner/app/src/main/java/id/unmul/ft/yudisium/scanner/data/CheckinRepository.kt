@@ -6,6 +6,7 @@ import id.unmul.ft.yudisium.scanner.data.local.ParticipantEntity
 import id.unmul.ft.yudisium.scanner.data.local.PendingScanEntity
 import id.unmul.ft.yudisium.scanner.data.remote.ApiFactory
 import id.unmul.ft.yudisium.scanner.data.remote.ErrorMessage
+import id.unmul.ft.yudisium.scanner.data.remote.EventsResponse
 import id.unmul.ft.yudisium.scanner.data.remote.ScanDto
 import id.unmul.ft.yudisium.scanner.data.remote.SyncRequest
 import id.unmul.ft.yudisium.scanner.data.remote.SyncResultDto
@@ -87,7 +88,7 @@ class CheckinRepository(
     }
 
     suspend fun refreshEvents() = withContext(io) {
-        val response = apiFactory.create().events()
+        val response = eventsWithAuthRetry()
         database.events().upsertAll(
             response.events.map {
                 EventEntity(
@@ -100,6 +101,16 @@ class CheckinRepository(
                 )
             },
         )
+    }
+
+    private suspend fun eventsWithAuthRetry(): EventsResponse {
+        return try {
+            apiFactory.create().events()
+        } catch (error: HttpException) {
+            if (error.code() != 401) throw error
+            ensureInternalSession()
+            apiFactory.create().events()
+        }
     }
 
     suspend fun downloadRoster(periodId: Int) = withContext(io) {
@@ -174,8 +185,16 @@ class CheckinRepository(
     fun apiError(error: Throwable): String {
         if (error is HttpException) {
             val raw = error.response()?.errorBody()?.string().orEmpty()
-            runCatching { json.decodeFromString<ErrorMessage>(raw).message }.getOrNull()?.let { return it }
-            if (error.code() == 401) return "Akses scanner ditolak server. Pastikan MOBILE_SCANNER_KEY sudah diset."
+            val serverMessage = runCatching { json.decodeFromString<ErrorMessage>(raw).message }.getOrNull()
+            if (serverMessage != null) {
+                if (error.code() == 401 && serverMessage.contains("masuk ulang", ignoreCase = true)) {
+                    return "Akses scanner ditolak server. Deploy kode terbaru + MOBILE_SCANNER_KEY=YFT-SCANNER-FT-INTERNAL-83P3, lalu config:clear."
+                }
+                return serverMessage
+            }
+            if (error.code() == 401) {
+                return "Akses scanner ditolak server. Pastikan MOBILE_SCANNER_KEY sudah diset di server."
+            }
         }
         if (error is SocketTimeoutException || (error is IOException && error.message?.contains("timeout", true) == true)) {
             return "Koneksi ke server lambat. Scan offline tetap jalan jika data event sudah diunduh."

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -383,7 +384,7 @@ private fun ActiveEventCard(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Buka scanner check-in", color = OnPrimary, style = MaterialTheme.typography.titleMedium)
+                    Text("Unduh data & mulai scan", color = OnPrimary, style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.size(6.dp))
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(20.dp))
                 }
@@ -490,8 +491,6 @@ private fun ScanScreen(
     var nim by remember { mutableStateOf("") }
     val reduceMotion = rememberReduceMotion()
     val layout = rememberAppLayout()
-    val chromePad = if (layout.landscape) 12.dp else 16.dp
-
     LaunchedEffect(state.result?.clientScanId, state.result?.status) {
         state.result?.let { vibrateFor(context, it.status) }
     }
@@ -500,21 +499,12 @@ private fun ScanScreen(
         if (hasCamera) {
             CameraPreview(enabled = true, modifier = Modifier.fillMaxSize(), onBarcode = onScan)
         }
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Black.copy(alpha = 0.42f), Color.Transparent, Color.Black.copy(alpha = 0.62f)),
-                    ),
-                ),
-        )
         if (layout.landscape) {
             Row(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
                 Box(Modifier.weight(1f).fillMaxHeight()) {
-                    ScanCameraChrome(state, layout, onSync)
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        ScanViewfinder(layout.frame)
+                    ScanFocusRegion(Modifier.fillMaxSize()) { side -> ScanViewfinder(side) }
+                    Column(Modifier.padding(10.dp)) {
+                        ScanCameraChrome(state, layout, onSync)
                     }
                 }
                 ScanSidePanel(state, nim, { nim = it }, onScan, onLeaveEvent, onSync)
@@ -525,21 +515,15 @@ private fun ScanScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    .imePadding()
-                    .padding(chromePad),
+                    .imePadding(),
             ) {
-                ScanCameraChrome(state, layout, onSync)
-                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    ScanViewfinder(layout.frame)
+                Box(Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                    ScanCameraChrome(state, layout, onSync)
                 }
-                NimSearchRow(nim, { nim = it }, onScan)
-                TextAction("‹ Event", onLeaveEvent, color = InverseOnSurface.copy(alpha = 0.92f))
-                Text(
-                    "Auto-sync aktif (~15 detik)",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = InverseOnSurface.copy(alpha = 0.65f),
-                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                )
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    ScanFocusRegion(Modifier.fillMaxSize()) { side -> ScanViewfinder(side) }
+                }
+                ScanBottomDock(state, nim, { nim = it }, onScan, onLeaveEvent, onSync)
             }
         }
 
@@ -619,9 +603,97 @@ private fun ScanCameraChrome(
                 StatusChip(text = "Siap", tone = InverseSurface, onClick = onSync)
             }
         }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (state.total > 0) {
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color.Black.copy(alpha = 0.35f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(Icons.Default.OfflineBolt, contentDescription = null, tint = EventOrange, modifier = Modifier.size(14.dp))
+                    Text(
+                        "${state.total} data di HP · scan offline OK",
+                        color = InverseOnSurface,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
         state.notice?.let {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(it, color = InverseOnSurface, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+@Composable
+private fun ScanBottomDock(
+    state: ScanUiState,
+    nim: String,
+    onNimChange: (String) -> Unit,
+    onScan: (String) -> Unit,
+    onLeaveEvent: () -> Unit,
+    onSync: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+            .background(Glass.copy(alpha = 0.97f))
+            .navigationBarsPadding()
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        if (state.pendingCount > 0) {
+            Pressable(onClick = onSync, modifier = Modifier.fillMaxWidth()) { mod ->
+                Row(
+                    mod
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(EventOrange.copy(alpha = 0.14f))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.OfflineBolt, contentDescription = null, tint = EventOrange, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            "${state.pendingCount} scan belum terkirim",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Ink,
+                        )
+                    }
+                    Text("Kirim", style = MaterialTheme.typography.labelLarge, color = EventOrange, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+        NimSearchRow(nim, onNimChange, onScan)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextAction("‹ Ganti event", onLeaveEvent, color = Accent)
+            Text(
+                if (state.pendingCount > 0) "Sync otomatis aktif" else "Auto-sync ~15 detik",
+                style = MaterialTheme.typography.labelSmall,
+                color = Label,
+            )
         }
     }
 }
@@ -680,11 +752,17 @@ private fun ScanSidePanel(
 
 @Composable
 private fun NimSearchRow(nim: String, onNimChange: (String) -> Unit, onScan: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 52.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         OutlinedTextField(
             value = nim,
             onValueChange = onNimChange,
-            placeholder = { Text("NIM jika QR rusak") },
+            placeholder = { Text("NIM jika QR tidak terbaca") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
@@ -705,14 +783,16 @@ private fun NimSearchRow(nim: String, onNimChange: (String) -> Unit, onScan: (St
         }) { mod ->
             Row(
                 mod
+                    .defaultMinSize(minWidth = 88.dp, minHeight = 48.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(EventOrange)
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
             ) {
-                Icon(Icons.Default.Search, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(4.dp))
-                Text("Cari", color = OnPrimary, style = MaterialTheme.typography.labelLarge)
+                Icon(Icons.Default.Search, contentDescription = null, tint = OnPrimary, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.size(6.dp))
+                Text("Cari", color = OnPrimary, style = MaterialTheme.typography.titleMedium)
             }
         }
     }

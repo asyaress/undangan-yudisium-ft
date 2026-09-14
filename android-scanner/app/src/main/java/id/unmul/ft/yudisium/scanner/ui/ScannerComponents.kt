@@ -6,11 +6,14 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +24,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
@@ -43,8 +47,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -313,36 +322,82 @@ fun OperationalFooterNote() {
 }
 
 @Composable
+fun ScanFocusRegion(
+    modifier: Modifier = Modifier,
+    widthFraction: Float = 0.96f,
+    heightFraction: Float = 0.92f,
+    content: @Composable BoxScope.(frameSize: Dp) -> Unit,
+) {
+    BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val side = min(maxWidth * widthFraction, maxHeight * heightFraction)
+        val density = LocalDensity.current
+        val sidePx = with(density) { side.toPx() }
+        val left = (constraints.maxWidth - sidePx) / 2f
+        val top = (constraints.maxHeight - sidePx) / 2f
+        Canvas(Modifier.fillMaxSize()) {
+            val scrim = Color.Black.copy(alpha = 0.52f)
+            drawRect(scrim, topLeft = Offset.Zero, size = Size(size.width, top))
+            drawRect(scrim, topLeft = Offset(0f, top + sidePx), size = Size(size.width, size.height - top - sidePx))
+            drawRect(scrim, topLeft = Offset(0f, top), size = Size(left, sidePx))
+            drawRect(scrim, topLeft = Offset(left + sidePx, top), size = Size(size.width - left - sidePx, sidePx))
+        }
+        Box(Modifier.size(side), contentAlignment = Alignment.Center) {
+            content(side)
+        }
+    }
+}
+
+@Composable
 fun ScanViewfinder(frameSize: Dp, modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "scan-line")
     val lineOffset by transition.animateFloat(
-        initialValue = 0.12f,
-        targetValue = 0.88f,
+        initialValue = 0.08f,
+        targetValue = 0.92f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2800, easing = LinearEasing),
+            animation = tween(2400, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "line",
     )
+    val cornerArm = frameSize * 0.16f
+    val stroke = 5.dp
     Box(modifier.size(frameSize), contentAlignment = Alignment.Center) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .border(2.dp, EventOrange.copy(alpha = 0.88f), RoundedCornerShape(24.dp)),
-        )
-        Box(
-            Modifier
-                .fillMaxWidth(0.75f)
-                .height(1.5.dp)
-                .align(Alignment.TopStart)
-                .offset(y = frameSize * lineOffset)
-                .background(EventOrange.copy(alpha = 0.65f)),
-        )
+        Canvas(Modifier.fillMaxSize()) {
+            val arm = cornerArm.toPx()
+            val s = stroke.toPx()
+            val color = EventOrange
+            val cap = StrokeCap.Round
+            // top-left
+            drawLine(color, Offset(arm, 0f), Offset(0f, 0f), s, cap)
+            drawLine(color, Offset(0f, 0f), Offset(0f, arm), s, cap)
+            // top-right
+            drawLine(color, Offset(size.width - arm, 0f), Offset(size.width, 0f), s, cap)
+            drawLine(color, Offset(size.width, 0f), Offset(size.width, arm), s, cap)
+            // bottom-left
+            drawLine(color, Offset(0f, size.height - arm), Offset(0f, size.height), s, cap)
+            drawLine(color, Offset(0f, size.height), Offset(arm, size.height), s, cap)
+            // bottom-right
+            drawLine(color, Offset(size.width - arm, size.height), Offset(size.width, size.height), s, cap)
+            drawLine(color, Offset(size.width, size.height - arm), Offset(size.width, size.height), s, cap)
+            val y = size.height * lineOffset
+            drawLine(
+                color = EventOrange.copy(alpha = 0.75f),
+                start = Offset(size.width * 0.06f, y),
+                end = Offset(size.width * 0.94f, y),
+                strokeWidth = 2.5f,
+                cap = StrokeCap.Round,
+            )
+        }
         Text(
-            "Posisikan QR di tengah",
-            Modifier.align(Alignment.BottomCenter).offset(y = 32.dp),
-            style = MaterialTheme.typography.labelSmall,
-            color = InverseOnSurface.copy(alpha = 0.85f),
+            "Arahkan QR ke kotak",
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 10.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(Color.Black.copy(alpha = 0.45f))
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = InverseOnSurface,
         )
     }
 }
