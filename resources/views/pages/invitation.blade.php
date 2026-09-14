@@ -115,7 +115,7 @@
   @include('partials.app-boot-screen')
   @unless ($deferBackgroundVideo)
     <div class="bg-video-layer" aria-hidden="true">
-      <video class="bg-video" id="backgroundVideo" muted loop playsinline webkit-playsinline="true" preload="none" data-poster="{{ asset('backdrop-poster.webp') }}">
+      <video class="bg-video" id="backgroundVideo" muted loop playsinline webkit-playsinline="true" preload="none">
         <source data-src="{{ asset('video-back.mp4') }}" type="video/mp4" />
       </video>
     </div>

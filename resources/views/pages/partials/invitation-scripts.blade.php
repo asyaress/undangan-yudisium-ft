@@ -9,7 +9,7 @@
             asset('UNMUL.png'),
         ],
         'videoSrc' => asset('video-back.mp4'),
-        'posterUrl' => asset('backdrop-poster.webp'),
+        'posterUrl' => null,
     ];
 @endphp
 <script type="application/json" id="invitation-boot">@json($invitationBoot)</script>

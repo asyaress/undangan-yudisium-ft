@@ -2,8 +2,10 @@
     $shareTitle = $shareTitle ?? $pageTitle ?? 'Undangan Yudisium FT UNMUL';
     $shareDescription = $shareDescription
         ?? 'Undangan resmi Yudisium Fakultas Teknik Universitas Mulawarman. Program Sarjana Angkatan 83 Periode 3 Tahun 2026.';
-    $shareImageUrl = $shareImageUrl ?? secure_url('og.jpg').'?v=1';
-    $shareUrl = $shareUrl ?? url()->full();
+    $shareImagePath = public_path('undangan-og.jpg');
+    $shareImageVersion = is_file($shareImagePath) ? filemtime($shareImagePath) : time();
+    $shareImageUrl = $shareImageUrl ?? secure_url('undangan-og.jpg').'?v='.$shareImageVersion;
+    $shareUrl = $shareUrl ?? url('/');
 @endphp
 <meta name="description" content="{{ $shareDescription }}" />
 <meta property="og:type" content="website" />
