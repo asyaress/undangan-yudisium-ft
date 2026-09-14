@@ -240,6 +240,22 @@
             line-height: 1.45;
         }
 
+        .formal-cover-guest.has-roles {
+            margin-bottom: 8px;
+        }
+
+        .formal-cover-role {
+            margin: 0 0 6px;
+            color: #667085;
+            font-size: clamp(13px, 2.8vw, 15px);
+            font-weight: 650;
+            line-height: 1.4;
+        }
+
+        .formal-cover-role:last-of-type {
+            margin-bottom: 22px;
+        }
+
         .formal-open-btn {
             border: 0;
             border-radius: 999px;
@@ -1859,7 +1875,6 @@
 
     <section class="formal-cover" id="formalCover">
         <div class="formal-cover-panel">
-            @include('pages.partials.cover-banner')
             <div class="formal-cover-identity">
                 <img src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
                 <div>
@@ -1871,7 +1886,12 @@
             <h2>Yudisium</h2>
             <p>{{ $category->cover_text ?: 'Fakultas Teknik Universitas Mulawarman mengundang kehadiran pada prosesi yudisium.' }}</p>
             <span class="formal-cover-guest-label">Kepada Yth.</span>
-            <p class="formal-cover-guest">{{ $guestName }}</p>
+            <p class="formal-cover-guest{{ $recipient && $recipient->listedPositions() ? ' has-roles' : '' }}">{{ $guestName }}</p>
+            @if ($recipient)
+                @foreach ($recipient->listedPositions() as $position)
+                    <p class="formal-cover-role">{{ $position }}</p>
+                @endforeach
+            @endif
             <button class="formal-open-btn" type="button" id="formalOpenButton">Buka Undangan</button>
         </div>
     </section>
@@ -2035,6 +2055,18 @@
                                     </span>
                                 </span>
                             </div>
+                        @elseif ($rsvpClosed && ($recipient || $participant))
+                            <div class="playground-rsvp-person">
+                                @if ($recipient)
+                                    <strong>{{ $recipient->invitation_name }}</strong>
+                                    @foreach ($recipient->listedPositions() as $position)
+                                        <span>{{ $position }}</span>
+                                    @endforeach
+                                @else
+                                    <strong>{{ $participant->name }}</strong>
+                                    <span>{{ $participant->studyProgram?->name ?: ($participant->study_program ?: 'Program studi belum diisi') }}</span>
+                                @endif
+                            </div>
                         @elseif (! $rsvpClosed && $recipient)
                             <form method="post" action="{{ route('rsvp.recipient') }}" class="playground-rsvp-form" id="playgroundRecipientRsvpForm">
                                 @csrf
@@ -2161,7 +2193,7 @@
                                 </div>
                                 <button class="playground-submit" type="submit">Simpan Konfirmasi</button>
                             </form>
-                        @else
+                        @elseif (! $rsvpClosed)
                             <div class="playground-flash error">Data penerima belum tersedia untuk kategori ini.</div>
                         @endif
                     </div>

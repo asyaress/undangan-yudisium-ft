@@ -482,6 +482,29 @@ class InvitationRoutingTest extends TestCase
         $this->get('/undangan/'.$period->slug.'?to=umum')->assertNotFound();
     }
 
+    public function test_closed_rsvp_does_not_claim_missing_recipient(): void
+    {
+        $period = $this->period();
+        $period->forceFill(['rsvp_deadline' => now()->subDay()])->save();
+        $category = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true);
+        $recipient = $this->recipient($period, $category, [
+            'name' => 'Abdul Rajab Dei, SE., MM.',
+            'position' => 'Ketua Sub Pokja Akademik',
+        ]);
+
+        $this->get(route('home', [
+            'event' => $period->slug,
+            'to' => $category->slug,
+            'ref' => $recipient->token,
+        ]))
+            ->assertOk()
+            ->assertSee('Abdul Rajab Dei, SE., MM.')
+            ->assertSee('Ketua Sub Pokja Akademik')
+            ->assertSee('Pengisian konfirmasi kehadiran telah ditutup')
+            ->assertDontSee('Data penerima belum tersedia untuk kategori ini')
+            ->assertDontSee('banner-cover', false);
+    }
+
     public function test_login_shows_universitas_mulawarman_identity(): void
     {
         $this->get(route('login'))

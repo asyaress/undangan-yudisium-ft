@@ -1,5 +1,4 @@
 ﻿      <section class="panel cover" id="cover">
-        @include('pages.partials.cover-banner')
         <div class="cover-identity">
           <img src="{{ asset('Unmul.png') }}" alt="Lambang Universitas Mulawarman">
           <div>
