@@ -162,7 +162,7 @@ class DualPositionRecipientTest extends TestCase
         $this->assertSame(1, InvitationRecipient::query()->count());
         $this->assertSame($pejabat->id, $staff->invitationCategory()?->id);
         $this->assertSame('Ketua Sub Pokja Akademik', $staff->displayPosition());
-        $this->assertSame(['Ketua Sub Pokja Akademik', 'Ketua Sub Kelompok Kerja Akademik'], $staff->listedPositions());
+        $this->assertSame(['Ketua Sub Pokja Akademik'], $staff->listedPositions());
         $this->assertStringContainsString('to=pejabat', $staff->invitationUrl());
         $this->assertStringContainsString('ref=', $staff->invitationUrl());
 
@@ -171,6 +171,61 @@ class DualPositionRecipientTest extends TestCase
             'category_slug' => $tendik->slug,
             'lookup_value' => '198304302009101003',
         ])->assertRedirect($staff->fresh()->invitationUrl());
+    }
+
+    public function test_sub_pokja_and_sub_kelompok_kerja_same_scope_use_pokja_title(): void
+    {
+        $period = $this->period();
+        $pejabat = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true);
+        $directory = app(RecipientDirectory::class);
+
+        $recipient = $directory->upsert($pejabat, [
+            'name' => 'Budi Keuangan',
+            'identifier' => '198001012010011002',
+            'position' => 'Ketua Sub Kelompok Kerja Keuangan dan Umum',
+        ]);
+
+        $directory->upsert($pejabat, [
+            'name' => 'Budi Keuangan',
+            'identifier' => '198001012010011002',
+            'position' => 'Ketua Sub Pokja Keuangan dan Umum',
+        ]);
+
+        $recipient = $recipient->fresh(['roles', 'category', 'period']);
+
+        $this->assertSame(['Ketua Sub Pokja Keuangan dan Umum'], $recipient->listedPositions());
+    }
+
+    public function test_kps_shorthand_and_koordinator_prodi_are_one_listed_position(): void
+    {
+        $period = $this->period();
+        $kps = $this->category($period, 'kps', InvitationCategory::ACCESS_PRIVATE, true, 4);
+        $pejabat = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true, 3);
+        $directory = app(RecipientDirectory::class);
+
+        $recipient = $directory->upsert($kps, [
+            'name' => 'Dr. Informatika, M.Kom.',
+            'identifier' => '198001012010011001',
+            'position' => 'KPS S2 Informatika',
+        ]);
+
+        $directory->upsert($pejabat, [
+            'name' => 'Dr. Informatika, M.Kom.',
+            'identifier' => '198001012010011001',
+            'position' => 'Koordinator Program Studi Magister Informatika',
+        ]);
+
+        $recipient = $recipient->fresh(['roles', 'category', 'period']);
+
+        $this->assertSame(
+            ['Koordinator Program Studi Magister Informatika'],
+            $recipient->listedPositions(),
+        );
+
+        $this->get($recipient->invitationUrl())
+            ->assertOk()
+            ->assertSee('Koordinator Program Studi Magister Informatika')
+            ->assertDontSee('KPS S2 Informatika');
     }
 
     private function period(): YudisiumPeriod

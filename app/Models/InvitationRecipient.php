@@ -103,12 +103,16 @@ class InvitationRecipient extends Model
     {
         $this->loadMissing('roles.category');
 
-        $fromRoles = app(\App\Services\RecipientDirectory::class)->rankedRoles($this->roles)
-            ->map(fn (InvitationRecipientRole $role) => trim((string) $role->position))
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        $directory = app(\App\Services\RecipientDirectory::class);
+
+        $fromRoles = $directory->collapseListedPositions(
+            $directory->rankedRoles($this->roles)
+                ->map(fn (InvitationRecipientRole $role) => trim((string) $role->position))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all(),
+        );
 
         if ($fromRoles !== []) {
             return $fromRoles;

@@ -97,7 +97,15 @@ class RecipientDirectory
                 ];
             })
             ->filter(fn (array $role) => $role['category_id'] > 0)
-            ->unique(fn (array $role) => $role['category_id'].'|'.Str::lower((string) $role['position']))
+            ->unique(function (array $role) {
+                $equivKey = $this->equivalentPositionKey($role['position'] ?? '');
+
+                if ($equivKey) {
+                    return $role['category_id'].'|'.$equivKey;
+                }
+
+                return $role['category_id'].'|'.Str::lower((string) ($role['position'] ?? ''));
+            })
             ->values();
 
         if ($normalized->isEmpty()) {
@@ -189,6 +197,7 @@ class RecipientDirectory
         $recipient->loadMissing(['roles.category', 'category', 'period']);
         $this->ensurePrimaryRole($recipient);
         $this->promoteLeadershipRoles($recipient);
+        $this->mergeEquivalentPositions($recipient);
         $this->refreshDisplay($recipient->fresh(['roles.category', 'category']));
 
         return $recipient->fresh(['roles.category', 'category', 'period']);
@@ -223,6 +232,127 @@ class RecipientDirectory
         return collect($roles)
             ->sortByDesc(fn (InvitationRecipientRole|\stdClass $role) => [$this->roleRank($role), (int) ($role->id ?? 0)])
             ->values();
+    }
+
+    /**
+     * KPS dan "Koordinator Program Studi …" untuk prodi yang sama dianggap satu jabatan.
+     */
+    public function coordinatorProgramKey(?string $position): ?string
+    {
+        $value = trim((string) $position);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^kps\s+(.+)$/iu', $value, $matches)) {
+            return $this->normalizeProgramLabel($matches[1]);
+        }
+
+        if (preg_match('/^koordinator\s+program\s+studi\s+(.+)$/iu', $value, $matches)) {
+            return $this->normalizeProgramLabel($matches[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Ketua Sub Pokja dan Ketua Sub Kelompok Kerja untuk bidang yang sama = satu jabatan (pakai Pokja).
+     */
+    public function subPokjaScopeKey(?string $position): ?string
+    {
+        $value = trim((string) $position);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^ketua\s+sub\s+pokja\s+(.+)$/iu', $value, $matches)) {
+            return $this->normalizeProgramLabel($matches[1]);
+        }
+
+        if (preg_match('/^ketua\s+sub\s+kelompok\s+kerja\s+(.+)$/iu', $value, $matches)) {
+            return $this->normalizeProgramLabel($matches[1]);
+        }
+
+        return null;
+    }
+
+    public function equivalentPositionKey(?string $position): ?string
+    {
+        $coordinator = $this->coordinatorProgramKey($position);
+
+        if ($coordinator !== null) {
+            return 'kps:'.$coordinator;
+        }
+
+        $pokja = $this->subPokjaScopeKey($position);
+
+        if ($pokja !== null) {
+            return 'pokja:'.$pokja;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int, string>  $positions
+     * @return array<int, string>
+     */
+    public function collapseListedPositions(array $positions): array
+    {
+        $bucket = [];
+        $order = [];
+
+        foreach ($positions as $position) {
+            $position = trim($position);
+
+            if ($position === '') {
+                continue;
+            }
+
+            $equivKey = $this->equivalentPositionKey($position);
+            $key = $equivKey ?? ('__other__'.Str::lower($position));
+
+            if (! array_key_exists($key, $bucket)) {
+                $order[] = $key;
+                $bucket[$key] = $position;
+
+                continue;
+            }
+
+            if ($equivKey !== null) {
+                $bucket[$key] = $this->preferredEquivalentTitle([$bucket[$key], $position]);
+            }
+        }
+
+        return array_values(array_map(fn (string $key) => $bucket[$key], $order));
+    }
+
+    /**
+     * @param  array<int, string|null>  $titles
+     */
+    public function preferredEquivalentTitle(array $titles): string
+    {
+        $candidates = collect($titles)
+            ->map(fn ($title) => trim((string) $title))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($candidates->isEmpty()) {
+            return '';
+        }
+
+        return $candidates
+            ->sortByDesc(fn (string $title) => $this->equivalentTitleScore($title))
+            ->first();
+    }
+
+    /** @deprecated Use preferredEquivalentTitle() */
+    public function preferredCoordinatorTitle(array $titles): string
+    {
+        return $this->preferredEquivalentTitle($titles);
     }
 
     private function promoteLeadershipRoles(InvitationRecipient $recipient): void
@@ -343,13 +473,28 @@ class RecipientDirectory
             return;
         }
 
+        $equivalent = $this->findEquivalentRoleInCategory($recipient, $category->id, $position);
+
+        if ($equivalent) {
+            $equivalent->update([
+                'position' => $this->preferredEquivalentTitle([$equivalent->position, $position]),
+            ]);
+
+            if ($showOnInvitation) {
+                $recipient->roles()->update(['show_on_invitation' => false]);
+                $equivalent->update(['show_on_invitation' => true]);
+            }
+
+            return;
+        }
+
         if ($showOnInvitation) {
             $recipient->roles()->update(['show_on_invitation' => false]);
         }
 
         $recipient->roles()->create([
             'category_id' => $category->id,
-            'position' => $position,
+            'position' => $this->normalizeCoordinatorPosition($position) ?? $position,
             'show_on_invitation' => $showOnInvitation || $recipient->roles()->doesntExist(),
         ]);
     }
@@ -397,6 +542,170 @@ class RecipientDirectory
     {
         $position = trim((string) $value);
 
-        return $position === '' ? null : $position;
+        if ($position === '') {
+            return null;
+        }
+
+        return $this->normalizeCoordinatorPosition($position) ?? $position;
+    }
+
+    private function normalizeCoordinatorPosition(?string $position): ?string
+    {
+        $value = trim((string) $position);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (! preg_match('/^kps\s+(.+)$/iu', $value, $matches)) {
+            return null;
+        }
+
+        return $this->expandKpsSuffix(trim($matches[1]));
+    }
+
+    private function expandKpsSuffix(string $suffix): string
+    {
+        $suffix = preg_replace('/\s+/u', ' ', trim($suffix)) ?? trim($suffix);
+
+        if (preg_match('/^s2\s+(.+)$/iu', $suffix, $matches)) {
+            return 'Koordinator Program Studi Magister '.trim($matches[1]);
+        }
+
+        if (preg_match('/^s1\s+(.+)$/iu', $suffix, $matches)) {
+            return 'Koordinator Program Studi Sarjana '.trim($matches[1]);
+        }
+
+        if (preg_match('/^s3\s+(.+)$/iu', $suffix, $matches)) {
+            return 'Koordinator Program Studi Doktor '.trim($matches[1]);
+        }
+
+        if (preg_match('/^d3\s+(.+)$/iu', $suffix, $matches)) {
+            return 'Koordinator Program Studi Diploma '.trim($matches[1]);
+        }
+
+        return 'Koordinator Program Studi '.$suffix;
+    }
+
+    private function normalizeProgramLabel(string $label): string
+    {
+        $value = Str::lower(trim($label));
+        $value = preg_replace('/\bs2\b/u', 'magister', $value) ?? $value;
+        $value = preg_replace('/\bs1\b/u', 'sarjana', $value) ?? $value;
+        $value = preg_replace('/\bs3\b/u', 'doktor', $value) ?? $value;
+        $value = preg_replace('/\bd3\b/u', 'diploma', $value) ?? $value;
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        return trim($value);
+    }
+
+    private function equivalentTitleScore(string $title): int
+    {
+        $lower = Str::lower($title);
+        $score = strlen($title);
+
+        if (str_starts_with($lower, 'koordinator program studi')) {
+            $score += 200;
+        }
+
+        if (str_starts_with($lower, 'kps')) {
+            $score -= 50;
+        }
+
+        if (preg_match('/^ketua\s+sub\s+pokja\b/u', $lower)) {
+            $score += 200;
+        }
+
+        if (preg_match('/^ketua\s+sub\s+kelompok\s+kerja\b/u', $lower)) {
+            $score -= 50;
+        }
+
+        return $score;
+    }
+
+    private function findEquivalentRoleInCategory(
+        InvitationRecipient $recipient,
+        int $categoryId,
+        ?string $position
+    ): ?InvitationRecipientRole {
+        $incomingKey = $this->equivalentPositionKey($position);
+
+        if (! $incomingKey) {
+            return null;
+        }
+
+        return $recipient->roles
+            ->first(function (InvitationRecipientRole $role) use ($categoryId, $incomingKey) {
+                if ((int) $role->category_id !== $categoryId) {
+                    return false;
+                }
+
+                $existingKey = $this->equivalentPositionKey($role->position);
+
+                return $existingKey !== null && $existingKey === $incomingKey;
+            });
+    }
+
+    private function mergeEquivalentPositions(InvitationRecipient $recipient): void
+    {
+        $groups = [];
+
+        foreach ($recipient->roles as $role) {
+            $key = $this->equivalentPositionKey($role->position);
+
+            if (! $key) {
+                continue;
+            }
+
+            $groups[$key][] = $role;
+        }
+
+        foreach ($groups as $roles) {
+            if (count($roles) < 2) {
+                $role = $roles[0];
+                $normalized = $this->normalizeCoordinatorPosition($role->position)
+                    ?? $this->normalizeSubPokjaPosition($role->position);
+
+                if ($normalized && $normalized !== $role->position) {
+                    $role->update(['position' => $normalized]);
+                }
+
+                continue;
+            }
+
+            $preferred = $this->preferredEquivalentTitle(array_map(
+                fn (InvitationRecipientRole $role) => (string) $role->position,
+                $roles,
+            ));
+
+            $byCategory = collect($roles)->groupBy('category_id');
+
+            foreach ($byCategory as $categoryRoles) {
+                $keeper = $categoryRoles->sortBy('id')->first();
+                $keeper?->update(['position' => $preferred]);
+
+                $categoryRoles
+                    ->reject(fn (InvitationRecipientRole $role) => (int) $role->id === (int) $keeper?->id)
+                    ->each(fn (InvitationRecipientRole $role) => $role->delete());
+            }
+
+            $recipient->unsetRelation('roles');
+            $recipient->load('roles.category');
+        }
+    }
+
+    private function normalizeSubPokjaPosition(?string $position): ?string
+    {
+        $value = trim((string) $position);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (! preg_match('/^ketua\s+sub\s+kelompok\s+kerja\s+(.+)$/iu', $value, $matches)) {
+            return null;
+        }
+
+        return 'Ketua Sub Pokja '.trim($matches[1]);
     }
 }
