@@ -89,24 +89,24 @@ class MonitoringController extends Controller
     {
         abort_unless($recipient->invitationCategory() && in_array($recipient->invitationCategory()->access_mode, $this->recipientAccessModes(), true), 404);
 
-        $png = $this->decodeSignature($recipient->rsvp_signature);
-        abort_unless($png !== null, 404);
+        $decoded = $this->decodeSignature($recipient->rsvp_signature);
+        abort_unless($decoded !== null, 404);
 
-        return $this->pngResponse(
-            $png,
-            $this->signatureFilename('private', $recipient->invitation_name, $recipient->id),
+        return $this->signatureImageResponse(
+            $decoded,
+            $this->signatureFilename('private', $recipient->invitation_name, $recipient->id, $decoded['extension']),
             $request->boolean('download'),
         );
     }
 
     public function studentSignature(Request $request, YudisiumParticipant $participant): Response
     {
-        $png = $this->decodeSignature($participant->rsvp_signature);
-        abort_unless($png !== null, 404);
+        $decoded = $this->decodeSignature($participant->rsvp_signature);
+        abort_unless($decoded !== null, 404);
 
-        return $this->pngResponse(
-            $png,
-            $this->signatureFilename('mahasiswa', $participant->nim, $participant->id),
+        return $this->signatureImageResponse(
+            $decoded,
+            $this->signatureFilename('mahasiswa', $participant->nim, $participant->id, $decoded['extension']),
             $request->boolean('download'),
         );
     }
@@ -448,7 +448,10 @@ class MonitoringController extends Controller
         return $status === 'represented' ? 'Paraf perwakilan' : 'Tanda tangan';
     }
 
-    private function decodeSignature(?string $signature): ?string
+    /**
+     * @return array{bytes: string, mime: string, extension: string}|null
+     */
+    private function decodeSignature(?string $signature): ?array
     {
         if (! is_string($signature)) {
             return null;
@@ -456,31 +459,44 @@ class MonitoringController extends Controller
 
         $signature = trim($signature);
 
-        if (! preg_match('/^data:image\/png;base64,(.+)$/i', $signature, $matches)) {
+        if (! preg_match('/^data:image\/(png|jpeg|jpg);base64,(.+)$/i', $signature, $matches)) {
             return null;
         }
 
-        $payload = preg_replace('/\s+/', '', $matches[1]) ?? '';
+        $payload = preg_replace('/\s+/', '', $matches[2]) ?? '';
         if ($payload === '') {
             return null;
         }
 
         $decoded = base64_decode($payload, true);
 
-        return $decoded === false || $decoded === '' ? null : $decoded;
+        if ($decoded === false || $decoded === '') {
+            return null;
+        }
+
+        $format = strtolower($matches[1]) === 'png' ? 'png' : 'jpeg';
+
+        return [
+            'bytes' => $decoded,
+            'mime' => $format === 'jpeg' ? 'image/jpeg' : 'image/png',
+            'extension' => $format === 'jpeg' ? 'jpg' : 'png',
+        ];
     }
 
-    private function pngResponse(string $png, string $filename, bool $attachment = false): Response
+    /**
+     * @param  array{bytes: string, mime: string, extension: string}  $decoded
+     */
+    private function signatureImageResponse(array $decoded, string $filename, bool $attachment = false): Response
     {
         $disposition = $attachment ? 'attachment' : 'inline';
 
-        return response($png)
-            ->header('Content-Type', 'image/png')
+        return response($decoded['bytes'])
+            ->header('Content-Type', $decoded['mime'])
             ->header('Content-Disposition', $disposition.'; filename="'.$filename.'"')
             ->header('Cache-Control', 'private, max-age=300');
     }
 
-    private function signatureFilename(string $scope, ?string $label, int $id): string
+    private function signatureFilename(string $scope, ?string $label, int $id, string $extension = 'png'): string
     {
         $slug = str($label ?: $scope.'-'.$id)
             ->lower()
@@ -492,7 +508,9 @@ class MonitoringController extends Controller
             $slug = $scope.'-'.$id;
         }
 
-        return 'ttd-'.$slug.'.png';
+        $extension = $extension === 'jpg' ? 'jpg' : 'png';
+
+        return 'ttd-'.$slug.'.'.$extension;
     }
 
     private function recipientAccessModes(): array

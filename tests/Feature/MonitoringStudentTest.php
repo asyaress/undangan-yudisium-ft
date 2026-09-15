@@ -196,4 +196,46 @@ class MonitoringStudentTest extends TestCase
         $this->assertStringContainsString('tanda_tangan', $content);
         $this->assertStringContainsString('<img src="'.$signature, $content);
     }
+
+    public function test_student_monitoring_shows_jpeg_signatures_from_rsvp(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $period = YudisiumPeriod::query()->create([
+            'name' => 'Yudisium Angkatan 83 Periode 3',
+            'slug' => 'yudisium-angkatan-83-periode-3-jpeg',
+            'event_year' => 2026,
+            'event_date' => '2026-09-12',
+            'location' => 'Gedung Hexagon',
+            'is_active' => true,
+            'is_published' => true,
+        ]);
+        $signature = 'data:image/jpeg;base64,'.base64_encode('fake-jpeg-bytes');
+        $participant = YudisiumParticipant::query()->create([
+            'period_id' => $period->id,
+            'sequence_number' => 1,
+            'nim' => '2200000004',
+            'name' => 'Mahasiswa Tanda Tangan Jpeg',
+            'study_program' => 'Teknik Sipil',
+            'rsvp_status' => 'attending',
+            'rsvp_signature' => $signature,
+            'rsvp_responded_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->getJson(route('monitoring.live', ['type' => 'mahasiswa', 'period_id' => $period->id]))
+            ->assertOk()
+            ->assertJsonPath('rows.0.has_signature', true)
+            ->assertJsonPath('rows.0.signature_url', route('monitoring.mahasiswa.signature', $participant));
+
+        $this->actingAs($admin)
+            ->get(route('monitoring.mahasiswa.signature', $participant))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/jpeg')
+            ->assertContent('fake-jpeg-bytes');
+
+        $this->actingAs($admin)
+            ->get(route('monitoring.mahasiswa.signature', $participant).'?download=1')
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'attachment; filename="ttd-'.$participant->nim.'.jpg"');
+    }
 }

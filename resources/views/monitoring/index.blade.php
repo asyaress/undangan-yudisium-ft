@@ -755,7 +755,7 @@
             <a href="${escapeHtml(row.signature_url)}" target="_blank" rel="noopener" title="Buka ${label}" download="${escapeHtml(fileName)}">
               <img src="${escapeHtml(row.signature_url)}" alt="${label} ${escapeHtml(row.name)}">
             </a>
-            <button type="button" class="signature-download-link" data-signature-download data-url="${escapeHtml(row.signature_url)}" data-file-name="${escapeHtml(fileName)}">Unduh PNG</button>
+            <button type="button" class="signature-download-link" data-signature-download data-url="${escapeHtml(row.signature_url)}" data-file-name="${escapeHtml(fileName)}">Unduh</button>
           </div>
         `;
       };
@@ -874,12 +874,14 @@
       });
 
       const savePngBlob = async (blob, fileName) => {
-        const name = fileName || "unduhan.png";
+        const type = blob.type || "image/png";
+        const extension = type.includes("jpeg") || type.includes("jpg") ? "jpg" : "png";
+        const name = String(fileName || "unduhan.png").replace(/\.(png|jpe?g)$/i, "") + "." + extension;
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
         if (isIOS && navigator.share && navigator.canShare) {
           try {
-            const file = new File([blob], name, { type: "image/png" });
+            const file = new File([blob], name, { type });
             if (navigator.canShare({ files: [file] })) {
               await navigator.share({ files: [file], title: name });
               return;
@@ -919,7 +921,7 @@
         try {
           const response = await fetch(downloadUrl, {
             credentials: "same-origin",
-            headers: { Accept: "image/png" },
+            headers: { Accept: "image/jpeg,image/png" },
           });
           if (!response.ok) throw new Error("download failed");
           const blob = await response.blob();
