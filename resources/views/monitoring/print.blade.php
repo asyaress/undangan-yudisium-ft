@@ -150,8 +150,16 @@
             <td>{{ $row['sequence_number'] ?: '-' }} / {{ $row['nim'] ?: '-' }}</td>
             <td>{{ $row['context'] }}</td>
           @else
-            <td>{{ $row['category'] }}</td>
-            <td>{{ $row['context'] }}</td>
+            <td>
+              @foreach (($row['categories'] ?? [$row['category']]) as $category)
+                {{ $category }}@if (! $loop->last)<br>@endif
+              @endforeach
+            </td>
+            <td>
+              @foreach (($row['positions'] ?? [$row['context']]) as $position)
+                {{ $position }}@if (! $loop->last)<br>@endif
+              @endforeach
+            </td>
           @endif
           <td>{{ $row['rsvp_label'] }}</td>
           <td>{{ $row['responded_at_label'] }}</td>

@@ -7,6 +7,7 @@ use App\Models\InvitationRecipient;
 use App\Models\StudyProgram;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
+use App\Services\RecipientDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -241,6 +242,8 @@ class MonitoringController extends Controller
 
     private function privateRows(array $filters, bool $withSignatureData = false): Collection
     {
+        $directory = app(RecipientDirectory::class);
+
         return InvitationRecipient::query()
             ->with(['period', 'category', 'roles.category'])
             ->when($filters['period_id'], fn ($query) => $query->where('period_id', $filters['period_id']))
@@ -250,60 +253,101 @@ class MonitoringController extends Controller
             })
             ->orderBy('name')
             ->get()
-            ->flatMap(function (InvitationRecipient $recipient) use ($withSignatureData) {
+            ->map(function (InvitationRecipient $recipient) use ($withSignatureData, $directory) {
                 $hasSignature = $this->decodeSignature($recipient->rsvp_signature) !== null;
-                $roles = $recipient->roles->isNotEmpty()
-                    ? $recipient->roles
-                    : collect([(object) [
+                $roles = $recipient->roles->filter(function ($role) use ($recipient) {
+                    $mode = $role->category?->access_mode ?? $recipient->category?->access_mode;
+
+                    return in_array($mode, $this->recipientAccessModes(), true);
+                });
+
+                if ($roles->isEmpty()) {
+                    $roles = collect([(object) [
+                        'id' => null,
                         'category' => $recipient->category,
-                        'position' => $recipient->position,
+                        'position' => $recipient->position ?: $recipient->context_note,
                         'show_on_invitation' => true,
                     ]]);
+                }
 
-                return $roles->map(function ($role) use ($recipient, $hasSignature, $withSignatureData) {
-                    $category = $role->category ?? $recipient->category;
-                    $row = [
-                        'id' => 'private-'.$recipient->id.'-role-'.($role->id ?? ($category?->id.'-'.md5((string) $role->position))),
-                        'recipient_id' => $recipient->id,
-                        'event' => $recipient->period?->name ?: '-',
-                        'category' => $category?->title ?: '-',
-                        'category_key' => $category?->slug ?: 'private',
-                        'type' => 'Undangan Private',
-                        'sequence_number' => null,
-                        'nim' => $recipient->participant?->nim ?: '',
-                        'name' => $recipient->invitation_name,
-                        'context' => $role->position ?: ($recipient->context_note ?: '-'),
-                        'note' => $recipient->rsvp_note ?: '',
-                        'rsvp_status' => $recipient->rsvp_status ?: 'pending',
-                        'rsvp_label' => $this->rsvpLabel($recipient->rsvp_status ?: 'pending'),
-                        'responded_at' => $recipient->responded_at?->toIso8601String(),
-                        'responded_at_label' => $recipient->responded_at?->format('d/m/Y H:i') ?: '-',
-                        'has_signature' => $hasSignature,
-                        'signature_label' => $this->signatureLabel($recipient->rsvp_status ?: 'pending'),
-                        'signature_url' => $hasSignature ? route('monitoring.private.signature', $recipient) : null,
-                        'checked_in' => false,
-                        'checkin_status' => 'not_applicable',
-                        'checked_in_at' => null,
-                        'checked_in_at_label' => '-',
-                        'updated_marker' => max(
-                            $recipient->responded_at?->timestamp ?? 0,
-                            $recipient->updated_at?->timestamp ?? 0,
-                        ),
-                    ];
+                $roleEntries = $directory->rankedRoles($roles)
+                    ->map(function ($role) use ($recipient) {
+                        $category = $role->category ?? $recipient->category;
+                        $position = trim((string) ($role->position ?: $recipient->context_note ?: ''));
 
-                    if ($withSignatureData) {
-                        $row['signature_data'] = $hasSignature ? $recipient->rsvp_signature : null;
-                    }
+                        return [
+                            'category' => $category?->title ?: '-',
+                            'category_key' => $category?->slug ?: 'private',
+                            'position' => $position !== '' ? $position : '-',
+                        ];
+                    })
+                    ->unique(fn (array $entry) => $entry['category_key'].'|'.mb_strtolower($entry['position']))
+                    ->values();
 
-                    return $row;
-                });
+                $categories = $roleEntries->pluck('category')->unique()->values();
+                $categoryKeys = $roleEntries->pluck('category_key')->unique()->values();
+                $positions = $recipient->listedPositions();
+
+                if ($positions === []) {
+                    $positions = $roleEntries
+                        ->pluck('position')
+                        ->filter(fn (string $position) => $position !== '-')
+                        ->unique()
+                        ->values()
+                        ->all();
+                }
+
+                $primaryCategory = $recipient->invitationCategory() ?? $recipient->category;
+                $row = [
+                    'id' => 'private-'.$recipient->id,
+                    'recipient_id' => $recipient->id,
+                    'event' => $recipient->period?->name ?: '-',
+                    'category' => $categories->implode(' / ') ?: ($primaryCategory?->title ?: '-'),
+                    'category_key' => $primaryCategory?->slug ?: ($categoryKeys->first() ?: 'private'),
+                    'category_keys' => $categoryKeys->all(),
+                    'categories' => $categories->all(),
+                    'type' => 'Undangan Private',
+                    'sequence_number' => null,
+                    'nim' => $recipient->participant?->nim ?: '',
+                    'name' => $recipient->invitation_name,
+                    'context' => $positions !== [] ? implode(' · ', $positions) : ($recipient->context_note ?: '-'),
+                    'positions' => $positions !== [] ? $positions : array_values(array_filter([$recipient->context_note])),
+                    'note' => $recipient->rsvp_note ?: '',
+                    'rsvp_status' => $recipient->rsvp_status ?: 'pending',
+                    'rsvp_label' => $this->rsvpLabel($recipient->rsvp_status ?: 'pending'),
+                    'responded_at' => $recipient->responded_at?->toIso8601String(),
+                    'responded_at_label' => $recipient->responded_at?->format('d/m/Y H:i') ?: '-',
+                    'has_signature' => $hasSignature,
+                    'signature_label' => $this->signatureLabel($recipient->rsvp_status ?: 'pending'),
+                    'signature_url' => $hasSignature ? route('monitoring.private.signature', $recipient) : null,
+                    'checked_in' => false,
+                    'checkin_status' => 'not_applicable',
+                    'checked_in_at' => null,
+                    'checked_in_at_label' => '-',
+                    'updated_marker' => max(
+                        $recipient->responded_at?->timestamp ?? 0,
+                        $recipient->updated_at?->timestamp ?? 0,
+                    ),
+                ];
+
+                if ($withSignatureData) {
+                    $row['signature_data'] = $hasSignature ? $recipient->rsvp_signature : null;
+                }
+
+                return $row;
             });
     }
 
     private function applyRowFilters(Collection $rows, array $filters): Collection
     {
         return $rows
-            ->when($filters['category'] !== '', fn (Collection $items) => $items->where('category_key', $filters['category']))
+            ->when($filters['category'] !== '', function (Collection $items) use ($filters) {
+                return $items->filter(function (array $row) use ($filters) {
+                    $keys = $row['category_keys'] ?? array_filter([$row['category_key'] ?? null]);
+
+                    return in_array($filters['category'], $keys, true);
+                });
+            })
             ->when($filters['status'] !== 'all', function (Collection $items) use ($filters) {
                 if ($filters['status'] === 'checked_in') {
                     return $items->where('checked_in', true);
@@ -315,7 +359,17 @@ class MonitoringController extends Controller
                 $needle = mb_strtolower($filters['q']);
 
                 return $items->filter(function (array $row) use ($needle) {
-                    return str_contains(mb_strtolower($row['nim'].' '.$row['name'].' '.$row['context'].' '.$row['category'].' '.$row['note']), $needle);
+                    $haystack = implode(' ', [
+                        $row['nim'] ?? '',
+                        $row['name'] ?? '',
+                        $row['context'] ?? '',
+                        $row['category'] ?? '',
+                        $row['note'] ?? '',
+                        implode(' ', $row['categories'] ?? []),
+                        implode(' ', $row['positions'] ?? []),
+                    ]);
+
+                    return str_contains(mb_strtolower($haystack), $needle);
                 });
             })
             ->sortBy($filters['type'] === 'mahasiswa'

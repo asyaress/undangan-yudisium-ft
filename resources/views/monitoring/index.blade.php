@@ -404,6 +404,17 @@
         font-size: 0.82rem;
     }
 
+    .row-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .row-name small + small {
+        margin-top: 2px;
+    }
+
     .badge-soft {
         display: inline-flex;
         align-items: center;
@@ -761,15 +772,18 @@
       };
 
       const rowHtml = (row, changed) => {
+        const positions = Array.isArray(row.positions) && row.positions.length
+          ? row.positions
+          : [row.context || "-"];
+        const categories = Array.isArray(row.categories) && row.categories.length
+          ? row.categories
+          : [row.category || "-"];
         const secondary = monitorType === "mahasiswa"
           ? `<div>
               <span class="badge-soft">${escapeHtml(row.context)}</span>
               ${row.note ? `<div class="row-muted">${escapeHtml(row.note)}</div>` : ""}
             </div>`
-          : `<div>
-              <span class="badge-soft">${escapeHtml(row.category)}</span>
-              <div class="row-muted">${escapeHtml(row.context)}</div>
-            </div>`;
+          : `<div class="row-badges">${categories.map((title) => `<span class="badge-soft">${escapeHtml(title)}</span>`).join("")}</div>`;
         const checkinColumn = monitorType === "mahasiswa"
           ? `<div>
               <span class="badge-soft ${row.checked_in ? "good" : ""}">${row.checked_in ? "Sudah check-in" : "Belum check-in"}</span>
@@ -779,14 +793,14 @@
         const signatureColumn = signaturePreviewHtml(row);
         const meta = monitorType === "mahasiswa"
           ? `${row.sequence_number || "-"} / ${escapeHtml(row.nim || "-")}`
-          : escapeHtml(row.context || "-");
+          : positions.map((position) => `<small class="d-block">${escapeHtml(position)}</small>`).join("");
         const rowClass = monitorType === "mahasiswa" ? "is-student" : "is-private";
 
         return `
           <div class="monitor-row ${rowClass} ${changed.has(row.id) ? "is-new" : ""}">
             <div class="row-name">
               <strong>${escapeHtml(row.name)}</strong>
-              <small class="d-block">${meta}</small>
+              ${monitorType === "mahasiswa" ? `<small class="d-block">${meta}</small>` : meta}
             </div>
             ${secondary}
             <div>

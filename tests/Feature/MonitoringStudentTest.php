@@ -8,6 +8,7 @@ use App\Models\StudyProgram;
 use App\Models\User;
 use App\Models\YudisiumParticipant;
 use App\Models\YudisiumPeriod;
+use App\Services\RecipientDirectory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -138,6 +139,113 @@ class MonitoringStudentTest extends TestCase
         $content = $export->streamedContent();
         $this->assertStringContainsString('tanda_tangan_paraf', $content);
         $this->assertStringContainsString('<img src="'.$signature, $content);
+    }
+
+    public function test_private_monitoring_keeps_one_row_for_recipients_with_two_roles(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $period = YudisiumPeriod::query()->create([
+            'name' => 'Yudisium Angkatan 83 Periode 3',
+            'slug' => 'yudisium-angkatan-83-periode-3-dual',
+            'event_year' => 2026,
+            'event_date' => '2026-09-12',
+            'location' => 'Gedung Hexagon',
+            'is_active' => true,
+            'is_published' => true,
+        ]);
+        $kps = InvitationCategory::query()->create([
+            'period_id' => $period->id,
+            'slug' => 'kps',
+            'title' => 'Koordinator Program Studi',
+            'recipient_label' => 'Koordinator Program Studi',
+            'cover_text' => 'Undangan',
+            'invitation_text' => 'Dengan hormat',
+            'sort_order' => 4,
+            'access_mode' => InvitationCategory::ACCESS_PRIVATE,
+            'rsvp_enabled' => true,
+        ]);
+        $pejabat = InvitationCategory::query()->create([
+            'period_id' => $period->id,
+            'slug' => 'pejabat',
+            'title' => 'Pejabat Fakultas dan Universitas',
+            'recipient_label' => 'Pejabat Fakultas dan Universitas',
+            'cover_text' => 'Undangan',
+            'invitation_text' => 'Dengan hormat',
+            'sort_order' => 3,
+            'access_mode' => InvitationCategory::ACCESS_PRIVATE,
+            'rsvp_enabled' => true,
+        ]);
+        $directory = app(RecipientDirectory::class);
+        $recipient = $directory->upsert($kps, [
+            'name' => 'Awang Harsa Kridalaksana, S.Kom., M.Kom.',
+            'identifier' => '198001012010011099',
+            'position' => 'Koordinator Program Studi Informatika',
+            'salutation' => 'Bapak',
+        ]);
+        $directory->upsert($pejabat, [
+            'name' => 'Awang Harsa Kridalaksana, S.Kom., M.Kom.',
+            'identifier' => '198001012010011099',
+            'position' => 'Koordinator Program Studi Informatika',
+            'salutation' => 'Bapak',
+        ]);
+
+        $signature = 'data:image/png;base64,'.base64_encode('fake-png-dual');
+        $recipient->forceFill([
+            'rsvp_status' => 'attending',
+            'rsvp_signature' => $signature,
+            'responded_at' => now(),
+        ])->save();
+
+        $this->assertSame(1, InvitationRecipient::query()->count());
+        $this->assertSame(2, $recipient->fresh()->roles()->count());
+
+        $live = $this->actingAs($admin)
+            ->getJson(route('monitoring.live', ['type' => 'private', 'period_id' => $period->id]))
+            ->assertOk()
+            ->assertJsonCount(1, 'rows')
+            ->assertJsonPath('summary.total', 1)
+            ->assertJsonPath('summary.attending', 1)
+            ->assertJsonPath('rows.0.name', 'Bapak Awang Harsa Kridalaksana, S.Kom., M.Kom.')
+            ->assertJsonPath('rows.0.rsvp_status', 'attending')
+            ->assertJsonPath('rows.0.has_signature', true);
+
+        $row = $live->json('rows.0');
+        $this->assertEqualsCanonicalizing(
+            ['Koordinator Program Studi', 'Pejabat Fakultas dan Universitas'],
+            $row['categories'],
+        );
+        $this->assertSame(['Koordinator Program Studi Informatika'], $row['positions']);
+
+        $this->actingAs($admin)
+            ->getJson(route('monitoring.live', [
+                'type' => 'private',
+                'period_id' => $period->id,
+                'category' => $kps->slug,
+            ]))
+            ->assertOk()
+            ->assertJsonCount(1, 'rows')
+            ->assertJsonPath('rows.0.recipient_id', $recipient->id);
+
+        $pdf = $this->actingAs($admin)
+            ->get(route('monitoring.export', ['type' => 'private', 'period_id' => $period->id, 'format' => 'pdf']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame(1, substr_count($pdf, '>Bapak Awang Harsa Kridalaksana, S.Kom., M.Kom.<'));
+        $this->assertStringContainsString('Koordinator Program Studi', $pdf);
+        $this->assertStringContainsString('Pejabat Fakultas dan Universitas', $pdf);
+
+        $excel = $this->actingAs($admin)
+            ->get(route('monitoring.export', ['type' => 'private', 'period_id' => $period->id, 'format' => 'xls']))
+            ->assertOk()
+            ->streamedContent();
+
+        $this->assertSame(1, substr_count($excel, 'Bapak Awang Harsa Kridalaksana, S.Kom., M.Kom.'));
+
+        $recipient->refresh();
+        $this->assertSame('attending', $recipient->rsvp_status);
+        $this->assertSame($signature, $recipient->rsvp_signature);
+        $this->assertSame(2, $recipient->roles()->count());
     }
 
     public function test_student_monitoring_shows_signature_and_exports_it_to_excel(): void
