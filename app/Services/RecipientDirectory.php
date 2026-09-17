@@ -252,24 +252,106 @@ class RecipientDirectory
 
     /**
      * KPS dan "Koordinator Program Studi …" untuk prodi yang sama dianggap satu jabatan.
+     * Plt. dan S1/Sarjana tanpa jenjang dianggap kursi KPS yang sama.
      */
     public function coordinatorProgramKey(?string $position): ?string
     {
-        $value = trim((string) $position);
+        $value = $this->stripActingPrefix(trim((string) $position));
 
         if ($value === '') {
             return null;
         }
 
+        $suffix = null;
+
         if (preg_match('/^kps\s+(.+)$/iu', $value, $matches)) {
+            $suffix = $matches[1];
+        } elseif (preg_match('/^koordinator\s+program\s+studi\s+(.+)$/iu', $value, $matches)) {
+            $suffix = $matches[1];
+        } elseif (preg_match('/^koordinator\s+prodi\s+(.+)$/iu', $value, $matches)) {
+            $suffix = $matches[1];
+        }
+
+        if ($suffix === null) {
+            return null;
+        }
+
+        return $this->normalizeCoordinatorProgramKey($suffix);
+    }
+
+    public function positionsAreEquivalent(?string $left, ?string $right): bool
+    {
+        $left = trim((string) $left);
+        $right = trim((string) $right);
+
+        if ($left === '' || $right === '') {
+            return false;
+        }
+
+        if (Str::lower($left) === Str::lower($right)) {
+            return true;
+        }
+
+        $leftKey = $this->equivalentPositionKey($left);
+        $rightKey = $this->equivalentPositionKey($right);
+
+        return $leftKey !== null && $leftKey === $rightKey;
+    }
+
+    /**
+     * Kalab dan "Kepala Laboratorium …" untuk lab yang sama dianggap satu jabatan.
+     */
+    public function laboratoryProgramKey(?string $position): ?string
+    {
+        $value = $this->stripActingPrefix(trim((string) $position));
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^kalab\s+(.+)$/iu', $value, $matches)) {
             return $this->normalizeProgramLabel($matches[1]);
         }
 
-        if (preg_match('/^koordinator\s+program\s+studi\s+(.+)$/iu', $value, $matches)) {
+        if (preg_match('/^kepala\s+laboratorium\s+(.+)$/iu', $value, $matches)) {
             return $this->normalizeProgramLabel($matches[1]);
         }
 
         return null;
+    }
+
+    /**
+     * Kategori yang tampil di monitoring/PDF. Jabatan yang sama di dua daftar
+     * (KPS/Kalab/Senat/Tendik vs Pejabat) hanya tampil sekali.
+     *
+     * @return array<int, string>
+     */
+    public function displayCategories($roles): array
+    {
+        $roles = collect($roles)->filter(fn ($role) => ($role->category ?? null) !== null)->values();
+
+        if ($roles->isEmpty()) {
+            return [];
+        }
+
+        $groups = [];
+
+        foreach ($roles as $index => $role) {
+            $groups[$this->displayGroupKey($role, $index)][] = $role;
+        }
+
+        $visible = collect($groups)->map(function (array $group) {
+            return collect($group)
+                ->sortByDesc(fn ($role) => [$this->displayCategoryRank($role), $this->roleRank($role)])
+                ->first();
+        })->filter()->values();
+
+        return $this->rankedRoles($visible)
+            ->map(fn ($role) => trim((string) ($role->category?->title ?: '')))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
@@ -300,6 +382,12 @@ class RecipientDirectory
 
         if ($coordinator !== null) {
             return 'kps:'.$coordinator;
+        }
+
+        $laboratory = $this->laboratoryProgramKey($position);
+
+        if ($laboratory !== null) {
+            return 'kalab:'.$laboratory;
         }
 
         $pokja = $this->subPokjaScopeKey($position);
@@ -565,6 +653,55 @@ class RecipientDirectory
         return $this->normalizeCoordinatorPosition($position) ?? $position;
     }
 
+    private function stripActingPrefix(string $value): string
+    {
+        $stripped = preg_replace('/^(?:plt\.?|pjs\.?|pj\.?|pelaksana\s+tugas)\s+/iu', '', trim($value));
+
+        return trim((string) $stripped);
+    }
+
+    private function normalizeCoordinatorProgramKey(string $label): string
+    {
+        $value = $this->normalizeProgramLabel($label);
+
+        if (preg_match('/^sarjana\s+(.+)$/u', $value, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return $value;
+    }
+
+    private function displayGroupKey($role, int $index): string
+    {
+        $position = trim((string) ($role->position ?? ''));
+        $equivKey = $this->equivalentPositionKey($position);
+
+        if ($equivKey) {
+            return $equivKey;
+        }
+
+        if ($position !== '') {
+            return '__text__'.Str::lower($position);
+        }
+
+        return '__solo__'.$index;
+    }
+
+    private function displayCategoryRank($role): int
+    {
+        return match ($role->category?->slug ?? '') {
+            'kps' => 800,
+            'kalab' => 780,
+            'ketuasenat' => 760,
+            'anggota-senat-fakultas-teknik', 'anggotasenat' => 740,
+            'pejabat' => 500,
+            'tendik' => 200,
+            'tenaga-keamanan' => 120,
+            'tenaga-cs' => 110,
+            default => 100,
+        };
+    }
+
     private function normalizeCoordinatorPosition(?string $position): ?string
     {
         $value = trim((string) $position);
@@ -618,13 +755,26 @@ class RecipientDirectory
     private function equivalentTitleScore(string $title): int
     {
         $lower = Str::lower($title);
+        $stripped = Str::lower($this->stripActingPrefix($title));
         $score = strlen($title);
 
-        if (str_starts_with($lower, 'koordinator program studi')) {
+        if (str_starts_with($stripped, 'koordinator program studi')) {
             $score += 200;
         }
 
-        if (str_starts_with($lower, 'kps')) {
+        if (str_starts_with($lower, 'kps') || str_starts_with($stripped, 'kps')) {
+            $score -= 50;
+        }
+
+        if ($stripped !== $lower) {
+            $score += 40;
+        }
+
+        if (str_starts_with($stripped, 'kepala laboratorium')) {
+            $score += 200;
+        }
+
+        if (str_starts_with($lower, 'kalab') || str_starts_with($stripped, 'kalab')) {
             $score -= 50;
         }
 

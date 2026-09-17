@@ -284,7 +284,7 @@ class MonitoringController extends Controller
                     ->unique(fn (array $entry) => $entry['category_key'].'|'.mb_strtolower($entry['position']))
                     ->values();
 
-                $categories = $roleEntries->pluck('category')->unique()->values();
+                $categories = collect($directory->displayCategories($roles));
                 $categoryKeys = $roleEntries->pluck('category_key')->unique()->values();
                 $positions = $recipient->listedPositions();
 

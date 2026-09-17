@@ -210,11 +210,9 @@ class MonitoringStudentTest extends TestCase
             ->assertJsonPath('rows.0.has_signature', true);
 
         $row = $live->json('rows.0');
-        $this->assertEqualsCanonicalizing(
-            ['Koordinator Program Studi', 'Pejabat Fakultas dan Universitas'],
-            $row['categories'],
-        );
+        $this->assertSame(['Koordinator Program Studi'], $row['categories']);
         $this->assertSame(['Koordinator Program Studi Informatika'], $row['positions']);
+        $this->assertEqualsCanonicalizing(['kps', 'pejabat'], $row['category_keys']);
 
         $this->actingAs($admin)
             ->getJson(route('monitoring.live', [
@@ -226,6 +224,15 @@ class MonitoringStudentTest extends TestCase
             ->assertJsonCount(1, 'rows')
             ->assertJsonPath('rows.0.recipient_id', $recipient->id);
 
+        $this->actingAs($admin)
+            ->getJson(route('monitoring.live', [
+                'type' => 'private',
+                'period_id' => $period->id,
+                'category' => $pejabat->slug,
+            ]))
+            ->assertOk()
+            ->assertJsonCount(1, 'rows');
+
         $pdf = $this->actingAs($admin)
             ->get(route('monitoring.export', ['type' => 'private', 'period_id' => $period->id, 'format' => 'pdf']))
             ->assertOk()
@@ -233,7 +240,7 @@ class MonitoringStudentTest extends TestCase
 
         $this->assertSame(1, substr_count($pdf, '>Bapak Awang Harsa Kridalaksana, S.Kom., M.Kom.<'));
         $this->assertStringContainsString('Koordinator Program Studi', $pdf);
-        $this->assertStringContainsString('Pejabat Fakultas dan Universitas', $pdf);
+        $this->assertStringNotContainsString('Pejabat Fakultas dan Universitas', $pdf);
 
         $excel = $this->actingAs($admin)
             ->get(route('monitoring.export', ['type' => 'private', 'period_id' => $period->id, 'format' => 'xls']))

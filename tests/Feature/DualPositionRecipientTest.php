@@ -228,6 +228,94 @@ class DualPositionRecipientTest extends TestCase
             ->assertDontSee('KPS S2 Informatika');
     }
 
+    public function test_plt_s1_coordinator_is_the_same_kps_seat(): void
+    {
+        $period = $this->period();
+        $kps = $this->category($period, 'kps', InvitationCategory::ACCESS_PRIVATE, true, 4);
+        $pejabat = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true, 3);
+        $directory = app(RecipientDirectory::class);
+
+        $recipient = $directory->upsert($kps, [
+            'name' => 'Albertus Juvensius Pontus, MT.',
+            'identifier' => '198001012010011088',
+            'position' => 'Plt. Koordinator Program Studi S1 Teknik Pertambangan',
+        ]);
+
+        $directory->upsert($pejabat, [
+            'name' => 'Albertus Juvensius Pontus, MT.',
+            'identifier' => '198001012010011088',
+            'position' => 'Koordinator Program Studi Teknik Pertambangan',
+        ]);
+
+        $recipient = $recipient->fresh(['roles', 'category', 'period']);
+
+        $this->assertSame(1, InvitationRecipient::query()->count());
+        $this->assertSame(2, $recipient->roles()->count());
+        $this->assertSame(
+            ['Plt. Koordinator Program Studi S1 Teknik Pertambangan'],
+            $recipient->listedPositions(),
+        );
+        $this->assertSame(
+            ['Kategori kps'],
+            $directory->displayCategories($recipient->roles),
+        );
+    }
+
+    public function test_kalab_and_pejabat_lab_head_are_one_display_category(): void
+    {
+        $period = $this->period();
+        $kalab = $this->category($period, 'kalab', InvitationCategory::ACCESS_PRIVATE, true, 5);
+        $pejabat = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true, 3);
+        $directory = app(RecipientDirectory::class);
+
+        $recipient = $directory->upsert($kalab, [
+            'name' => 'Dr. Laboratorium, M.T.',
+            'identifier' => '198001012010011077',
+            'position' => 'Kalab Komputasi',
+        ]);
+
+        $directory->upsert($pejabat, [
+            'name' => 'Dr. Laboratorium, M.T.',
+            'identifier' => '198001012010011077',
+            'position' => 'Kepala Laboratorium Komputasi',
+        ]);
+
+        $recipient = $recipient->fresh(['roles', 'category', 'period']);
+
+        $this->assertSame(1, InvitationRecipient::query()->count());
+        $this->assertSame(2, $recipient->roles()->count());
+        $this->assertSame(['Kepala Laboratorium Komputasi'], $recipient->listedPositions());
+        $this->assertSame(['Kategori kalab'], $directory->displayCategories($recipient->roles));
+    }
+
+    public function test_tendik_kepala_bagian_does_not_duplicate_pejabat_category(): void
+    {
+        $period = $this->period();
+        $pejabat = $this->category($period, 'pejabat', InvitationCategory::ACCESS_PRIVATE, true);
+        $tendik = $this->category($period, 'tendik', InvitationCategory::ACCESS_NIP, true, 8);
+        $directory = app(RecipientDirectory::class);
+
+        $staff = $directory->upsert($tendik, [
+            'name' => 'Rajab Abdul',
+            'identifier' => '198001012006041001',
+            'position' => 'Kepala Bagian Tata Usaha',
+            'salutation' => 'Bapak',
+        ]);
+
+        $directory->upsert($pejabat, [
+            'name' => 'Rajab Abdul',
+            'identifier' => '198001012006041001',
+            'position' => 'Kepala Bagian Tata Usaha',
+            'salutation' => 'Bapak',
+        ]);
+
+        $staff = $staff->fresh(['roles', 'category', 'period']);
+
+        $this->assertSame(1, InvitationRecipient::query()->count());
+        $this->assertSame(['Kepala Bagian Tata Usaha'], $staff->listedPositions());
+        $this->assertSame(['Kategori pejabat'], $directory->displayCategories($staff->roles));
+    }
+
     private function period(): YudisiumPeriod
     {
         return YudisiumPeriod::query()->create([
